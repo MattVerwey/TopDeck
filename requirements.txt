@@ -11,7 +11,7 @@ azure-mgmt-resource==23.0.1
 azure-mgmt-compute==30.4.0
 azure-mgmt-network==25.2.0
 azure-mgmt-storage==21.1.0
-azure-mgmt-sql==4.0.0
+azure-mgmt-sql==3.0.1
 azure-mgmt-containerservice==26.0.0
 azure-mgmt-web==7.2.0
 

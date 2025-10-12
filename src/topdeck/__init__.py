@@ -9,6 +9,7 @@ __version__ = "0.1.0"
 __author__ = "TopDeck Team"
 __license__ = "MIT"
 
-from topdeck.common.config import Settings
+# Don't import Settings by default to avoid pydantic dependency
+# Users can: from topdeck.common.config import Settings
 
-__all__ = ["Settings", "__version__"]
+__all__ = ["__version__"]
