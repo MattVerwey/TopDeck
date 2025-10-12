@@ -211,24 +211,26 @@ cd TopDeck
 - [ ] Design core data models for resources and dependencies
 - [ ] Implement basic Azure resource discovery
 - [ ] Build foundational graph database schema
+- [ ] Set up Terraform infrastructure foundation
 
-### Phase 2: Discovery & Integration (Months 3-4)
-- [ ] Implement AWS and GCP resource discovery
+### Phase 2: Multi-Cloud Architecture (Months 3-4)
+- [ ] Architect and implement AWS resource discovery using Terraform
+- [ ] Architect and implement GCP resource discovery using Terraform
+- [ ] Build unified multi-cloud resource abstraction layer
+- [ ] Create infrastructure deployment automation
+
+### Phase 3: Platform Integrations (Months 5-6)
 - [ ] Build Azure DevOps pipeline integration
-- [ ] Add GitHub repository integration
+- [ ] Add GitHub Actions and repository integration
+- [ ] Implement deployment tracking and linking
 - [ ] Create basic topology visualization
 
-### Phase 3: Analysis & Risk (Months 5-6)
+### Phase 4: Analysis & Intelligence (Months 7-8)
 - [ ] Develop dependency graph builder
 - [ ] Implement risk analysis engine
 - [ ] Build change impact assessment
-- [ ] Add failure scenario simulation
-
-### Phase 4: Monitoring & Intelligence (Months 7-8)
-- [ ] Integrate performance metrics
-- [ ] Add error correlation
-- [ ] Implement predictive analytics
-- [ ] Build alerting system
+- [ ] Integrate performance metrics and monitoring
+- [ ] Add error correlation and alerting
 
 ### Phase 5: Production Ready (Months 9-10)
 - [ ] Security hardening
