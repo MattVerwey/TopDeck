@@ -16,49 +16,60 @@ This directory contains detailed issue templates for building TopDeck. These can
    - Design Neo4j schema
    - Define resource and relationship models
 
-### Phase 2: Discovery & Integration (Weeks 2-4)
-
 3. **[Azure Resource Discovery](issue-003-azure-resource-discovery.md)**
    - Priority: High
    - Implement Azure cloud resource discovery
    - Support AKS, App Service, VMs, networking, databases
+
+### Phase 2: Multi-Cloud Architecture (Weeks 3-4)
+
+8. **[AWS Resource Discovery](issue-008-aws-resource-discovery.md)**
+   - Priority: High
+   - Implement AWS cloud resource discovery using Terraform
+   - Support EKS, EC2, Lambda, RDS, networking
+   - Generate and manage Terraform configurations
+
+9. **[GCP Resource Discovery](issue-009-gcp-resource-discovery.md)**
+   - Priority: High
+   - Implement GCP cloud resource discovery using Terraform
+   - Support GKE, Compute Engine, Cloud Run, Cloud SQL
+   - Generate and manage Terraform configurations
+
+### Phase 3: Platform Integrations (Weeks 5-6)
 
 4. **[Azure DevOps Integration](issue-004-azure-devops-integration.md)**
    - Priority: High
    - Integrate with Azure DevOps pipelines
    - Link deployments to infrastructure
 
-### Phase 3: Analysis & Visualization (Weeks 5-8)
-
-5. **[Risk Analysis Engine](issue-005-risk-analysis-engine.md)**
-   - Priority: High
-   - Implement risk scoring algorithms
-   - Build impact assessment and blast radius calculation
+10. **[GitHub Integration](issue-010-github-integration.md)**
+    - Priority: High
+    - Integrate with GitHub Actions and repositories
+    - Track deployments and link to cloud resources
 
 6. **[Topology Visualization Dashboard](issue-006-topology-visualization.md)**
    - Priority: High
    - Build React-based web dashboard
    - Create interactive topology visualizations
 
-### Phase 4: Monitoring & Intelligence (Weeks 7-8)
+### Phase 4: Analysis & Intelligence (Weeks 7-10)
+
+5. **[Risk Analysis Engine](issue-005-risk-analysis-engine.md)**
+   - Priority: High
+   - Implement risk scoring algorithms
+   - Build impact assessment and blast radius calculation
 
 7. **[Performance Monitoring Integration](issue-007-performance-monitoring-integration.md)**
    - Priority: Medium
-   - Integrate with Application Insights, CloudWatch
+   - Integrate with Application Insights, CloudWatch, Cloud Monitoring
    - Implement error correlation and anomaly detection
 
-## Additional Issues to Create
+## Additional Issues to Consider
 
-### AWS Support
-- **AWS Resource Discovery**: Similar to Issue #3 but for AWS (EC2, EKS, RDS, etc.)
-- **AWS CodePipeline Integration**: Similar to Issue #4 but for AWS
-
-### GCP Support
-- **GCP Resource Discovery**: Similar to Issue #3 but for GCP
+### Future Enhancements
+- **AWS CodePipeline Integration**: Native AWS CI/CD integration
 - **Cloud Build Integration**: GCP CI/CD integration
-
-### GitHub Integration
-- **GitHub Actions Integration**: Similar to Issue #4 but for GitHub
+- **GitLab CI/CD Integration**: GitLab pipeline support
 
 ### Security & Authentication
 - **Authentication & Authorization**: Implement user authentication and RBAC
@@ -137,20 +148,22 @@ Many issues depend on earlier issues. The dependency graph:
 Issue #1 (Tech Stack)
     ├─→ Issue #2 (Data Models)
     │       ├─→ Issue #3 (Azure Discovery)
+    │       ├─→ Issue #8 (AWS Discovery)
+    │       ├─→ Issue #9 (GCP Discovery)
     │       ├─→ Issue #4 (Azure DevOps)
+    │       ├─→ Issue #10 (GitHub)
     │       ├─→ Issue #5 (Risk Analysis)
     │       └─→ Issue #7 (Monitoring)
     └─→ Issue #6 (Visualization)
-            └─→ (depends on API from Issues #3, #4, #5)
+            └─→ (depends on API from Issues #3-5, #7-10)
 ```
 
 ## Development Process
 
-1. **Week 1**: Issues #1-2 (Foundation)
-2. **Weeks 2-4**: Issues #3-4 (Discovery & Integration)
-3. **Weeks 5-6**: Issue #5 (Risk Analysis)
-4. **Weeks 6-8**: Issue #6 (Visualization)
-5. **Weeks 7-8**: Issue #7 (Monitoring)
+1. **Weeks 1-2**: Issues #1-3 (Foundation & Azure)
+2. **Weeks 3-4**: Issues #8-9 (Multi-Cloud Architecture)
+3. **Weeks 5-6**: Issues #4, #10, #6 (Platform Integrations)
+4. **Weeks 7-10**: Issues #5, #7 (Analysis & Intelligence)
 
 ## Contributing
 
