@@ -69,9 +69,7 @@ class Settings(BaseSettings):
     enable_azure_discovery: bool = Field(default=True, description="Enable Azure discovery")
     enable_aws_discovery: bool = Field(default=False, description="Enable AWS discovery")
     enable_gcp_discovery: bool = Field(default=False, description="Enable GCP discovery")
-    enable_github_integration: bool = Field(
-        default=True, description="Enable GitHub integration"
-    )
+    enable_github_integration: bool = Field(default=True, description="Enable GitHub integration")
     enable_azure_devops_integration: bool = Field(
         default=True, description="Enable Azure DevOps integration"
     )
@@ -88,15 +86,11 @@ class Settings(BaseSettings):
     discovery_timeout: int = Field(default=300, description="Discovery timeout in seconds")
 
     # Cache Configuration
-    cache_ttl_resources: int = Field(
-        default=300, description="Cache TTL for resources in seconds"
-    )
+    cache_ttl_resources: int = Field(default=300, description="Cache TTL for resources in seconds")
     cache_ttl_risk_scores: int = Field(
         default=900, description="Cache TTL for risk scores in seconds"
     )
-    cache_ttl_topology: int = Field(
-        default=600, description="Cache TTL for topology in seconds"
-    )
+    cache_ttl_topology: int = Field(default=600, description="Cache TTL for topology in seconds")
 
     # Logging Configuration
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
