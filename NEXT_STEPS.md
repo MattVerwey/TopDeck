@@ -132,6 +132,8 @@ With the roadmap updated and issues created, you can start:
 **Phase 4** (Months 7-8):
 - Issue #8: Implement AWS resource discovery
 - Issue #9: Implement GCP resource discovery
+- Issue #11: Build multi-cloud abstraction layer
+- Issue #12: Create deployment automation
 
 ## 📝 Summary of Files Changed
 

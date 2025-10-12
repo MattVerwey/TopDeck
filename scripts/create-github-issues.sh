@@ -57,6 +57,8 @@ create_issue "issue-007-performance-monitoring-integration.md" "7" "Performance 
 echo "=== Phase 4: Multi-Cloud Architecture ==="
 create_issue "issue-008-aws-resource-discovery.md" "8" "Implement AWS Resource Discovery" "enhancement,cloud: aws,discovery,priority: high,phase-4"
 create_issue "issue-009-gcp-resource-discovery.md" "9" "Implement GCP Resource Discovery" "enhancement,cloud: gcp,discovery,priority: high,phase-4"
+create_issue "issue-011-multi-cloud-abstraction-layer.md" "11" "Build Unified Multi-Cloud Resource Abstraction Layer" "enhancement,architecture,priority: high,phase-4"
+create_issue "issue-012-infrastructure-deployment-automation.md" "12" "Create Infrastructure Deployment Automation" "enhancement,infrastructure,terraform,priority: high,phase-4"
 
 echo ""
 echo "✓ All issues created successfully!"
