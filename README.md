@@ -154,64 +154,98 @@ TopDeck/
 └── .gitignore                      # Git ignore rules
 ```
 
-## 🛠️ Technology Stack (Proposed)
+## 🛠️ Technology Stack
+
+**Status**: Decision made in [ADR-001: Technology Stack Selection](docs/architecture/adr/001-technology-stack.md)
 
 ### Backend
-- **Language**: Python 3.11+ or Go 1.21+
-- **API Framework**: FastAPI (Python) or Gin (Go)
-- **Graph Database**: Neo4j for topology and dependency graphs
-- **Cache**: Redis for performance
-- **Message Queue**: RabbitMQ or Azure Service Bus for async processing
+- **Language**: Python 3.11+
+- **API Framework**: FastAPI with Pydantic
+- **Graph Database**: Neo4j 5.x for topology and dependency graphs
+- **Cache**: Redis 7.x for performance
+- **Message Queue**: RabbitMQ 3.x for async processing
 
 ### Frontend
 - **Framework**: React 18+ with TypeScript
-- **Visualization**: D3.js or Cytoscape.js for network diagrams
-- **UI Library**: Material-UI or Ant Design
+- **Build Tool**: Vite
+- **Visualization**: D3.js and Cytoscape.js for network diagrams
+- **UI Library**: Tailwind CSS with shadcn/ui
 
 ### Cloud SDKs
-- Azure SDK for Python/Go
-- AWS SDK (Boto3/AWS SDK for Go)
-- Google Cloud SDK
+- **Azure**: Azure SDK for Python
+- **AWS**: Boto3
+- **GCP**: Google Cloud SDK
 
 ### CI/CD Integration
 - Azure DevOps REST API
 - GitHub REST API & GraphQL
-- GitLab API
+- GitLab API (future)
+
+**Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
 
 ## 🚦 Getting Started
 
-> **Note**: This project is in initial planning phase. See Issues for development tasks.
-
-### Prerequisites (Proposed)
-- Python 3.11+ or Go 1.21+
+### Prerequisites
+- Python 3.11 or higher
 - Docker & Docker Compose
-- Neo4j
 - Cloud credentials (Azure, AWS, GCP)
 
-### Installation (Coming Soon)
+### Quick Start
+
 ```bash
 # Clone the repository
 git clone https://github.com/MattVerwey/TopDeck.git
 cd TopDeck
 
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
-# TBD based on chosen tech stack
+make install-dev
 
-# Configure cloud credentials
-# TBD
+# Configure environment
+cp .env.example .env
+# Edit .env with your cloud credentials
 
-# Start the platform
-# TBD
+# Start infrastructure services (Neo4j, Redis, RabbitMQ)
+make docker-up
+
+# Run the API server
+make run
+
+# In another terminal, run tests
+make test
 ```
+
+The API will be available at:
+- **API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/api/docs
+- **Neo4j Browser**: http://localhost:7474
+- **RabbitMQ Management**: http://localhost:15672
+
+For detailed development information, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## 📊 Current Status
+
+### ✅ Completed
+- **Phase 1 - Issue #1**: Technology Stack Decision ([ADR-001](docs/architecture/adr/001-technology-stack.md))
+  - Evaluated Python vs Go through proof-of-concept implementations
+  - Selected Python 3.11+ with FastAPI
+  - Established project structure and development environment
+  - Created initial test suite and API server
+
+### 🚧 In Progress
+- **Phase 1 - Issue #2**: Core Data Models (Next)
+- **Phase 1 - Issue #3**: Azure Resource Discovery
 
 ## 📋 Development Roadmap
 
 ### Phase 1: Foundation (Months 1-2)
-- [ ] Set up project structure and development environment
-- [ ] Design core data models for resources and dependencies
-- [ ] Implement basic Azure resource discovery
+- [x] **Issue #1**: Technology Stack Decision
+- [ ] **Issue #2**: Design core data models for resources and dependencies
+- [ ] **Issue #3**: Implement Azure resource discovery
 - [ ] Build foundational graph database schema
-- [ ] Set up Terraform infrastructure foundation
 
 ### Phase 2: Multi-Cloud Architecture (Months 3-4)
 - [ ] Architect and implement AWS resource discovery using Terraform
