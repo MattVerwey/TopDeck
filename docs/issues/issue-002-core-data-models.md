@@ -135,13 +135,13 @@ DEPLOYS_TO
 
 ## Tasks
 
-- [ ] Create data model documentation
-- [ ] Design Neo4j schema
-- [ ] Define required indexes for performance
-- [ ] Create Cypher queries for common operations
-- [ ] Design API models (DTOs) that map to graph models
-- [ ] Consider versioning strategy for model evolution
-- [ ] Document model in `docs/architecture/data-models.md`
+- [x] Create data model documentation
+- [x] Design Neo4j schema
+- [x] Define required indexes for performance
+- [x] Create Cypher queries for common operations
+- [x] Design API models (DTOs) that map to graph models
+- [x] Consider versioning strategy for model evolution
+- [x] Document model in `docs/architecture/data-models.md`
 
 ## Considerations
 
