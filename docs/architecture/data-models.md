@@ -401,6 +401,128 @@ discovered_at: timestamp
 
 ---
 
+### 7. ManagedIdentity
+
+Represents an Azure Managed Identity (system-assigned or user-assigned) used for authentication between resources.
+
+**Label**: `:ManagedIdentity`
+
+**Properties**:
+```yaml
+# Core Properties
+id: string                          # Azure resource ID
+name: string                        # Identity name
+identity_type: string               # "SystemAssigned" | "UserAssigned"
+
+# Identity Details
+principal_id: string                # Azure AD object ID
+client_id: string                   # Application ID
+tenant_id: string
+
+# Location & Organization
+region: string
+resource_group: string
+subscription_id: string
+
+# Associated Resource (for system-assigned)
+assigned_to_resource_id: string     # Resource this identity is assigned to
+assigned_to_resource_type: string   # Type of resource
+
+# Metadata
+tags: map<string, string>
+created_at: timestamp
+
+# Discovery
+last_seen: timestamp
+discovered_at: timestamp
+```
+
+---
+
+### 8. ServicePrincipal
+
+Represents an Azure Service Principal used for application and automation authentication.
+
+**Label**: `:ServicePrincipal`
+
+**Properties**:
+```yaml
+# Core Properties
+id: string                          # Azure AD object ID
+app_id: string                      # Application (client) ID
+display_name: string
+
+# Identity Details
+tenant_id: string
+app_owner_organization_id: string
+
+# Type & Configuration
+service_principal_type: string      # "Application" | "ManagedIdentity" | "Legacy"
+password_credentials_count: int     # Number of password credentials
+key_credentials_count: int          # Number of certificate credentials
+
+# Permissions
+app_roles: json                     # Application roles
+oauth2_permissions: json            # OAuth2 permissions
+
+# Metadata
+enabled: boolean
+tags: list<string>
+created_at: timestamp
+
+# Discovery
+last_seen: timestamp
+discovered_at: timestamp
+```
+
+---
+
+### 9. AppRegistration
+
+Represents an Azure AD App Registration defining application identity and API permissions.
+
+**Label**: `:AppRegistration`
+
+**Properties**:
+```yaml
+# Core Properties
+id: string                          # Azure AD object ID
+app_id: string                      # Application (client) ID
+display_name: string
+
+# Identity Configuration
+tenant_id: string
+publisher_domain: string
+sign_in_audience: string            # "AzureADMyOrg" | "AzureADMultipleOrgs" | etc.
+
+# URIs
+identifier_uris: list<string>       # Application ID URIs
+redirect_uris: list<string>         # Redirect URIs
+home_page_url: string
+logout_url: string
+
+# API Permissions
+required_resource_access: json      # Required API permissions
+
+# Credentials
+password_credentials_count: int
+key_credentials_count: int
+
+# Exposed API
+app_roles: json                     # Exposed app roles
+oauth2_permissions: json            # Exposed OAuth2 permissions
+
+# Metadata
+tags: list<string>
+created_at: timestamp
+
+# Discovery
+last_seen: timestamp
+discovered_at: timestamp
+```
+
+---
+
 ## Relationship Types
 
 ### 1. DEPENDS_ON
@@ -652,6 +774,105 @@ selectors: json                     # Service selectors
 
 ---
 
+### 14. AUTHENTICATES_WITH
+
+Represents authentication relationships between resources and identities.
+
+**Usage**: `(Resource)-[:AUTHENTICATES_WITH]->(ManagedIdentity|ServicePrincipal)`
+
+**Properties**:
+```yaml
+authentication_type: string         # "system_identity" | "user_identity" | "service_principal"
+scope: string                       # Scope of authentication
+discovered_at: timestamp
+discovered_method: string           # "configuration" | "iam_policy" | "rbac"
+```
+
+**Examples**:
+- `(AppService)-[:AUTHENTICATES_WITH]->(ManagedIdentity)` - App Service uses managed identity
+- `(AKS)-[:AUTHENTICATES_WITH]->(ManagedIdentity)` - AKS cluster identity
+- `(Deployment)-[:AUTHENTICATES_WITH]->(ServicePrincipal)` - Pipeline uses service principal
+
+---
+
+### 15. ACCESSES
+
+Represents access rights from identities to resources.
+
+**Usage**: `(ManagedIdentity|ServicePrincipal)-[:ACCESSES]->(Resource)`
+
+**Properties**:
+```yaml
+access_level: string                # "read" | "write" | "admin" | "owner"
+role_name: string                   # RBAC role name
+scope: string                       # Scope of access (subscription, resource group, resource)
+granted_at: timestamp
+discovered_at: timestamp
+discovered_method: string           # "rbac" | "iam_policy" | "configuration"
+```
+
+**Examples**:
+- `(ManagedIdentity)-[:ACCESSES {role_name: "Storage Blob Data Reader"}]->(StorageAccount)`
+- `(ServicePrincipal)-[:ACCESSES {role_name: "Contributor"}]->(ResourceGroup)`
+
+---
+
+### 16. HAS_ROLE
+
+Represents role assignments for identities on resources.
+
+**Usage**: `(ServicePrincipal|ManagedIdentity)-[:HAS_ROLE]->(Resource)`
+
+**Properties**:
+```yaml
+role_definition_id: string          # Azure role definition ID
+role_name: string                   # Role name (e.g., "Contributor", "Reader")
+scope: string                       # Scope of the role assignment
+assigned_at: timestamp
+assigned_by: string                 # Who assigned the role
+principal_type: string              # "ServicePrincipal" | "ManagedIdentity" | "User" | "Group"
+discovered_at: timestamp
+```
+
+**Examples**:
+- `(ServicePrincipal)-[:HAS_ROLE {role_name: "Key Vault Secrets User"}]->(KeyVault)`
+- `(ManagedIdentity)-[:HAS_ROLE {role_name: "SQL DB Contributor"}]->(SQLDatabase)`
+
+---
+
+### 17. LINKED_TO_APP
+
+Links Service Principals to their App Registrations.
+
+**Usage**: `(ServicePrincipal)-[:LINKED_TO_APP]->(AppRegistration)`
+
+**Properties**:
+```yaml
+created_at: timestamp
+discovered_at: timestamp
+```
+
+**Example**:
+- `(ServicePrincipal)-[:LINKED_TO_APP]->(AppRegistration)` - SP is the service identity for the app
+
+---
+
+### 18. IN_NAMESPACE
+
+Represents Kubernetes pod containment in namespaces.
+
+**Usage**: `(Pod)-[:IN_NAMESPACE]->(Namespace)`
+
+**Properties**:
+```yaml
+discovered_at: timestamp
+```
+
+**Example**:
+- `(Pod)-[:IN_NAMESPACE]->(Namespace {name: "production"})`
+
+---
+
 ## Indexes
 
 Indexes are critical for query performance. The following indexes should be created:
@@ -694,6 +915,22 @@ CREATE INDEX pod_name FOR (p:Pod) ON (p.name);
 CREATE INDEX pod_namespace FOR (p:Pod) ON (p.namespace);
 CREATE INDEX pod_cluster FOR (p:Pod) ON (p.cluster_id);
 
+-- ManagedIdentity indexes
+CREATE INDEX managed_identity_id FOR (mi:ManagedIdentity) ON (mi.id);
+CREATE INDEX managed_identity_principal_id FOR (mi:ManagedIdentity) ON (mi.principal_id);
+CREATE INDEX managed_identity_type FOR (mi:ManagedIdentity) ON (mi.identity_type);
+CREATE INDEX managed_identity_assigned_to FOR (mi:ManagedIdentity) ON (mi.assigned_to_resource_id);
+
+-- ServicePrincipal indexes
+CREATE INDEX service_principal_id FOR (sp:ServicePrincipal) ON (sp.id);
+CREATE INDEX service_principal_app_id FOR (sp:ServicePrincipal) ON (sp.app_id);
+CREATE INDEX service_principal_display_name FOR (sp:ServicePrincipal) ON (sp.display_name);
+
+-- AppRegistration indexes
+CREATE INDEX app_registration_id FOR (ar:AppRegistration) ON (ar.id);
+CREATE INDEX app_registration_app_id FOR (ar:AppRegistration) ON (ar.app_id);
+CREATE INDEX app_registration_display_name FOR (ar:AppRegistration) ON (ar.display_name);
+
 -- Composite indexes for common queries
 CREATE INDEX resource_type_provider FOR (r:Resource) ON (r.resource_type, r.cloud_provider);
 CREATE INDEX resource_region_type FOR (r:Resource) ON (r.region, r.resource_type);
@@ -713,6 +950,9 @@ CREATE CONSTRAINT repository_id_unique FOR (r:Repository) REQUIRE r.id IS UNIQUE
 CREATE CONSTRAINT deployment_id_unique FOR (d:Deployment) REQUIRE d.id IS UNIQUE;
 CREATE CONSTRAINT namespace_id_unique FOR (n:Namespace) REQUIRE n.id IS UNIQUE;
 CREATE CONSTRAINT pod_id_unique FOR (p:Pod) REQUIRE p.id IS UNIQUE;
+CREATE CONSTRAINT managed_identity_id_unique FOR (mi:ManagedIdentity) REQUIRE mi.id IS UNIQUE;
+CREATE CONSTRAINT service_principal_id_unique FOR (sp:ServicePrincipal) REQUIRE sp.id IS UNIQUE;
+CREATE CONSTRAINT app_registration_id_unique FOR (ar:AppRegistration) REQUIRE ar.id IS UNIQUE;
 
 -- Existence constraints (ensure critical properties exist)
 CREATE CONSTRAINT resource_type_exists FOR (r:Resource) REQUIRE r.resource_type IS NOT NULL;
@@ -891,6 +1131,60 @@ WHERE r.cost_per_day IS NOT NULL
 RETURN r.name, r.resource_type, r.cost_per_day
 ORDER BY r.cost_per_day DESC
 LIMIT 10;
+```
+
+### 11. Find Identity and Access Patterns
+
+```cypher
+// Find all resources a managed identity can access
+MATCH (mi:ManagedIdentity {name: $identity_name})-[:ACCESSES]->(r:Resource)
+RETURN mi.name, mi.identity_type, collect(r.name) as accessible_resources;
+
+// Find which resources use a specific managed identity
+MATCH (r:Resource)-[:AUTHENTICATES_WITH]->(mi:ManagedIdentity {name: $identity_name})
+RETURN r.name, r.resource_type, mi.identity_type;
+
+// Find all service principals with access to a resource
+MATCH (sp:ServicePrincipal)-[:HAS_ROLE]->(r:Resource {name: $resource_name})
+RETURN sp.display_name, sp.app_id, sp.enabled;
+
+// Find identity chain: which resources can access what through identities
+MATCH (r:Resource)-[:AUTHENTICATES_WITH]->(mi:ManagedIdentity)-[:ACCESSES]->(target:Resource)
+RETURN r.name as source, mi.name as identity, collect(target.name) as can_access;
+
+// Find service principals linked to app registrations
+MATCH (sp:ServicePrincipal)-[:LINKED_TO_APP]->(ar:AppRegistration)
+RETURN sp.display_name, ar.display_name, ar.required_resource_access;
+
+// Find overprivileged identities (access to many resources)
+MATCH (mi:ManagedIdentity)-[:ACCESSES]->(r:Resource)
+WITH mi, count(r) as resource_count
+WHERE resource_count > 5
+RETURN mi.name, mi.identity_type, resource_count
+ORDER BY resource_count DESC;
+```
+
+### 12. Find Kubernetes Resources
+
+```cypher
+// Find all pods in a namespace
+MATCH (ns:Namespace {name: $namespace_name})<-[:IN_NAMESPACE]-(pod:Pod)
+RETURN pod.name, pod.phase, pod.pod_ip, pod.node_name;
+
+// Find all namespaces in a cluster
+MATCH (ns:Namespace {cluster_id: $cluster_id})
+RETURN ns.name, ns.labels, ns.resource_quota;
+
+// Find pods with specific labels
+MATCH (pod:Pod)
+WHERE pod.labels.app = $app_name
+RETURN pod.name, pod.namespace, pod.phase, pod.cluster_id;
+
+// Find resource usage by namespace
+MATCH (ns:Namespace)<-[:IN_NAMESPACE]-(pod:Pod)
+RETURN ns.name, 
+       count(pod) as pod_count,
+       collect(pod.phase) as pod_phases;
 ```
 
 ---

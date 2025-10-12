@@ -12,6 +12,9 @@ This is a condensed reference for the TopDeck data models. For full documentatio
 | `:Deployment` | Deployment events | `id`, `version`, `deployed_at`, `status` |
 | `:Namespace` | K8s namespaces | `id`, `name`, `cluster_id` |
 | `:Pod` | K8s pods | `id`, `name`, `namespace`, `phase` |
+| `:ManagedIdentity` | Azure managed identity | `id`, `name`, `identity_type`, `principal_id` |
+| `:ServicePrincipal` | Service principal | `id`, `app_id`, `display_name` |
+| `:AppRegistration` | App registration | `id`, `app_id`, `display_name` |
 
 ## Azure Resource Subtypes
 
@@ -40,6 +43,10 @@ This is a condensed reference for the TopDeck data models. For full documentatio
 | `BUILT_FROM` | App to code | `branch`, `commit_sha` |
 | `SECURED_BY` | Security controls | `rule_type` |
 | `ROUTES_TO` | Traffic routing | `routing_rule`, `port`, `protocol` |
+| `AUTHENTICATES_WITH` | Resource to identity | `authentication_type`, `scope` |
+| `ACCESSES` | Identity to resource | `access_level`, `role_name` |
+| `HAS_ROLE` | Identity role assignment | `role_name`, `scope` |
+| `IN_NAMESPACE` | Pod to namespace | - |
 
 ## Common Query Patterns
 
@@ -102,6 +109,32 @@ MATCH (r:Resource)
 WHERE r.cost_per_day IS NOT NULL
 RETURN r.environment, sum(r.cost_per_day) as daily_cost
 ORDER BY daily_cost DESC;
+```
+
+### Find Identity Access Patterns
+```cypher
+// Resources accessed by a managed identity
+MATCH (mi:ManagedIdentity {name: $identity_name})-[:ACCESSES]->(r:Resource)
+RETURN r.name, r.resource_type;
+
+// Which resources use an identity
+MATCH (r:Resource)-[:AUTHENTICATES_WITH]->(mi:ManagedIdentity {name: $identity_name})
+RETURN r.name, r.resource_type;
+
+// Service principals with access to a resource
+MATCH (sp:ServicePrincipal)-[:HAS_ROLE]->(r:Resource {name: $resource_name})
+RETURN sp.display_name, sp.app_id;
+```
+
+### Find Kubernetes Resources
+```cypher
+// Pods in a namespace
+MATCH (ns:Namespace {name: $namespace})<-[:IN_NAMESPACE]-(pod:Pod)
+RETURN pod.name, pod.phase;
+
+// All namespaces in a cluster
+MATCH (ns:Namespace {cluster_id: $cluster_id})
+RETURN ns.name, ns.labels;
 ```
 
 ## Initialization
