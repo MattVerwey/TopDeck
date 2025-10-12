@@ -1,6 +1,6 @@
 # Issue #6: Build Topology Visualization Dashboard
 
-**Labels**: `enhancement`, `ui`, `visualization`, `priority: high`, `phase-3`
+**Labels**: `enhancement`, `ui`, `visualization`, `priority: high`, `phase-2`
 
 ## Description
 

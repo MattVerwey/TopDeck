@@ -1,6 +1,6 @@
 # Issue #8: Implement AWS Resource Discovery
 
-**Labels**: `enhancement`, `cloud: aws`, `priority: high`, `phase-2`
+**Labels**: `enhancement`, `cloud: aws`, `priority: high`, `phase-4`
 
 ## Description
 
