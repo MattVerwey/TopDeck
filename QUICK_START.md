@@ -114,18 +114,22 @@ We're currently in **Phase 0: Planning**
 - Decide tech stack
 - Design data models
 - Set up project structure
-
-**Phase 2** (Weeks 2-4): Discovery
 - Azure resource discovery
-- Azure DevOps integration
 
-**Phase 3** (Weeks 5-8): Analysis
+**Phase 2** (Weeks 3-4): Platform Integrations
+- Azure DevOps integration
+- GitHub integration
+- Deployment tracking
+
+**Phase 3** (Weeks 5-6): Analysis & Intelligence
 - Risk analysis engine
 - Topology visualization
-
-**Phase 4** (Weeks 7-10): Monitoring
 - Performance monitoring
-- Error correlation
+
+**Phase 4** (Weeks 7-10): Multi-Cloud Architecture
+- AWS resource discovery
+- GCP resource discovery
+- Multi-cloud abstraction
 
 ## 🚀 Quick Commands
 
