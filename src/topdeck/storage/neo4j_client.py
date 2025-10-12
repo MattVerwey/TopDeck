@@ -200,6 +200,176 @@ class Neo4jClient:
                 for record in result
             ]
     
+    def create_application(self, properties: Dict[str, Any]) -> str:
+        """
+        Create an application node in Neo4j.
+        
+        Args:
+            properties: Application properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (a:Application)
+                SET a = $properties
+                RETURN elementId(a) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_application(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update an application node.
+        
+        Args:
+            properties: Application properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        if 'id' not in properties:
+            raise ValueError("Application properties must include 'id'")
+        
+        with self.session() as session:
+            result = session.run("""
+                MERGE (a:Application {id: $id})
+                SET a += $properties
+                RETURN elementId(a) as node_id
+            """, id=properties['id'], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_repository(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a repository node in Neo4j.
+        
+        Args:
+            properties: Repository properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (r:Repository)
+                SET r = $properties
+                RETURN elementId(r) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_repository(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a repository node.
+        
+        Args:
+            properties: Repository properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        if 'id' not in properties:
+            raise ValueError("Repository properties must include 'id'")
+        
+        with self.session() as session:
+            result = session.run("""
+                MERGE (r:Repository {id: $id})
+                SET r += $properties
+                RETURN elementId(r) as node_id
+            """, id=properties['id'], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_deployment(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a deployment node in Neo4j.
+        
+        Args:
+            properties: Deployment properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (d:Deployment)
+                SET d = $properties
+                RETURN elementId(d) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_deployment(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a deployment node.
+        
+        Args:
+            properties: Deployment properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        if 'id' not in properties:
+            raise ValueError("Deployment properties must include 'id'")
+        
+        with self.session() as session:
+            result = session.run("""
+                MERGE (d:Deployment {id: $id})
+                SET d += $properties
+                RETURN elementId(d) as node_id
+            """, id=properties['id'], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_relationship(
+        self,
+        source_id: str,
+        source_label: str,
+        target_id: str,
+        target_label: str,
+        relationship_type: str,
+        properties: Dict[str, Any],
+    ) -> bool:
+        """
+        Create a relationship between any two nodes.
+        
+        Args:
+            source_id: Source node ID
+            source_label: Source node label (e.g., "Application", "Resource")
+            target_id: Target node ID
+            target_label: Target node label
+            relationship_type: Type of relationship (e.g., "BUILT_FROM", "DEPLOYED_TO")
+            properties: Relationship properties
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        with self.session() as session:
+            # Build dynamic query with labels
+            query = f"""
+                MATCH (source:{source_label} {{id: $source_id}})
+                MATCH (target:{target_label} {{id: $target_id}})
+                CREATE (source)-[r:{relationship_type}]->(target)
+                SET r = $properties
+                RETURN r
+            """
+            result = session.run(
+                query,
+                source_id=source_id,
+                target_id=target_id,
+                properties=properties
+            )
+            
+            return result.single() is not None
+    
     def clear_all(self) -> int:
         """
         Delete all nodes and relationships (use with caution!).
