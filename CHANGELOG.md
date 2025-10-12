@@ -47,20 +47,24 @@ First public release of TopDeck.
 - Core data models
 - Development environment setup
 
-**Phase 2: Discovery & Integration**
-- Azure resource discovery
+**Phase 2: Platform Integrations**
 - Azure DevOps integration
-- GitHub integration (optional)
-
-**Phase 3: Analysis & Visualization**
-- Risk analysis engine
+- GitHub integration
+- Deployment tracking and linking
 - Topology visualization dashboard
-- Impact assessment
 
-**Phase 4: Monitoring & Intelligence**
+**Phase 3: Analysis & Intelligence**
+- Risk analysis engine
+- Dependency graph builder
+- Impact assessment
 - Performance monitoring integration
 - Error correlation
-- Anomaly detection
+
+**Phase 4: Multi-Cloud Architecture**
+- AWS resource discovery
+- GCP resource discovery
+- Multi-cloud abstraction layer
+- Infrastructure deployment automation
 
 ---
 

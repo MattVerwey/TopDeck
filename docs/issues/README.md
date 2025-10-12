@@ -21,21 +21,7 @@ This directory contains detailed issue templates for building TopDeck. These can
    - Implement Azure cloud resource discovery
    - Support AKS, App Service, VMs, networking, databases
 
-### Phase 2: Multi-Cloud Architecture (Weeks 3-4)
-
-8. **[AWS Resource Discovery](issue-008-aws-resource-discovery.md)**
-   - Priority: High
-   - Implement AWS cloud resource discovery using Terraform
-   - Support EKS, EC2, Lambda, RDS, networking
-   - Generate and manage Terraform configurations
-
-9. **[GCP Resource Discovery](issue-009-gcp-resource-discovery.md)**
-   - Priority: High
-   - Implement GCP cloud resource discovery using Terraform
-   - Support GKE, Compute Engine, Cloud Run, Cloud SQL
-   - Generate and manage Terraform configurations
-
-### Phase 3: Platform Integrations (Weeks 5-6)
+### Phase 2: Platform Integrations (Weeks 3-4)
 
 4. **[Azure DevOps Integration](issue-004-azure-devops-integration.md)**
    - Priority: High
@@ -52,7 +38,7 @@ This directory contains detailed issue templates for building TopDeck. These can
    - Build React-based web dashboard
    - Create interactive topology visualizations
 
-### Phase 4: Analysis & Intelligence (Weeks 7-10)
+### Phase 3: Analysis & Intelligence (Weeks 5-6)
 
 5. **[Risk Analysis Engine](issue-005-risk-analysis-engine.md)**
    - Priority: High
@@ -63,6 +49,20 @@ This directory contains detailed issue templates for building TopDeck. These can
    - Priority: Medium
    - Integrate with Application Insights, CloudWatch, Cloud Monitoring
    - Implement error correlation and anomaly detection
+
+### Phase 4: Multi-Cloud Architecture (Weeks 7-10)
+
+8. **[AWS Resource Discovery](issue-008-aws-resource-discovery.md)**
+   - Priority: High
+   - Implement AWS cloud resource discovery using Terraform
+   - Support EKS, EC2, Lambda, RDS, networking
+   - Generate and manage Terraform configurations
+
+9. **[GCP Resource Discovery](issue-009-gcp-resource-discovery.md)**
+   - Priority: High
+   - Implement GCP cloud resource discovery using Terraform
+   - Support GKE, Compute Engine, Cloud Run, Cloud SQL
+   - Generate and manage Terraform configurations
 
 ## Additional Issues to Consider
 
@@ -161,9 +161,9 @@ Issue #1 (Tech Stack)
 ## Development Process
 
 1. **Weeks 1-2**: Issues #1-3 (Foundation & Azure)
-2. **Weeks 3-4**: Issues #8-9 (Multi-Cloud Architecture)
-3. **Weeks 5-6**: Issues #4, #10, #6 (Platform Integrations)
-4. **Weeks 7-10**: Issues #5, #7 (Analysis & Intelligence)
+2. **Weeks 3-4**: Issues #4, #10, #6 (Platform Integrations)
+3. **Weeks 5-6**: Issues #5, #7 (Analysis & Intelligence)
+4. **Weeks 7-10**: Issues #8-9 (Multi-Cloud Architecture)
 
 ## Contributing
 
