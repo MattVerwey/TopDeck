@@ -153,7 +153,101 @@ Implemented comprehensive test suite for Azure mapper:
 - Future enhancements roadmap
 - Contributing guidelines
 
+### ✅ Application and Repository Models
+
+**Files**: 
+- `src/topdeck/discovery/models.py` (enhanced)
+- `src/topdeck/discovery/azure/devops.py` (new)
+- `src/topdeck/storage/neo4j_client.py` (enhanced)
+
+Implemented complete data models for application topology:
+
+1. **Application Model**
+   - Complete application representation
+   - Ownership tracking (team, email, business unit)
+   - Code linkage (repository URL, deployment method)
+   - Health metrics (score, availability, error rate)
+   - Version and deployment tracking
+   - Converts to Neo4j properties
+
+2. **Repository Model**
+   - Code repository representation
+   - Platform support (GitHub, Azure DevOps, GitLab)
+   - Branch and commit information
+   - Repository metadata and metrics
+   - Activity tracking
+   - Converts to Neo4j properties
+
+3. **Deployment Model**
+   - Deployment event representation
+   - Pipeline and version tracking
+   - Deployment details and status
+   - Change management integration
+   - Target resource tracking
+   - Converts to Neo4j properties
+
+4. **Azure DevOps Integration**
+   - Deployment metadata extraction from resource tags
+   - Application inference from resources
+   - Repository discovery (foundation)
+   - Deployment history tracking (foundation)
+   - Smart naming pattern recognition
+
+5. **Enhanced Neo4j Client**
+   - Application CRUD operations
+   - Repository CRUD operations
+   - Deployment CRUD operations
+   - Generic relationship creation
+   - Support for all relationship types (BUILT_FROM, DEPLOYED_TO, etc.)
+
+6. **Application Discovery**
+   - Automatic application inference from deployed resources
+   - Extraction of deployment metadata from tags
+   - Linking resources to applications
+   - Support for common naming patterns
+
+### ✅ Enhanced Discovery Integration
+
+**File**: `src/topdeck/discovery/azure/discoverer.py` (enhanced)
+
+Added comprehensive application discovery:
+- `_infer_applications()` - Infer apps from deployed resources
+- `discover_with_devops()` - Combined infrastructure + DevOps discovery
+- Integration with AzureDevOpsDiscoverer
+- Automatic linking of resources to applications
+
 ## Remaining Work
+
+### 🚧 Azure DevOps API Integration
+
+**File**: `src/topdeck/discovery/azure/devops.py` (foundation complete)
+
+Current status: Foundation implemented, API integration needed
+
+TODO: Implement actual Azure DevOps REST API calls:
+1. **Repository Discovery**
+   - GET /git/repositories - List all repos
+   - GET /git/repositories/{id} - Get repo details
+   - GET /git/repositories/{id}/commits - Get commit history
+   - Parse repository metadata
+
+2. **Pipeline Discovery**
+   - GET /build/definitions - List build pipelines
+   - GET /build/builds - List build runs
+   - GET /release/releases - List release deployments
+   - Parse pipeline configurations
+
+3. **Deployment Tracking**
+   - GET /build/builds/{id} - Get build details
+   - GET /release/releases/{id} - Get release details
+   - Extract target resources from logs/variables
+   - Track deployment history
+
+4. **Application Discovery**
+   - Parse variable groups for app configs
+   - Extract app metadata from pipelines
+   - Link pipelines to repositories
+   - Map deployments to resources
 
 ### 🚧 Specialized Resource Discovery
 
@@ -382,6 +476,11 @@ Need to test with live Azure resources:
 - [x] Documentation complete
 
 ### Phase 2: Enhanced Discovery 🚧
+- [x] Application, Repository, Deployment models
+- [x] Application inference from resources
+- [x] Deployment metadata extraction
+- [x] Azure DevOps integration foundation
+- [ ] Azure DevOps API integration (actual calls)
 - [ ] Specialized resource discovery functions
 - [ ] Detailed property extraction
 - [ ] Advanced dependency detection
@@ -404,29 +503,38 @@ Need to test with live Azure resources:
 
 ## Timeline
 
-- **Week 1** (Current): Foundation complete ✅
-- **Week 2**: Enhanced discovery and testing 🚧
-- **Week 3**: Production readiness 🚧
-- **Week 4**: Advanced features 🚧
+- **Week 1**: Foundation complete ✅
+- **Week 2** (Current): Application/Repository models complete ✅, Azure DevOps foundation complete ✅
+- **Week 3**: Azure DevOps API integration and detailed resource discovery 🚧
+- **Week 4**: Production readiness and testing 🚧
+- **Week 5**: Advanced features 🚧
 
 ## Next Steps
 
-1. **Implement Specialized Discovery Functions**
+1. **Implement Azure DevOps API Integration** (Priority: High)
+   - Implement actual REST API calls
+   - Add authentication handling
+   - Parse and map API responses
+   - Test with live Azure DevOps
+
+2. **Implement Specialized Discovery Functions**
    - Create detailed discovery for compute resources
    - Add network resource details
    - Implement data resource discovery
 
-2. **Integration Testing**
+3. **Integration Testing**
    - Set up test Azure subscription
-   - Test end-to-end flow
-   - Validate with real resources
+   - Test end-to-end flow with DevOps
+   - Validate application linking
+   - Test with real resources
 
-3. **Enhance Dependency Detection**
+4. **Enhance Dependency Detection**
    - Parse App Service connection strings
    - Analyze network configurations
    - Implement Azure Resource Graph queries
+   - Link deployments to resources
 
-4. **Performance Optimization**
+5. **Performance Optimization**
    - Implement parallel discovery
    - Add rate limiting
    - Optimize Neo4j operations

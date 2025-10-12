@@ -12,8 +12,9 @@ from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.core.exceptions import AzureError
 
-from ..models import DiscoveryResult, DiscoveredResource, ResourceDependency
+from ..models import DiscoveryResult, DiscoveredResource, ResourceDependency, Application, Repository, Deployment
 from .mapper import AzureResourceMapper
+from .devops import AzureDevOpsDiscoverer
 from .resources import (
     discover_compute_resources,
     discover_networking_resources,
@@ -72,6 +73,7 @@ class AzureDiscoverer:
         )
         
         self.mapper = AzureResourceMapper()
+        self.devops_discoverer = None  # Initialized when needed
     
     async def discover_all_resources(
         self,
@@ -132,6 +134,14 @@ class AzureDiscoverer:
                 result.add_dependency(dep)
             
             print(f"   Found {len(dependencies)} dependencies")
+            
+            # Infer applications from resources
+            print("📱 Inferring applications from resources...")
+            applications = await self._infer_applications(result.resources)
+            for app in applications:
+                result.add_application(app)
+            
+            print(f"   Found {len(applications)} applications")
             
         except AzureError as e:
             error_msg = f"Azure API error: {e}"
@@ -224,6 +234,128 @@ class AzureDiscoverer:
                         dependencies.append(dep)
         
         return dependencies
+    
+    async def _infer_applications(
+        self,
+        resources: List[DiscoveredResource],
+    ) -> List[Application]:
+        """
+        Infer applications from discovered resources.
+        
+        Uses resource naming conventions and tags to identify applications.
+        
+        Args:
+            resources: List of discovered resources
+            
+        Returns:
+            List of inferred applications
+        """
+        applications = []
+        seen_app_ids = set()
+        
+        # Use a placeholder devops discoverer for metadata extraction
+        if not self.devops_discoverer:
+            self.devops_discoverer = AzureDevOpsDiscoverer(
+                organization="placeholder",
+                project="placeholder",
+            )
+        
+        for resource in resources:
+            # Only try to infer applications from deployable resource types
+            deployable_types = [
+                'aks', 'app_service', 'virtual_machine', 
+                'container_instance', 'function_app'
+            ]
+            
+            if resource.resource_type not in deployable_types:
+                continue
+            
+            # Try to infer application from resource
+            app = self.devops_discoverer.infer_application_from_resource(
+                resource_name=resource.name,
+                resource_type=resource.resource_type,
+                tags=resource.tags,
+            )
+            
+            if app and app.id not in seen_app_ids:
+                # Enhance application with deployment metadata from tags
+                deployment_metadata = self.devops_discoverer.extract_deployment_metadata_from_tags(
+                    resource.tags
+                )
+                
+                if deployment_metadata:
+                    if 'version' in deployment_metadata:
+                        app.current_version = deployment_metadata['version']
+                    if 'deployed_at' in deployment_metadata:
+                        if isinstance(deployment_metadata['deployed_at'], datetime):
+                            app.last_deployed = deployment_metadata['deployed_at']
+                    if 'deployed_by' in deployment_metadata:
+                        app.last_deployed_by = deployment_metadata['deployed_by']
+                    if 'repository_url' in deployment_metadata:
+                        app.repository_url = deployment_metadata['repository_url']
+                
+                applications.append(app)
+                seen_app_ids.add(app.id)
+        
+        return applications
+    
+    async def discover_with_devops(
+        self,
+        organization: str,
+        project: str,
+        personal_access_token: Optional[str] = None,
+        resource_groups: Optional[List[str]] = None,
+    ) -> DiscoveryResult:
+        """
+        Discover resources along with Azure DevOps repositories and deployments.
+        
+        This method combines infrastructure discovery with code repository
+        and deployment pipeline discovery to create a complete topology.
+        
+        Args:
+            organization: Azure DevOps organization name
+            project: Azure DevOps project name
+            personal_access_token: PAT for Azure DevOps authentication
+            resource_groups: Optional list of resource groups to scan
+            
+        Returns:
+            DiscoveryResult with resources, dependencies, applications, and repositories
+        """
+        # First, discover infrastructure resources
+        result = await self.discover_all_resources(resource_groups=resource_groups)
+        
+        # Initialize DevOps discoverer
+        self.devops_discoverer = AzureDevOpsDiscoverer(
+            organization=organization,
+            project=project,
+            personal_access_token=personal_access_token,
+        )
+        
+        try:
+            print(f"📚 Discovering repositories from Azure DevOps...")
+            repositories = await self.devops_discoverer.discover_repositories()
+            for repo in repositories:
+                result.add_repository(repo)
+            print(f"   Found {len(repositories)} repositories")
+            
+            print(f"🚀 Discovering deployments from Azure DevOps...")
+            deployments = await self.devops_discoverer.discover_deployments()
+            for deployment in deployments:
+                result.add_deployment(deployment)
+            print(f"   Found {len(deployments)} deployments")
+            
+            print(f"📱 Discovering applications from Azure DevOps...")
+            devops_applications = await self.devops_discoverer.discover_applications()
+            for app in devops_applications:
+                result.add_application(app)
+            print(f"   Found {len(devops_applications)} applications from DevOps")
+            
+        except Exception as e:
+            error_msg = f"Failed to discover from Azure DevOps: {e}"
+            result.add_error(error_msg)
+            print(f"   ⚠️  {error_msg}")
+        
+        return result
     
     async def discover_resource_group(
         self,

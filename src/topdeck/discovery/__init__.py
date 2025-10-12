@@ -6,4 +6,28 @@ This module contains discovery engines for different cloud providers:
 - GCP: GKE, Compute Engine, Cloud SQL, Cloud Storage, Load Balancers
 """
 
-__all__ = []
+from .models import (
+    DiscoveredResource,
+    ResourceDependency,
+    DiscoveryResult,
+    Application,
+    Repository,
+    Deployment,
+    CloudProvider,
+    ResourceStatus,
+    DependencyCategory,
+    DependencyType,
+)
+
+__all__ = [
+    "DiscoveredResource",
+    "ResourceDependency",
+    "DiscoveryResult",
+    "Application",
+    "Repository",
+    "Deployment",
+    "CloudProvider",
+    "ResourceStatus",
+    "DependencyCategory",
+    "DependencyType",
+]
