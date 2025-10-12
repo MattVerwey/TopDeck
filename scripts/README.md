@@ -20,9 +20,9 @@ Creates GitHub issues from the templates in `docs/issues/`.
 
 This will create all 10 issues from the templates:
 - **Phase 1** (Issues #1-3): Foundation
-- **Phase 2** (Issues #8-9): Multi-Cloud Architecture
-- **Phase 3** (Issues #4, #6, #10): Platform Integrations
-- **Phase 4** (Issues #5, #7): Analysis & Intelligence
+- **Phase 2** (Issues #4, #6, #10): Platform Integrations
+- **Phase 3** (Issues #5, #7): Analysis & Intelligence
+- **Phase 4** (Issues #8-9): Multi-Cloud Architecture
 
 **Labels Used**:
 - `enhancement` - For new features
@@ -64,9 +64,9 @@ gh label create "priority: low" --color "0e8a16" --description "Low priority"
 
 # Create phase labels
 gh label create "phase-1" --color "1d76db" --description "Phase 1: Foundation"
-gh label create "phase-2" --color "1d76db" --description "Phase 2: Multi-Cloud Architecture"
-gh label create "phase-3" --color "1d76db" --description "Phase 3: Platform Integrations"
-gh label create "phase-4" --color "1d76db" --description "Phase 4: Analysis & Intelligence"
+gh label create "phase-2" --color "1d76db" --description "Phase 2: Platform Integrations"
+gh label create "phase-3" --color "1d76db" --description "Phase 3: Analysis & Intelligence"
+gh label create "phase-4" --color "1d76db" --description "Phase 4: Multi-Cloud Architecture"
 
 # Create cloud provider labels
 gh label create "cloud: azure" --color "0078d4" --description "Azure-specific"

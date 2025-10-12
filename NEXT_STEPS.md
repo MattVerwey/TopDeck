@@ -6,22 +6,29 @@ The roadmap has been successfully reorganized based on your feedback! Here's wha
 
 ### Roadmap Reorganization
 
-**Phase 2** now focuses on **Multi-Cloud Architecture** using Terraform:
-- AWS resource discovery implementation
-- GCP resource discovery implementation  
-- Unified multi-cloud abstraction layer
-- Infrastructure deployment automation
-
-**Phase 3** is now dedicated to **Platform Integrations**:
+**Phase 2** now focuses on **Platform Integrations**:
 - Azure DevOps pipeline integration
 - GitHub Actions and repository integration
 - Deployment tracking and linking
 - Basic topology visualization
 
+**Phase 3** is now dedicated to **Analysis & Intelligence**:
+- Dependency graph builder
+- Risk analysis engine
+- Change impact assessment
+- Performance metrics and monitoring
+- Error correlation and alerting
+
+**Phase 4** now covers **Multi-Cloud Architecture** using Terraform:
+- AWS resource discovery implementation
+- GCP resource discovery implementation  
+- Unified multi-cloud abstraction layer
+- Infrastructure deployment automation
+
 This makes sense because:
-1. ✅ Terraform makes extending from Azure to AWS/GCP straightforward
-2. ✅ Multi-cloud architecture is established early
-3. ✅ Platform integrations can work across all clouds from day one
+1. ✅ Core functionality is established early with Platform Integrations
+2. ✅ Analysis features build on proven integrations
+3. ✅ Multi-cloud expansion happens after core features are working
 
 ### New Issues Created
 
@@ -77,9 +84,9 @@ gh label create "priority: medium" --color "fbca04" --description "Medium priori
 
 # Phase labels
 gh label create "phase-1" --color "1d76db" --description "Phase 1: Foundation"
-gh label create "phase-2" --color "1d76db" --description "Phase 2: Multi-Cloud Architecture"
-gh label create "phase-3" --color "1d76db" --description "Phase 3: Platform Integrations"
-gh label create "phase-4" --color "1d76db" --description "Phase 4: Analysis & Intelligence"
+gh label create "phase-2" --color "1d76db" --description "Phase 2: Platform Integrations"
+gh label create "phase-3" --color "1d76db" --description "Phase 3: Analysis & Intelligence"
+gh label create "phase-4" --color "1d76db" --description "Phase 4: Multi-Cloud Architecture"
 
 # Cloud provider labels
 gh label create "cloud: azure" --color "0078d4" --description "Azure-specific"
@@ -114,17 +121,17 @@ With the roadmap updated and issues created, you can start:
 - Issue #3: Implement Azure resource discovery
 
 **Phase 2** (Months 3-4):
-- Issue #8: Implement AWS resource discovery
-- Issue #9: Implement GCP resource discovery
-
-**Phase 3** (Months 5-6):
 - Issue #4: Implement Azure DevOps integration
 - Issue #10: Implement GitHub integration
 - Issue #6: Build topology visualization
 
-**Phase 4** (Months 7-8):
+**Phase 3** (Months 5-6):
 - Issue #5: Implement risk analysis engine
 - Issue #7: Implement monitoring integration
+
+**Phase 4** (Months 7-8):
+- Issue #8: Implement AWS resource discovery
+- Issue #9: Implement GCP resource discovery
 
 ## 📝 Summary of Files Changed
 

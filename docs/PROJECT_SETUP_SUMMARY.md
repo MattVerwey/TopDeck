@@ -254,26 +254,26 @@ Plus `config.yml` with links to:
 - [ ] Implement Azure resource discovery (Issue #3)
 - [ ] Set up Terraform infrastructure foundation
 
-### Phase 2: Multi-Cloud Architecture (Weeks 3-4)
-
-- [ ] Architect and implement AWS resource discovery using Terraform (Issue #8)
-- [ ] Architect and implement GCP resource discovery using Terraform (Issue #9)
-- [ ] Build unified multi-cloud resource abstraction layer
-- [ ] Create infrastructure deployment automation
-
-### Phase 3: Platform Integrations (Weeks 5-6)
+### Phase 2: Platform Integrations (Weeks 3-4)
 
 - [ ] Implement Azure DevOps integration (Issue #4)
 - [ ] Implement GitHub integration (Issue #10)
 - [ ] Build deployment tracking and linking
 - [ ] Create basic topology visualization (Issue #6)
 
-### Phase 4: Analysis & Intelligence (Weeks 7-10)
+### Phase 3: Analysis & Intelligence (Weeks 5-6)
 
 - [ ] Implement risk analysis engine (Issue #5)
 - [ ] Implement monitoring integration (Issue #7)
 - [ ] Add error correlation and alerting
 - [ ] Build dependency graph and impact assessment
+
+### Phase 4: Multi-Cloud Architecture (Weeks 7-10)
+
+- [ ] Architect and implement AWS resource discovery using Terraform (Issue #8)
+- [ ] Architect and implement GCP resource discovery using Terraform (Issue #9)
+- [ ] Build unified multi-cloud resource abstraction layer
+- [ ] Create infrastructure deployment automation
 
 ---
 

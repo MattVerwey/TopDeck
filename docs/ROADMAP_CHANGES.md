@@ -18,20 +18,13 @@ The development roadmap has been reorganized to better reflect the architectural
 ### New Structure
 
 **Phase 2** (Months 3-4) is now focused on:
-- **Multi-Cloud Architecture**
-  - Architect and implement AWS resource discovery using Terraform
-  - Architect and implement GCP resource discovery using Terraform
-  - Build unified multi-cloud resource abstraction layer
-  - Create infrastructure deployment automation
-
-**Phase 3** (Months 5-6) now includes:
 - **Platform Integrations**
   - Build Azure DevOps pipeline integration
   - Add GitHub Actions and repository integration
   - Implement deployment tracking and linking
   - Create basic topology visualization
 
-**Phase 4** (Months 7-8) has been consolidated to:
+**Phase 3** (Months 5-6) now includes:
 - **Analysis & Intelligence**
   - Develop dependency graph builder
   - Implement risk analysis engine
@@ -39,27 +32,28 @@ The development roadmap has been reorganized to better reflect the architectural
   - Integrate performance metrics and monitoring
   - Add error correlation and alerting
 
+**Phase 4** (Months 7-8) has been consolidated to:
+- **Multi-Cloud Architecture**
+  - Architect and implement AWS resource discovery using Terraform
+  - Architect and implement GCP resource discovery using Terraform
+  - Build unified multi-cloud resource abstraction layer
+  - Create infrastructure deployment automation
+
 ## Rationale
 
 ### Why This Change Makes Sense
 
-1. **Terraform Foundation**: Since the project uses Terraform for infrastructure as code, extending from Azure to AWS and GCP should be straightforward. The patterns and modules can be reused across clouds.
+1. **Core Functionality First**: By focusing on Platform Integrations in Phase 2, we get core functionality working earlier with Azure DevOps and GitHub integrations. This allows teams to start using the platform sooner.
 
-2. **Architectural Consistency**: By completing multi-cloud discovery in Phase 2, we establish a consistent architecture early. This allows Phase 3 integrations to work uniformly across all cloud providers.
+2. **Build on Foundation**: Analysis & Intelligence in Phase 3 builds directly on the integrations from Phase 2, providing immediate value with risk analysis and monitoring for the existing Azure infrastructure.
 
-3. **Platform Integration Complexity**: Azure DevOps and GitHub integrations are more complex than initially thought. They require:
-   - Parsing diverse pipeline definitions
-   - Linking deployments to resources across multiple clouds
-   - Understanding various deployment patterns
-   - Tracking deployment history
-
-   Moving these to Phase 3 allows us to integrate with all three cloud providers simultaneously.
+3. **Multi-Cloud Expansion**: Once core functionality is proven with Azure, Platform Integrations, and Analysis features, Phase 4 extends the architecture to AWS and GCP using Terraform patterns established in Phase 1.
 
 4. **Better Separation of Concerns**:
    - Phase 1: Foundation (Azure only)
-   - Phase 2: Multi-cloud infrastructure
-   - Phase 3: Platform integrations and linking
-   - Phase 4: Analysis and intelligence features
+   - Phase 2: Platform integrations and linking
+   - Phase 3: Analysis and intelligence features
+   - Phase 4: Multi-cloud infrastructure expansion
 
 ## New Issues Created
 
@@ -85,38 +79,38 @@ Three new issues have been created to support the reorganized roadmap:
 
 ## Benefits of This Approach
 
-1. **Faster Multi-Cloud Support**: By focusing Phase 2 on multi-cloud architecture, we can support AWS and GCP much earlier in the development cycle.
+1. **Core Functionality Earlier**: By focusing Phase 2 on platform integrations, we get core functionality working sooner, allowing teams to start using TopDeck with Azure infrastructure.
 
-2. **Terraform Leverage**: Using Terraform makes it easier to:
+2. **Incremental Value**: Phase 3 analysis features build directly on Phase 2 integrations, providing immediate value for risk assessment and monitoring before expanding to multiple clouds.
+
+3. **Proven Architecture**: By the time we reach Phase 4, the architecture, integrations, and analysis features are proven with Azure, making multi-cloud expansion more confident and structured.
+
+4. **Terraform Leverage**: Using Terraform makes it easier to:
    - Generate infrastructure configurations from discovered resources
    - Import existing infrastructure
    - Automate deployments
-   - Maintain consistency across clouds
-
-3. **Complete Integration**: Phase 3 integrations can now work with all three cloud providers from day one, rather than being limited to Azure initially.
-
-4. **Parallel Development**: Teams can work on:
-   - AWS discovery (Issue #8)
-   - GCP discovery (Issue #9)
-   - In parallel, while maintaining consistency
+   - Maintain consistency across clouds when we expand in Phase 4
 
 ## Migration Notes
 
 If you've already started work based on the old roadmap:
 
-- **Azure DevOps Integration** (Issue #4): Now in Phase 3, no changes to the issue itself
-- **Risk Analysis** (Issue #5): Now in Phase 4, no changes to the issue itself
-- **Topology Visualization** (Issue #6): Now in Phase 3, no changes to the issue itself
-- **Monitoring Integration** (Issue #7): Now in Phase 4, no changes to the issue itself
+- **Azure DevOps Integration** (Issue #4): Now in Phase 2, no changes to the issue itself
+- **GitHub Integration** (Issue #10): Now in Phase 2, no changes to the issue itself
+- **Topology Visualization** (Issue #6): Now in Phase 2, no changes to the issue itself
+- **Risk Analysis** (Issue #5): Now in Phase 3, no changes to the issue itself
+- **Monitoring Integration** (Issue #7): Now in Phase 3, no changes to the issue itself
+- **AWS Discovery** (Issue #8): Now in Phase 4, no changes to the issue itself
+- **GCP Discovery** (Issue #9): Now in Phase 4, no changes to the issue itself
 
 ## Timeline Impact
 
 The overall timeline remains **Months 1-10** for v1.0, with no delays:
 
 - **Phase 1**: Months 1-2 (Foundation)
-- **Phase 2**: Months 3-4 (Multi-Cloud Architecture)
-- **Phase 3**: Months 5-6 (Platform Integrations)
-- **Phase 4**: Months 7-8 (Analysis & Intelligence)
+- **Phase 2**: Months 3-4 (Platform Integrations)
+- **Phase 3**: Months 5-6 (Analysis & Intelligence)
+- **Phase 4**: Months 7-8 (Multi-Cloud Architecture)
 - **Phase 5**: Months 9-10 (Production Ready)
 
 ## Next Steps
@@ -127,7 +121,7 @@ The overall timeline remains **Months 1-10** for v1.0, with no delays:
    - Issue #1: Technology Stack Decision
    - Issue #2: Core Data Models
    - Issue #3: Azure Resource Discovery
-4. **Plan Phase 2** work for AWS and GCP discovery
+4. **Plan Phase 2** work for Platform Integrations (Azure DevOps and GitHub)
 
 ## Questions or Feedback?
 

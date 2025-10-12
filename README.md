@@ -247,24 +247,24 @@ For detailed development information, see [DEVELOPMENT.md](DEVELOPMENT.md).
 - [ ] **Issue #3**: Implement Azure resource discovery
 - [ ] Build foundational graph database schema
 
-### Phase 2: Multi-Cloud Architecture (Months 3-4)
-- [ ] Architect and implement AWS resource discovery using Terraform
-- [ ] Architect and implement GCP resource discovery using Terraform
-- [ ] Build unified multi-cloud resource abstraction layer
-- [ ] Create infrastructure deployment automation
-
-### Phase 3: Platform Integrations (Months 5-6)
+### Phase 2: Platform Integrations (Months 3-4)
 - [ ] Build Azure DevOps pipeline integration
 - [ ] Add GitHub Actions and repository integration
 - [ ] Implement deployment tracking and linking
 - [ ] Create basic topology visualization
 
-### Phase 4: Analysis & Intelligence (Months 7-8)
+### Phase 3: Analysis & Intelligence (Months 5-6)
 - [ ] Develop dependency graph builder
 - [ ] Implement risk analysis engine
 - [ ] Build change impact assessment
 - [ ] Integrate performance metrics and monitoring
 - [ ] Add error correlation and alerting
+
+### Phase 4: Multi-Cloud Architecture (Months 7-8)
+- [ ] Architect and implement AWS resource discovery using Terraform
+- [ ] Architect and implement GCP resource discovery using Terraform
+- [ ] Build unified multi-cloud resource abstraction layer
+- [ ] Create infrastructure deployment automation
 
 ### Phase 5: Production Ready (Months 9-10)
 - [ ] Security hardening
