@@ -21,7 +21,7 @@ The roadmap has been successfully reorganized based on your feedback! Here's wha
 
 **Phase 4** now covers **Multi-Cloud Architecture** using Terraform:
 - AWS resource discovery implementation
-- GCP resource discovery implementation  
+- GCP resource discovery implementation
 - Unified multi-cloud abstraction layer
 - Infrastructure deployment automation
 
