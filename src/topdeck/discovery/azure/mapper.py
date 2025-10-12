@@ -17,22 +17,34 @@ class AzureResourceMapper:
     
     # Mapping from Azure resource types to TopDeck resource types
     RESOURCE_TYPE_MAP = {
+        # Compute
         "Microsoft.Compute/virtualMachines": "virtual_machine",
         "Microsoft.Web/sites": "app_service",
         "Microsoft.ContainerService/managedClusters": "aks",
+        
+        # Databases
         "Microsoft.Sql/servers/databases": "sql_database",
         "Microsoft.Sql/servers": "sql_server",
+        "Microsoft.DBforPostgreSQL/servers": "postgresql_server",
+        "Microsoft.DBforMySQL/servers": "mysql_server",
+        "Microsoft.DocumentDB/databaseAccounts": "cosmos_db",
+        
+        # Storage
         "Microsoft.Storage/storageAccounts": "storage_account",
+        
+        # Networking
         "Microsoft.Network/loadBalancers": "load_balancer",
         "Microsoft.Network/applicationGateways": "application_gateway",
         "Microsoft.Network/virtualNetworks": "virtual_network",
         "Microsoft.Network/networkSecurityGroups": "network_security_group",
         "Microsoft.Network/publicIPAddresses": "public_ip",
+        
+        # Configuration & Secrets
         "Microsoft.KeyVault/vaults": "key_vault",
         "Microsoft.Cache/redis": "redis_cache",
-        "Microsoft.DBforPostgreSQL/servers": "postgresql_server",
-        "Microsoft.DBforMySQL/servers": "mysql_server",
-        "Microsoft.DocumentDB/databaseAccounts": "cosmos_db",
+        
+        # Identity & Access
+        "Microsoft.ManagedIdentity/userAssignedIdentities": "managed_identity",
     }
     
     @staticmethod

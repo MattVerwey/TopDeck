@@ -24,6 +24,15 @@ FOR (n:Namespace) REQUIRE n.id IS UNIQUE;
 CREATE CONSTRAINT pod_id_unique IF NOT EXISTS
 FOR (p:Pod) REQUIRE p.id IS UNIQUE;
 
+CREATE CONSTRAINT managed_identity_id_unique IF NOT EXISTS
+FOR (mi:ManagedIdentity) REQUIRE mi.id IS UNIQUE;
+
+CREATE CONSTRAINT service_principal_id_unique IF NOT EXISTS
+FOR (sp:ServicePrincipal) REQUIRE sp.id IS UNIQUE;
+
+CREATE CONSTRAINT app_registration_id_unique IF NOT EXISTS
+FOR (ar:AppRegistration) REQUIRE ar.id IS UNIQUE;
+
 // Existence constraints - Ensure critical properties exist
 CREATE CONSTRAINT resource_type_exists IF NOT EXISTS
 FOR (r:Resource) REQUIRE r.resource_type IS NOT NULL;
@@ -134,6 +143,39 @@ FOR (p:Pod) ON (p.cluster_id);
 CREATE INDEX pod_phase IF NOT EXISTS
 FOR (p:Pod) ON (p.phase);
 
+// ManagedIdentity indexes
+CREATE INDEX managed_identity_id IF NOT EXISTS
+FOR (mi:ManagedIdentity) ON (mi.id);
+
+CREATE INDEX managed_identity_principal_id IF NOT EXISTS
+FOR (mi:ManagedIdentity) ON (mi.principal_id);
+
+CREATE INDEX managed_identity_type IF NOT EXISTS
+FOR (mi:ManagedIdentity) ON (mi.identity_type);
+
+CREATE INDEX managed_identity_assigned_to IF NOT EXISTS
+FOR (mi:ManagedIdentity) ON (mi.assigned_to_resource_id);
+
+// ServicePrincipal indexes
+CREATE INDEX service_principal_id IF NOT EXISTS
+FOR (sp:ServicePrincipal) ON (sp.id);
+
+CREATE INDEX service_principal_app_id IF NOT EXISTS
+FOR (sp:ServicePrincipal) ON (sp.app_id);
+
+CREATE INDEX service_principal_display_name IF NOT EXISTS
+FOR (sp:ServicePrincipal) ON (sp.display_name);
+
+// AppRegistration indexes
+CREATE INDEX app_registration_id IF NOT EXISTS
+FOR (ar:AppRegistration) ON (ar.id);
+
+CREATE INDEX app_registration_app_id IF NOT EXISTS
+FOR (ar:AppRegistration) ON (ar.app_id);
+
+CREATE INDEX app_registration_display_name IF NOT EXISTS
+FOR (ar:AppRegistration) ON (ar.display_name);
+
 // Composite indexes for common query patterns
 CREATE INDEX resource_type_provider IF NOT EXISTS
 FOR (r:Resource) ON (r.resource_type, r.cloud_provider);
@@ -184,6 +226,24 @@ FOR (a:Application) ON (a.environment, a.owner_team);
 // WHERE r.cost_per_day IS NOT NULL
 // RETURN r.environment, sum(r.cost_per_day) as daily_cost
 // ORDER BY daily_cost DESC;
+
+// Find all Kubernetes resources in a cluster
+// MATCH (ns:Namespace {cluster_id: $cluster_id})
+// OPTIONAL MATCH (ns)<-[:IN_NAMESPACE]-(pod:Pod)
+// RETURN ns, collect(pod) as pods;
+
+// Find all resources accessed by a managed identity
+// MATCH (mi:ManagedIdentity)-[:ACCESSES]->(r:Resource)
+// RETURN mi.name, mi.identity_type, collect(r.name) as accessed_resources;
+
+// Find all service principals with access to a resource
+// MATCH (sp:ServicePrincipal)-[:HAS_ROLE]->(r:Resource)
+// RETURN r.name, collect({sp: sp.display_name, app_id: sp.app_id}) as principals;
+
+// Find identity authentication chain for a resource
+// MATCH (r:Resource)-[:AUTHENTICATES_WITH]->(mi:ManagedIdentity)
+// OPTIONAL MATCH (mi)-[:ACCESSES]->(target:Resource)
+// RETURN r.name, mi.name, collect(target.name) as can_access;
 
 // ============================================================================
 // SCHEMA VALIDATION
