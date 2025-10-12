@@ -1,5 +1,38 @@
 """Common utilities and shared components."""
 
-from topdeck.common.config import Settings
+# Don't import Settings by default to avoid pydantic dependency in imports
+# Users can: from topdeck.common.config import Settings
 
-__all__ = ["Settings"]
+from topdeck.common.resilience import (
+    RateLimiter,
+    RetryConfig,
+    retry_with_backoff,
+    ErrorTracker,
+    CircuitBreaker,
+    with_rate_limit,
+)
+from topdeck.common.logging_config import (
+    setup_logging,
+    get_logger,
+    set_correlation_id,
+    get_correlation_id,
+    LoggingContext,
+    log_operation_metrics,
+)
+
+__all__ = [
+    # Resilience
+    "RateLimiter",
+    "RetryConfig",
+    "retry_with_backoff",
+    "ErrorTracker",
+    "CircuitBreaker",
+    "with_rate_limit",
+    # Logging
+    "setup_logging",
+    "get_logger",
+    "set_correlation_id",
+    "get_correlation_id",
+    "LoggingContext",
+    "log_operation_metrics",
+]
