@@ -10,11 +10,11 @@ This document summarizes the complete data model design for TopDeck's Neo4j grap
 **File**: `data-models.md` (37KB)
 
 Complete specification including:
-- 6 core node types
+- 9 core node types (Resource, Application, Repository, Deployment, Namespace, Pod, ManagedIdentity, ServicePrincipal, AppRegistration)
 - 11 specialized Azure resource subtypes  
-- 13 relationship types with properties
-- 40+ indexes and constraints
-- 10+ common query patterns
+- 18 relationship types with properties (added identity and K8s relationships)
+- 50+ indexes and constraints
+- 12+ common query patterns (added identity and K8s queries)
 - Schema evolution strategy
 - Azure SDK integration mapping
 
@@ -58,6 +58,7 @@ The data model supports all Azure resources identified in Issue #3:
 **Data**: SQL Database, Cosmos DB, Storage Account, Redis  
 **Configuration**: Key Vault, App Configuration  
 **Kubernetes**: Namespaces, Pods, Services, Ingress  
+**Identity & Access**: Managed Identity, Service Principal, App Registration  
 
 ### Rich Relationship Modeling
 
@@ -67,7 +68,11 @@ Relationships capture not just connections but also characteristics:
 - **CONNECTS_TO**: Network connections with protocol, port, latency, frequency
 - **SECURED_BY**: Security controls with rule types
 - **ROUTES_TO**: Traffic routing with patterns and priorities
-- And 9 more relationship types...
+- **AUTHENTICATES_WITH**: Resource authentication using identities
+- **ACCESSES**: Identity access rights to resources
+- **HAS_ROLE**: Role assignments for identities
+- **IN_NAMESPACE**: Kubernetes pod containment
+- And 10 more relationship types...
 
 ### Performance Optimized
 
@@ -234,12 +239,12 @@ docs/architecture/
 
 ## Statistics
 
-- **Total Documentation**: 71KB across 4 files
-- **Node Types**: 6 core + 11 specialized = 17 total
-- **Relationship Types**: 13
-- **Indexes**: 34
-- **Constraints**: 12
-- **Query Examples**: 20+
+- **Total Documentation**: 80KB+ across 4 files
+- **Node Types**: 9 core + 11 specialized = 20 total
+- **Relationship Types**: 18 (added identity and K8s relationships)
+- **Indexes**: 44 (added 10 for new node types)
+- **Constraints**: 15 (added 3 for new node types)
+- **Query Examples**: 25+ (added identity and K8s patterns)
 - **Topology Examples**: 4 complete scenarios
 
 ## Success Criteria ✅

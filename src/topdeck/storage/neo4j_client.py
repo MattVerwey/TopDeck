@@ -370,6 +370,206 @@ class Neo4jClient:
             
             return result.single() is not None
     
+    def create_namespace(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a Kubernetes namespace node in Neo4j.
+        
+        Args:
+            properties: Namespace properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (n:Namespace)
+                SET n = $properties
+                RETURN elementId(n) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_namespace(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a namespace node.
+        
+        Args:
+            properties: Namespace properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                MERGE (n:Namespace {id: $id})
+                SET n = $properties
+                RETURN elementId(n) as node_id
+            """, id=properties["id"], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_pod(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a Kubernetes pod node in Neo4j.
+        
+        Args:
+            properties: Pod properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (p:Pod)
+                SET p = $properties
+                RETURN elementId(p) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_pod(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a pod node.
+        
+        Args:
+            properties: Pod properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                MERGE (p:Pod {id: $id})
+                SET p = $properties
+                RETURN elementId(p) as node_id
+            """, id=properties["id"], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_managed_identity(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a managed identity node in Neo4j.
+        
+        Args:
+            properties: ManagedIdentity properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (mi:ManagedIdentity)
+                SET mi = $properties
+                RETURN elementId(mi) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_managed_identity(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a managed identity node.
+        
+        Args:
+            properties: ManagedIdentity properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                MERGE (mi:ManagedIdentity {id: $id})
+                SET mi = $properties
+                RETURN elementId(mi) as node_id
+            """, id=properties["id"], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_service_principal(self, properties: Dict[str, Any]) -> str:
+        """
+        Create a service principal node in Neo4j.
+        
+        Args:
+            properties: ServicePrincipal properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (sp:ServicePrincipal)
+                SET sp = $properties
+                RETURN elementId(sp) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_service_principal(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update a service principal node.
+        
+        Args:
+            properties: ServicePrincipal properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                MERGE (sp:ServicePrincipal {id: $id})
+                SET sp = $properties
+                RETURN elementId(sp) as node_id
+            """, id=properties["id"], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def create_app_registration(self, properties: Dict[str, Any]) -> str:
+        """
+        Create an app registration node in Neo4j.
+        
+        Args:
+            properties: AppRegistration properties
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                CREATE (ar:AppRegistration)
+                SET ar = $properties
+                RETURN elementId(ar) as node_id
+            """, properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
+    def upsert_app_registration(self, properties: Dict[str, Any]) -> str:
+        """
+        Create or update an app registration node.
+        
+        Args:
+            properties: AppRegistration properties (must include 'id')
+            
+        Returns:
+            Node element ID
+        """
+        with self.session() as session:
+            result = session.run("""
+                MERGE (ar:AppRegistration {id: $id})
+                SET ar = $properties
+                RETURN elementId(ar) as node_id
+            """, id=properties["id"], properties=properties)
+            
+            record = result.single()
+            return record["node_id"] if record else None
+    
     def clear_all(self) -> int:
         """
         Delete all nodes and relationships (use with caution!).
