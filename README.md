@@ -110,12 +110,26 @@ Build a platform that:
 - Calculates that updating the app affects 5 dependent services
 - Highlights that recent SQL deadlocks occurred during peak traffic
 
+## 📊 Network Flow Diagrams
+
+TopDeck provides comprehensive network flow diagrams showing how data flows through cloud infrastructure. See **[Network Flow Diagrams](docs/architecture/network-flow-diagrams.md)** for detailed patterns including:
+
+- **Pod → Load Balancer → Gateway → Storage** data flows
+- Azure patterns (Application Gateway, AKS, hub-spoke topology)
+- AWS patterns (ALB + EKS, Lambda serverless)
+- GCP patterns (Global Load Balancing, Cloud Run)
+- Multi-cloud flows and security patterns
+
+These diagrams provide the foundation for TopDeck's interactive topology visualization.
+
 ## 📁 Project Structure
 
 ```
 TopDeck/
 ├── docs/                           # Documentation
 │   ├── architecture/               # Architecture diagrams and decisions
+│   │   ├── network-flow-diagrams.md # Complete network flow patterns
+│   │   └── topology-examples.md    # Real-world topology examples
 │   ├── api/                        # API documentation
 │   └── user-guide/                 # User guides and tutorials
 ├── src/
