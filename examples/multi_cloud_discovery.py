@@ -216,15 +216,11 @@ class MultiCloudDiscovery:
             # Group by resource type
             type_counts = {}
             for resource in result.resources:
-                type_counts[resource.resource_type] = (
-                    type_counts.get(resource.resource_type, 0) + 1
-                )
+                type_counts[resource.resource_type] = type_counts.get(resource.resource_type, 0) + 1
 
             if type_counts:
                 print("\n  Resource Types:")
-                for rtype, count in sorted(
-                    type_counts.items(), key=lambda x: x[1], reverse=True
-                ):
+                for rtype, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
                     print(f"    - {rtype}: {count}")
 
         print("\n" + "=" * 60)

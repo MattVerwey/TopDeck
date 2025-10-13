@@ -14,7 +14,7 @@ from .mapper import AWSResourceMapper
 class AWSDiscoverer:
     """
     Main class for discovering AWS resources.
-    
+
     Supports:
     - Multiple accounts
     - Multiple regions
@@ -22,7 +22,7 @@ class AWSDiscoverer:
     - Async/parallel discovery
     - Relationship detection
     """
-    
+
     def __init__(
         self,
         access_key_id: Optional[str] = None,
@@ -32,7 +32,7 @@ class AWSDiscoverer:
     ):
         """
         Initialize AWS discoverer.
-        
+
         Args:
             access_key_id: AWS access key ID (if None, uses default credentials)
             secret_access_key: AWS secret access key
@@ -44,7 +44,7 @@ class AWSDiscoverer:
         self.region = region
         self.session_token = session_token
         self.mapper = AWSResourceMapper()
-    
+
     async def discover_all_resources(
         self,
         regions: Optional[List[str]] = None,
@@ -52,17 +52,17 @@ class AWSDiscoverer:
     ) -> DiscoveryResult:
         """
         Discover all AWS resources across specified regions.
-        
+
         Args:
             regions: List of AWS regions to scan (if None, uses default region)
             resource_types: List of resource types to discover (if None, discovers all)
-            
+
         Returns:
             DiscoveryResult containing all discovered resources
         """
         # Placeholder implementation - to be filled with boto3 logic
         resources: List[DiscoveredResource] = []
-        
+
         return DiscoveryResult(
             resources=resources,
             dependencies=[],
@@ -72,11 +72,11 @@ class AWSDiscoverer:
             discovered_at=datetime.utcnow(),
             cloud_provider="aws",
         )
-    
+
     def get_account_id(self) -> Optional[str]:
         """
         Get the AWS account ID for the current credentials.
-        
+
         Returns:
             AWS account ID or None
         """
