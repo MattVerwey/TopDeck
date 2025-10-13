@@ -447,7 +447,7 @@ class TransactionFlowService:
 
     def _merge_flows(
         self, flows: list[TransactionFlowVisualization], correlation_id: str
-    ) -> TransactionFlowVisualization:
+    ) -> TransactionFlowVisualization | None:
         """Merge multiple flows from different sources."""
         if not flows:
             return None
