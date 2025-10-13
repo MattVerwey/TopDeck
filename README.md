@@ -274,6 +274,29 @@ curl http://localhost:8000/api/v1/topology/resources/{id}/dependencies
 curl http://localhost:8000/api/v1/topology
 ```
 
+**4. Explore with Web UI**
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Access at http://localhost:3000
+```
+
+The web interface provides:
+- **Dashboard**: Overview with key metrics and status
+- **Topology View**: Interactive network graph with Cytoscape.js
+- **Risk Analysis**: Visual risk distribution and SPOF detection
+- **Change Impact**: Analyze impacts of ServiceNow/Jira changes
+- **Integrations**: Manage data source plugins and configurations
+
+See [FRONTEND_README.md](FRONTEND_README.md) for complete UI documentation.
+
 ### What's NOT Available Yet ⚠️
 
 The **most important feature** is still missing:
@@ -374,6 +397,15 @@ pytest tests/unit/ tests/discovery/ tests/analysis/ -v
 - Code-to-infrastructure linking
 - Basic topology API endpoints
 
+**Phase 3: Interactive Visualization** ✅ **COMPLETE**
+- Modern React 18 + TypeScript frontend with Vite
+- Five main views: Dashboard, Topology, Risk Analysis, Change Impact, Integrations
+- Interactive topology visualization with Cytoscape.js
+- Risk analysis charts with Recharts
+- Material-UI v7 with professional dark theme
+- Responsive layout with collapsible navigation
+- Comprehensive error handling and loading states
+
 **Multi-Cloud Foundation** ✅ **MAPPERS READY**
 - AWS resource mappers (18+ types: EKS, EC2, RDS, Lambda, etc.)
 - GCP resource mappers (17+ types: GKE, Compute Engine, Cloud SQL, etc.)
@@ -392,12 +424,7 @@ This is where TopDeck delivers its core value. Currently missing:
    - "How risky is this change?" - Risk scoring algorithm
    - "What are my single points of failure?" - Critical component identification
    
-2. **Interactive Visualization** (Issue #6)
-   - Frontend UI to see the dependency graph
-   - Visual representation of risk scores
-   - Interactive topology exploration
-   
-3. **Monitoring Integration** (Issue #7)
+2. **Monitoring Integration** (Issue #7)
    - Correlate failures with dependency chains
    - Track error propagation through services
    - Performance bottleneck detection
@@ -453,11 +480,15 @@ Connect to CI/CD platforms to link code with infrastructure.
 - [ ] Single point of failure detection
 - [ ] Change impact assessment
 
-**Priority 2: Interactive Visualization** (Issue #6)
-- [ ] React frontend with Cytoscape.js
-- [ ] Interactive dependency graph
-- [ ] Visual risk indicators
-- [ ] Drill-down into component details
+**Priority 2: Interactive Visualization** (Issue #6) ✅ **COMPLETE**
+- [x] React frontend with Cytoscape.js
+- [x] Interactive dependency graph
+- [x] Visual risk indicators
+- [x] Drill-down into component details
+- [x] Five main views: Dashboard, Topology, Risk Analysis, Change Impact, Integrations
+- [x] Responsive layout with collapsible navigation
+- [x] Dark theme with consistent styling
+- [x] Error handling and loading states
 
 **Priority 3: Monitoring Integration** (Issue #7)
 - [x] Prometheus metrics collection (backend ready)
@@ -548,6 +579,8 @@ We believe operations teams should **know** rather than **guess** what will be a
 - ✅ Azure resource discovery and dependency mapping
 - ✅ CI/CD integration (Azure DevOps, GitHub)
 - ✅ REST API for topology queries
+- ✅ Interactive web UI with 5 main views (Dashboard, Topology, Risk Analysis, Change Impact, Integrations)
+- ✅ Professional dark theme with responsive design
 
 **Critical Next Step**:
 - 🚧 **Risk Analysis Engine** - The core feature that delivers TopDeck's value
