@@ -129,7 +129,7 @@ export default function TransactionFlowGraph({ flow }: TransactionFlowGraphProps
       directed: true,
       spacingFactor: 1.5,
       padding: 30,
-    } as any).run();
+    } as cytoscape.LayoutOptions).run();
 
     // Add node click handler to show details
     cy.on('tap', 'node', (event) => {
