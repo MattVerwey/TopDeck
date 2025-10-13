@@ -11,6 +11,15 @@ Build a platform that:
 - **Assesses Risk**: Provides impact analysis for changes - "What breaks if this service fails?"
 - **Tracks Data Flow**: Monitors error paths and performance bottlenecks (API delays, SQL deadlocks, etc.)
 
+## 📚 Documentation Quick Links
+
+- **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
+- **[Quick Reference](QUICK_REFERENCE.md)** - Quick start guide and common tasks
+- **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
+- **[Roadmap Changes](docs/ROADMAP_CHANGES.md)** - Roadmap evolution and rationale
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to TopDeck
+
 ## 🏗️ Architecture
 
 ### Core Components
