@@ -85,8 +85,8 @@ router = APIRouter(prefix="/api/v1/monitoring", tags=["monitoring"])
 
 
 # Configuration for observability platforms
-PROMETHEUS_URL = settings.app_env  # Placeholder - should be configured
-LOKI_URL = settings.app_env  # Placeholder - should be configured
+PROMETHEUS_URL = settings.prometheus_url  # Use configured Prometheus URL
+LOKI_URL = settings.loki_url  # Use configured Loki URL
 
 
 @router.get("/resources/{resource_id}/metrics", response_model=ResourceMetricsResponse)
