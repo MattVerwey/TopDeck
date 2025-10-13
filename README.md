@@ -13,10 +13,19 @@ Build a platform that:
 
 ## 📚 Documentation Quick Links
 
-- **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
-- **[Quick Reference](QUICK_REFERENCE.md)** - Quick start guide and common tasks
+### Getting Started
 - **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
+
+### Testing & Deployment
+- **[Hosting and Testing Guide](docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete guide for hosting and testing
+- **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
+- **[Scripts Documentation](scripts/README.md)** - Available testing and management scripts
+
+### Project Status
+- **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
+- **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks
 - **[Roadmap Changes](docs/ROADMAP_CHANGES.md)** - Roadmap evolution and rationale
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to TopDeck
 
@@ -248,6 +257,33 @@ The API will be available at:
 - **RabbitMQ Management**: http://localhost:15672
 
 For detailed development information, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+### Testing the Application
+
+TopDeck includes comprehensive testing infrastructure for local development and CI/CD:
+
+**Quick Test (5 minutes)**:
+```bash
+# Run automated end-to-end test
+./scripts/e2e-test.sh
+```
+
+**Test Azure Discovery**:
+```bash
+# Configure Azure credentials in .env first
+python scripts/test_discovery.py
+```
+
+**Run Unit Tests**:
+```bash
+# Fast tests without external dependencies
+pytest tests/unit/ tests/discovery/ tests/analysis/ -v
+```
+
+**Documentation**:
+- **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - 5-minute testing guide
+- **[Hosting and Testing Guide](docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete testing guide
+- **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure infrastructure setup
 
 ## 📊 Current Status
 
