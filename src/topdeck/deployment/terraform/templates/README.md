@@ -223,6 +223,39 @@ gsutil mb -p my-project-123 \
 gsutil versioning set on gs://topdeck-terraform-state-my-project
 ```
 
+## Testing with Azure 30-Day Trial
+
+We provide comprehensive testing infrastructure for Azure with cost controls:
+
+### Quick Start
+
+```bash
+# 1. Set up Azure trial
+cd scripts/azure-testing
+./setup-azure-trial.sh
+
+# 2. Deploy test infrastructure
+./deploy-test-infrastructure.sh
+
+# 3. Validate deployment
+./validate-deployment.sh
+
+# 4. Run integration tests
+pytest tests/integration/azure/ -v
+
+# 5. Clean up
+./teardown-test-infrastructure.sh
+```
+
+### Features
+
+- **Cost Budget**: $50/month limit with email alerts
+- **Minimal Resources**: < $5/month estimated cost
+- **Test Resources**: Storage, VNet, Subnet, NSG
+- **Integration Tests**: Comprehensive validation suite
+
+See [docs/AZURE_TESTING_GUIDE.md](../../../../docs/AZURE_TESTING_GUIDE.md) for detailed instructions.
+
 ## Best Practices
 
 1. **Separate State Files**: Use different state files for each environment and cloud
@@ -232,6 +265,8 @@ gsutil versioning set on gs://topdeck-terraform-state-my-project
 5. **Variable Files**: Use `.tfvars` files for environment-specific values
 6. **Modules**: Create reusable modules for common patterns
 7. **Version Pinning**: Pin provider versions for consistency
+8. **Cost Management**: Always enable budgets for test/dev environments
+9. **Resource Cleanup**: Destroy test resources when not in use
 
 ## Extending Templates
 

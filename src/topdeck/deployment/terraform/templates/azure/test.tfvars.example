@@ -1,0 +1,24 @@
+# Example variables for Azure testing environment
+# Copy this file to test.tfvars and update with your values
+
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+resource_group_name  = "topdeck-test-rg"
+location             = "eastus"
+environment          = "test"
+
+# Cost Management
+enable_cost_budget   = true
+monthly_budget_amount = 50  # USD - Safe for 30-day trial
+budget_alert_emails  = ["your-email@example.com"]
+
+# Test Resources
+create_test_resources = true
+
+# Tags
+tags = {
+  Project     = "TopDeck"
+  Environment = "Test"
+  Owner       = "YourName"
+  CostCenter  = "Testing"
+  AutoShutdown = "true"
+}
