@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     rabbitmq_username: str = Field(default="guest", description="RabbitMQ username")
     rabbitmq_password: str = Field(default="guest", description="RabbitMQ password")
 
+    # Monitoring & Observability Configuration
+    prometheus_url: str = Field(
+        default="http://prometheus:9090", description="Prometheus server URL"
+    )
+    loki_url: str = Field(default="http://loki:3100", description="Loki server URL")
+    grafana_url: str = Field(default="http://grafana:3000", description="Grafana server URL")
+
     # Feature Flags - Multi-cloud support (can run all simultaneously)
     enable_azure_discovery: bool = Field(default=True, description="Enable Azure discovery")
     enable_aws_discovery: bool = Field(default=True, description="Enable AWS discovery")
