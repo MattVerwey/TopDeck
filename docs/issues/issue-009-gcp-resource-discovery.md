@@ -1,6 +1,6 @@
 # Issue #9: Implement GCP Resource Discovery
 
-**Labels**: `enhancement`, `cloud: gcp`, `priority: high`, `phase-2`
+**Labels**: `enhancement`, `cloud: gcp`, `priority: high`, `phase-4`
 
 ## Description
 

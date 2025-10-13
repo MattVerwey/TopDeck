@@ -1,6 +1,6 @@
 # Issue #10: Implement GitHub Integration
 
-**Labels**: `enhancement`, `integration`, `priority: high`, `phase-3`
+**Labels**: `enhancement`, `integration`, `priority: high`, `phase-2`
 
 ## Description
 

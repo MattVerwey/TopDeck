@@ -272,8 +272,8 @@ Plus `config.yml` with links to:
 
 - [ ] Architect and implement AWS resource discovery using Terraform (Issue #8)
 - [ ] Architect and implement GCP resource discovery using Terraform (Issue #9)
-- [ ] Build unified multi-cloud resource abstraction layer
-- [ ] Create infrastructure deployment automation
+- [ ] Build unified multi-cloud resource abstraction layer (Issue #11)
+- [ ] Create infrastructure deployment automation (Issue #12)
 
 ---
 

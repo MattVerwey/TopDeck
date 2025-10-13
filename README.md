@@ -261,10 +261,10 @@ For detailed development information, see [DEVELOPMENT.md](DEVELOPMENT.md).
 - [ ] Add error correlation and alerting
 
 ### Phase 4: Multi-Cloud Architecture (Months 7-8)
-- [ ] Architect and implement AWS resource discovery using Terraform
-- [ ] Architect and implement GCP resource discovery using Terraform
-- [ ] Build unified multi-cloud resource abstraction layer
-- [ ] Create infrastructure deployment automation
+- [ ] Architect and implement AWS resource discovery using Terraform (Issue #8)
+- [ ] Architect and implement GCP resource discovery using Terraform (Issue #9)
+- [ ] Build unified multi-cloud resource abstraction layer (Issue #11)
+- [ ] Create infrastructure deployment automation (Issue #12)
 
 ### Phase 5: Production Ready (Months 9-10)
 - [ ] Security hardening

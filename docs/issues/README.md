@@ -64,6 +64,18 @@ This directory contains detailed issue templates for building TopDeck. These can
    - Support GKE, Compute Engine, Cloud Run, Cloud SQL
    - Generate and manage Terraform configurations
 
+11. **[Multi-Cloud Resource Abstraction Layer](issue-011-multi-cloud-abstraction-layer.md)**
+    - Priority: High
+    - Build unified abstraction layer for resources across all clouds
+    - Enable consistent interface for cross-cloud operations
+    - Support cloud-agnostic application logic
+
+12. **[Infrastructure Deployment Automation](issue-012-infrastructure-deployment-automation.md)**
+    - Priority: High
+    - Create Terraform-based deployment automation system
+    - Manage infrastructure as code across clouds
+    - State management and deployment workflows
+
 ## Additional Issues to Consider
 
 ### Future Enhancements
@@ -154,8 +166,14 @@ Issue #1 (Tech Stack)
     │       ├─→ Issue #10 (GitHub)
     │       ├─→ Issue #5 (Risk Analysis)
     │       └─→ Issue #7 (Monitoring)
-    └─→ Issue #6 (Visualization)
-            └─→ (depends on API from Issues #3-5, #7-10)
+    ├─→ Issue #6 (Visualization)
+    │       └─→ (depends on API from Issues #3-5, #7-10)
+    └─→ Phase 4 Multi-Cloud
+            ├─→ Issue #11 (Multi-Cloud Abstraction)
+            │       ├─→ depends on Issues #3, #8, #9
+            │       └─→ used by Issues #5, #6
+            └─→ Issue #12 (Deployment Automation)
+                    └─→ depends on Issue #11
 ```
 
 ## Development Process
@@ -163,7 +181,7 @@ Issue #1 (Tech Stack)
 1. **Weeks 1-2**: Issues #1-3 (Foundation & Azure)
 2. **Weeks 3-4**: Issues #4, #10, #6 (Platform Integrations)
 3. **Weeks 5-6**: Issues #5, #7 (Analysis & Intelligence)
-4. **Weeks 7-10**: Issues #8-9 (Multi-Cloud Architecture)
+4. **Weeks 7-10**: Issues #8, #9, #11, #12 (Multi-Cloud Architecture)
 
 ## Contributing
 

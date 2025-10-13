@@ -1,6 +1,6 @@
 # Issue #7: Implement Performance Monitoring Integration
 
-**Labels**: `enhancement`, `monitoring`, `priority: medium`, `phase-4`
+**Labels**: `enhancement`, `monitoring`, `priority: medium`, `phase-3`
 
 ## Description
 
