@@ -1,0 +1,328 @@
+"""
+Main risk analysis orchestrator.
+"""
+
+from typing import List, Optional
+
+from topdeck.storage.neo4j_client import Neo4jClient
+
+from .models import (
+    RiskAssessment,
+    BlastRadius,
+    FailureSimulation,
+    SinglePointOfFailure,
+)
+from .dependency import DependencyAnalyzer
+from .scoring import RiskScorer
+from .impact import ImpactAnalyzer
+from .simulation import FailureSimulator
+
+
+class RiskAnalyzer:
+    """
+    Main orchestrator for risk analysis operations.
+    
+    Coordinates dependency analysis, risk scoring, impact assessment,
+    and failure simulation to provide comprehensive risk insights.
+    """
+    
+    def __init__(self, neo4j_client: Neo4jClient):
+        """
+        Initialize risk analyzer.
+        
+        Args:
+            neo4j_client: Neo4j client for graph database access
+        """
+        self.neo4j_client = neo4j_client
+        
+        # Initialize component analyzers
+        self.dependency_analyzer = DependencyAnalyzer(neo4j_client)
+        self.risk_scorer = RiskScorer()
+        self.impact_analyzer = ImpactAnalyzer(self.dependency_analyzer)
+        self.failure_simulator = FailureSimulator(self.impact_analyzer)
+    
+    def analyze_resource(self, resource_id: str) -> RiskAssessment:
+        """
+        Perform complete risk assessment for a resource.
+        
+        Args:
+            resource_id: Resource to analyze
+            
+        Returns:
+            RiskAssessment with complete analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        # Get resource details
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        # Get dependency counts
+        dependencies_count, dependents_count = \
+            self.dependency_analyzer.get_dependency_counts(resource_id)
+        
+        # Check if SPOF
+        is_spof = self.dependency_analyzer.is_single_point_of_failure(resource_id)
+        
+        # Calculate blast radius
+        blast_radius = self.impact_analyzer.calculate_blast_radius(
+            resource_id,
+            resource["name"]
+        )
+        
+        # Check for redundancy
+        has_redundancy = self._check_redundancy(resource_id)
+        
+        # Get deployment history (placeholder - would be from real data)
+        deployment_failure_rate = 0.0  # Would be calculated from actual deployments
+        time_since_last_change = None  # Would be from deployment tracking
+        
+        # Calculate risk score
+        risk_score = self.risk_scorer.calculate_risk_score(
+            dependency_count=dependencies_count,
+            dependents_count=dependents_count,
+            resource_type=resource["resource_type"],
+            is_single_point_of_failure=is_spof,
+            deployment_failure_rate=deployment_failure_rate,
+            time_since_last_change_hours=time_since_last_change,
+            has_redundancy=has_redundancy,
+        )
+        
+        # Get risk level
+        risk_level = self.risk_scorer.get_risk_level(risk_score)
+        
+        # Calculate criticality
+        criticality_score = self.risk_scorer._calculate_criticality(
+            resource["resource_type"],
+            is_spof,
+            dependents_count
+        )
+        
+        # Generate recommendations
+        recommendations = self.risk_scorer.generate_recommendations(
+            risk_score=risk_score,
+            is_spof=is_spof,
+            has_redundancy=has_redundancy,
+            dependents_count=dependents_count,
+            deployment_failure_rate=deployment_failure_rate,
+        )
+        
+        # Build factor breakdown
+        factors = {
+            "dependencies_count": dependencies_count,
+            "dependents_count": dependents_count,
+            "is_spof": is_spof,
+            "has_redundancy": has_redundancy,
+            "blast_radius_size": blast_radius.total_affected,
+            "user_impact": blast_radius.user_impact.value,
+            "deployment_failure_rate": deployment_failure_rate,
+        }
+        
+        return RiskAssessment(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            risk_score=risk_score,
+            risk_level=risk_level,
+            criticality_score=criticality_score,
+            dependencies_count=dependencies_count,
+            dependents_count=dependents_count,
+            blast_radius=blast_radius.total_affected,
+            single_point_of_failure=is_spof,
+            deployment_failure_rate=deployment_failure_rate,
+            time_since_last_change=time_since_last_change,
+            recommendations=recommendations,
+            factors=factors,
+        )
+    
+    def calculate_blast_radius(
+        self,
+        resource_id: str
+    ) -> BlastRadius:
+        """
+        Calculate blast radius for a resource failure.
+        
+        Args:
+            resource_id: Resource to analyze
+            
+        Returns:
+            BlastRadius analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        return self.impact_analyzer.calculate_blast_radius(
+            resource_id,
+            resource["name"]
+        )
+    
+    def simulate_failure(
+        self,
+        resource_id: str,
+        scenario: str = "Complete service outage"
+    ) -> FailureSimulation:
+        """
+        Simulate a failure scenario.
+        
+        Args:
+            resource_id: Resource to simulate failure for
+            scenario: Description of failure scenario
+            
+        Returns:
+            FailureSimulation with complete analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        return self.failure_simulator.simulate_failure(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            scenario=scenario,
+        )
+    
+    def identify_single_points_of_failure(self) -> List[SinglePointOfFailure]:
+        """
+        Find all single points of failure in the infrastructure.
+        
+        Returns:
+            List of SinglePointOfFailure resources
+        """
+        query = """
+        MATCH (r:Resource)
+        WHERE EXISTS {
+            MATCH (r)<-[:DEPENDS_ON]-(dependent:Resource)
+        }
+        AND NOT EXISTS {
+            MATCH (r)-[:REDUNDANT_WITH]->(:Resource)
+        }
+        WITH r
+        OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent:Resource)
+        WITH r, COUNT(DISTINCT dependent) as dependents_count
+        WHERE dependents_count > 0
+        RETURN r.id as id,
+               r.name as name,
+               r.resource_type as resource_type,
+               dependents_count
+        ORDER BY dependents_count DESC
+        """
+        
+        spofs = []
+        with self.neo4j_client.session() as session:
+            result = session.run(query)
+            for record in result:
+                resource_id = record["id"]
+                
+                # Get blast radius for this SPOF
+                blast_radius = self.calculate_blast_radius(resource_id)
+                
+                # Calculate risk score
+                risk_score = self.risk_scorer.calculate_risk_score(
+                    dependency_count=0,  # Don't need for SPOF scoring
+                    dependents_count=record["dependents_count"],
+                    resource_type=record["resource_type"],
+                    is_single_point_of_failure=True,
+                    has_redundancy=False,
+                )
+                
+                # Generate recommendations
+                recommendations = [
+                    "⚠️ This is a Single Point of Failure",
+                    "Add redundant instances across availability zones",
+                    "Implement automatic failover mechanisms",
+                    "Increase monitoring and alerting priority",
+                ]
+                
+                spofs.append(SinglePointOfFailure(
+                    resource_id=resource_id,
+                    resource_name=record["name"],
+                    resource_type=record["resource_type"],
+                    dependents_count=record["dependents_count"],
+                    blast_radius=blast_radius.total_affected,
+                    risk_score=risk_score,
+                    recommendations=recommendations,
+                ))
+        
+        return spofs
+    
+    def get_change_risk_score(self, resource_id: str) -> float:
+        """
+        Get risk score for changing/deploying to this resource.
+        
+        This is a convenience method that returns just the risk score
+        without the full assessment.
+        
+        Args:
+            resource_id: Resource to analyze
+            
+        Returns:
+            Risk score (0-100)
+        """
+        assessment = self.analyze_resource(resource_id)
+        return assessment.risk_score
+    
+    def _get_resource_details(self, resource_id: str) -> Optional[dict]:
+        """
+        Get basic resource details from Neo4j.
+        
+        Args:
+            resource_id: Resource ID
+            
+        Returns:
+            Dictionary with resource details or None if not found
+        """
+        query = """
+        MATCH (r:Resource {id: $id})
+        RETURN r.id as id,
+               r.name as name,
+               r.resource_type as resource_type,
+               r.cloud_provider as cloud_provider,
+               r.region as region
+        """
+        
+        with self.neo4j_client.session() as session:
+            result = session.run(query, id=resource_id)
+            record = result.single()
+            if record:
+                return {
+                    "id": record["id"],
+                    "name": record["name"],
+                    "resource_type": record["resource_type"],
+                    "cloud_provider": record["cloud_provider"],
+                    "region": record["region"],
+                }
+        
+        return None
+    
+    def _check_redundancy(self, resource_id: str) -> bool:
+        """
+        Check if resource has redundant alternatives.
+        
+        Args:
+            resource_id: Resource to check
+            
+        Returns:
+            True if redundancy exists
+        """
+        query = """
+        MATCH (r:Resource {id: $id})-[:REDUNDANT_WITH]->(alt:Resource)
+        RETURN COUNT(alt) as redundant_count
+        """
+        
+        with self.neo4j_client.session() as session:
+            result = session.run(query, id=resource_id)
+            record = result.single()
+            if record:
+                return record["redundant_count"] > 0
+        
+        return False

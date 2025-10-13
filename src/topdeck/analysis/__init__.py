@@ -6,4 +6,41 @@ This module contains:
 - Dependencies: Dependency graph builder
 """
 
-__all__ = []
+from .topology import (
+    TopologyService,
+    TopologyGraph,
+    TopologyNode,
+    TopologyEdge,
+    ResourceDependencies,
+    DataFlow,
+    FlowType,
+)
+
+from .risk import (
+    RiskAnalyzer,
+    RiskAssessment,
+    BlastRadius,
+    FailureSimulation,
+    RiskLevel,
+    ImpactLevel,
+    SinglePointOfFailure,
+)
+
+__all__ = [
+    # Topology
+    "TopologyService",
+    "TopologyGraph",
+    "TopologyNode",
+    "TopologyEdge",
+    "ResourceDependencies",
+    "DataFlow",
+    "FlowType",
+    # Risk
+    "RiskAnalyzer",
+    "RiskAssessment",
+    "BlastRadius",
+    "FailureSimulation",
+    "RiskLevel",
+    "ImpactLevel",
+    "SinglePointOfFailure",
+]

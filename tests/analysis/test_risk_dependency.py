@@ -1,0 +1,260 @@
+"""Tests for dependency analyzer module."""
+
+import pytest
+from unittest.mock import Mock, MagicMock
+
+from topdeck.analysis.risk.dependency import DependencyAnalyzer
+
+
+@pytest.fixture
+def mock_neo4j_client():
+    """Create a mock Neo4j client."""
+    client = Mock()
+    client.session = MagicMock()
+    return client
+
+
+@pytest.fixture
+def dependency_analyzer(mock_neo4j_client):
+    """Create a dependency analyzer with mock client."""
+    return DependencyAnalyzer(mock_neo4j_client)
+
+
+def test_dependency_analyzer_initialization(dependency_analyzer, mock_neo4j_client):
+    """Test dependency analyzer initialization."""
+    assert dependency_analyzer.neo4j_client == mock_neo4j_client
+
+
+def test_get_dependency_counts(dependency_analyzer, mock_neo4j_client):
+    """Test getting dependency counts."""
+    # Mock session and query results
+    mock_session = MagicMock()
+    mock_result_upstream = MagicMock()
+    mock_result_upstream.single.return_value = {"count": 3}
+    mock_result_downstream = MagicMock()
+    mock_result_downstream.single.return_value = {"count": 5}
+    
+    mock_session.run.side_effect = [mock_result_upstream, mock_result_downstream]
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    dependencies, dependents = dependency_analyzer.get_dependency_counts("resource-1")
+    
+    assert dependencies == 3
+    assert dependents == 5
+    assert mock_session.run.call_count == 2
+
+
+def test_get_dependency_counts_no_dependencies(dependency_analyzer, mock_neo4j_client):
+    """Test getting dependency counts when none exist."""
+    # Mock empty results
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = {"count": 0}
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    dependencies, dependents = dependency_analyzer.get_dependency_counts("resource-1")
+    
+    assert dependencies == 0
+    assert dependents == 0
+
+
+def test_find_critical_path(dependency_analyzer, mock_neo4j_client):
+    """Test finding critical dependency path."""
+    # Mock query result with path
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = {
+        "path_ids": ["resource-1", "resource-2", "resource-3", "resource-4"]
+    }
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    path = dependency_analyzer.find_critical_path("resource-1")
+    
+    assert len(path) == 4
+    assert path == ["resource-1", "resource-2", "resource-3", "resource-4"]
+
+
+def test_find_critical_path_no_dependents(dependency_analyzer, mock_neo4j_client):
+    """Test critical path when no dependents exist."""
+    # Mock empty result
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = None
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    path = dependency_analyzer.find_critical_path("resource-1")
+    
+    assert path == ["resource-1"]
+
+
+def test_get_dependency_tree_downstream(dependency_analyzer, mock_neo4j_client):
+    """Test getting downstream dependency tree."""
+    # Mock query results
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.__iter__.return_value = [
+        {
+            "source_id": "resource-1",
+            "source_name": "Resource 1",
+            "source_type": "web_app",
+            "target_id": "resource-2",
+            "target_name": "Resource 2",
+            "target_type": "database",
+        },
+        {
+            "source_id": "resource-2",
+            "source_name": "Resource 2",
+            "source_type": "database",
+            "target_id": "resource-3",
+            "target_name": "Resource 3",
+            "target_type": "storage",
+        },
+    ]
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    tree = dependency_analyzer.get_dependency_tree("resource-1", direction="downstream")
+    
+    assert "resource-1" in tree
+    assert len(tree["resource-1"]) == 1
+    assert tree["resource-1"][0]["id"] == "resource-2"
+    assert "resource-2" in tree
+    assert len(tree["resource-2"]) == 1
+
+
+def test_get_dependency_tree_upstream(dependency_analyzer, mock_neo4j_client):
+    """Test getting upstream dependency tree."""
+    # Mock query results
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.__iter__.return_value = [
+        {
+            "source_id": "resource-1",
+            "source_name": "Resource 1",
+            "source_type": "web_app",
+            "target_id": "resource-2",
+            "target_name": "Resource 2",
+            "target_type": "database",
+        },
+    ]
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    tree = dependency_analyzer.get_dependency_tree("resource-1", direction="upstream")
+    
+    assert "resource-1" in tree
+
+
+def test_is_single_point_of_failure_true(dependency_analyzer, mock_neo4j_client):
+    """Test SPOF detection when resource is a SPOF."""
+    # Mock result: has dependents, no redundancy
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = {"is_spof": True}
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    is_spof = dependency_analyzer.is_single_point_of_failure("resource-1")
+    
+    assert is_spof is True
+
+
+def test_is_single_point_of_failure_false_no_dependents(dependency_analyzer, mock_neo4j_client):
+    """Test SPOF detection when resource has no dependents."""
+    # Mock result: no dependents
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = {"is_spof": False}
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    is_spof = dependency_analyzer.is_single_point_of_failure("resource-1")
+    
+    assert is_spof is False
+
+
+def test_is_single_point_of_failure_false_has_redundancy(dependency_analyzer, mock_neo4j_client):
+    """Test SPOF detection when resource has redundancy."""
+    # Mock result: has dependents but also has redundancy
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.single.return_value = {"is_spof": False}
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    is_spof = dependency_analyzer.is_single_point_of_failure("resource-1")
+    
+    assert is_spof is False
+
+
+def test_get_affected_resources(dependency_analyzer, mock_neo4j_client):
+    """Test getting affected resources."""
+    # Mock session with two queries
+    mock_session = MagicMock()
+    
+    # Direct dependents
+    mock_result_direct = MagicMock()
+    mock_result_direct.__iter__.return_value = [
+        {
+            "id": "resource-2",
+            "name": "Resource 2",
+            "type": "web_app",
+            "cloud_provider": "azure",
+        },
+        {
+            "id": "resource-3",
+            "name": "Resource 3",
+            "type": "api",
+            "cloud_provider": "azure",
+        },
+    ]
+    
+    # Indirect dependents
+    mock_result_indirect = MagicMock()
+    mock_result_indirect.__iter__.return_value = [
+        {
+            "id": "resource-4",
+            "name": "Resource 4",
+            "type": "function",
+            "cloud_provider": "azure",
+            "distance": 2,
+        },
+    ]
+    
+    mock_session.run.side_effect = [mock_result_direct, mock_result_indirect]
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    directly_affected, indirectly_affected = dependency_analyzer.get_affected_resources("resource-1")
+    
+    assert len(directly_affected) == 2
+    assert len(indirectly_affected) == 1
+    assert directly_affected[0]["id"] == "resource-2"
+    assert indirectly_affected[0]["id"] == "resource-4"
+    assert "distance" in indirectly_affected[0]
+
+
+def test_get_affected_resources_none(dependency_analyzer, mock_neo4j_client):
+    """Test getting affected resources when none exist."""
+    # Mock empty results
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.__iter__.return_value = []
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    directly_affected, indirectly_affected = dependency_analyzer.get_affected_resources("resource-1")
+    
+    assert len(directly_affected) == 0
+    assert len(indirectly_affected) == 0
