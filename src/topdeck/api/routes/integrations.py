@@ -26,7 +26,7 @@ class IntegrationResponse(BaseModel):
 class IntegrationUpdateRequest(BaseModel):
     """Request model for updating integration."""
     
-    enabled: bool = None
+    enabled: Optional[bool] = None
     config: Dict[str, Any] = Field(default_factory=dict)
 
 
