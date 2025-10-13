@@ -484,8 +484,33 @@ RETURN path;
 
 ---
 
+---
+
+## Network Flow Patterns
+
+For detailed network flow diagrams showing how data flows through infrastructure resources (pods → load balancers → gateways → storage), see:
+
+**[Network Flow Diagrams](network-flow-diagrams.md)** - Comprehensive documentation including:
+
+- **Azure Network Flows**: Application Gateway, AKS service mesh, hub-spoke topology
+- **AWS Network Flows**: ALB with EKS, Lambda serverless patterns
+- **GCP Network Flows**: Global load balancing, Cloud Run architecture
+- **Multi-Cloud Flows**: Cross-cloud data replication and disaster recovery
+- **Security Patterns**: WAF, DDoS protection, private endpoints
+- **Performance Patterns**: CDN, auto-scaling, caching
+
+These patterns provide the foundation for TopDeck's network topology visualization (Issue #6) and help understand:
+- Complete request/response paths through infrastructure
+- Service-to-service communication patterns
+- Data flow from compute to storage layers
+- Network security boundaries and controls
+- Performance optimization opportunities
+
+---
+
 ## See Also
 
 - [data-models.md](data-models.md) - Complete data model documentation
 - [data-models-quick-reference.md](data-models-quick-reference.md) - Quick reference guide
 - [neo4j-schema.cypher](neo4j-schema.cypher) - Database initialization script
+- [network-flow-diagrams.md](network-flow-diagrams.md) - Network flow and data path diagrams
