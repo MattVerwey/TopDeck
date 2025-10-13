@@ -65,10 +65,10 @@ class Settings(BaseSettings):
     rabbitmq_username: str = Field(default="guest", description="RabbitMQ username")
     rabbitmq_password: str = Field(default="guest", description="RabbitMQ password")
 
-    # Feature Flags
+    # Feature Flags - Multi-cloud support (can run all simultaneously)
     enable_azure_discovery: bool = Field(default=True, description="Enable Azure discovery")
-    enable_aws_discovery: bool = Field(default=False, description="Enable AWS discovery")
-    enable_gcp_discovery: bool = Field(default=False, description="Enable GCP discovery")
+    enable_aws_discovery: bool = Field(default=True, description="Enable AWS discovery")
+    enable_gcp_discovery: bool = Field(default=True, description="Enable GCP discovery")
     enable_github_integration: bool = Field(default=True, description="Enable GitHub integration")
     enable_azure_devops_integration: bool = Field(
         default=True, description="Enable Azure DevOps integration"
