@@ -141,10 +141,15 @@ async def get_resource_metrics(
     
     Returns performance metrics like CPU usage, memory, latency, error rates, etc.
     """
+    # Check if Prometheus is configured
+    if not settings.prometheus_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Prometheus integration is not configured. Please set PROMETHEUS_URL in your environment."
+        )
+    
     try:
-        # In production, use configured Prometheus URL
-        prometheus_url = settings.prometheus_url
-        collector = PrometheusCollector(prometheus_url)
+        collector = PrometheusCollector(settings.prometheus_url)
         
         try:
             metrics = await collector.get_resource_metrics(
@@ -193,9 +198,15 @@ async def detect_flow_bottlenecks(
     Analyzes metrics across all resources in a flow to identify performance
     bottlenecks like high latency, error rates, or resource saturation.
     """
+    # Check if Prometheus is configured
+    if not settings.prometheus_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Prometheus integration is not configured. Please set PROMETHEUS_URL in your environment."
+        )
+    
     try:
-        prometheus_url = "http://prometheus:9090"
-        collector = PrometheusCollector(prometheus_url)
+        collector = PrometheusCollector(settings.prometheus_url)
         
         try:
             bottlenecks = await collector.detect_bottlenecks(flow_path)
@@ -228,9 +239,15 @@ async def get_resource_errors(
     
     Returns error statistics, types, and recent error messages.
     """
+    # Check if Loki is configured
+    if not settings.loki_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Loki integration is not configured. Please set LOKI_URL in your environment."
+        )
+    
     try:
-        loki_url = "http://loki:3100"
-        collector = LokiCollector(loki_url)
+        collector = LokiCollector(settings.loki_url)
         
         try:
             analysis = await collector.analyze_errors(
@@ -275,9 +292,15 @@ async def find_flow_failure_point(
     failures are occurring, helping to pinpoint issues in microservice
     architectures.
     """
+    # Check if Loki is configured
+    if not settings.loki_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Loki integration is not configured. Please set LOKI_URL in your environment."
+        )
+    
     try:
-        loki_url = "http://loki:3100"
-        collector = LokiCollector(loki_url)
+        collector = LokiCollector(settings.loki_url)
         
         try:
             failure = await collector.find_failure_point(
@@ -314,8 +337,16 @@ async def get_resource_correlation_ids(
     Get correlation/transaction IDs for a specific resource (pod).
     
     Returns a list of correlation IDs found in the logs for this resource,
-    which can be used to trace transaction flows.
+    which can be used to trace transaction flows. Works with any configured
+    log source (Loki, Azure Log Analytics, or both).
     """
+    # Check if at least one log source is configured
+    if not settings.loki_url and not getattr(settings, "azure_log_analytics_workspace_id", None):
+        raise HTTPException(
+            status_code=503,
+            detail="No log integration configured. Please configure at least one: LOKI_URL or AZURE_LOG_ANALYTICS_WORKSPACE_ID"
+        )
+    
     try:
         neo4j_client = Neo4jClient(
             uri=settings.neo4j_uri,
@@ -327,9 +358,9 @@ async def get_resource_correlation_ids(
         try:
             service = TransactionFlowService(
                 neo4j_client=neo4j_client,
-                loki_url=settings.loki_url,
-                prometheus_url=settings.prometheus_url,
-                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None),
+                loki_url=settings.loki_url if settings.loki_url else None,
+                prometheus_url=settings.prometheus_url if settings.prometheus_url else None,
+                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None) or None,
             )
             
             correlation_ids = await service.find_correlation_ids_for_pod(
@@ -338,9 +369,17 @@ async def get_resource_correlation_ids(
                 limit=limit,
             )
             
+            if not correlation_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No correlation IDs found for resource {resource_id} in the specified time range"
+                )
+            
             return correlation_ids
         finally:
             neo4j_client.close()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -366,12 +405,38 @@ async def trace_transaction_flow(
     Trace a transaction through the network using correlation ID.
     
     Returns complete flow visualization showing how the transaction moved through
-    resources, including timing, errors, and log entries. This enables users to:
+    resources, including timing, errors, and log entries. Works with any configured
+    log source (Loki, Azure Log Analytics, or both).
+    
+    This enables users to:
     - See the path a transaction took through the network
     - Identify performance bottlenecks
     - Trace errors to their source
     - Understand service dependencies in action
     """
+    # Check if at least one log source is configured
+    loki_configured = bool(settings.loki_url)
+    azure_configured = bool(getattr(settings, "azure_log_analytics_workspace_id", None))
+    
+    if not loki_configured and not azure_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="No log integration configured. Please configure at least one: LOKI_URL or AZURE_LOG_ANALYTICS_WORKSPACE_ID"
+        )
+    
+    # Validate source parameter against configured integrations
+    if source == "loki" and not loki_configured:
+        raise HTTPException(
+            status_code=400,
+            detail="Loki source requested but LOKI_URL is not configured"
+        )
+    
+    if source == "azure_log_analytics" and not azure_configured:
+        raise HTTPException(
+            status_code=400,
+            detail="Azure Log Analytics source requested but AZURE_LOG_ANALYTICS_WORKSPACE_ID is not configured"
+        )
+    
     try:
         neo4j_client = Neo4jClient(
             uri=settings.neo4j_uri,
@@ -383,9 +448,9 @@ async def trace_transaction_flow(
         try:
             service = TransactionFlowService(
                 neo4j_client=neo4j_client,
-                loki_url=settings.loki_url,
-                prometheus_url=settings.prometheus_url,
-                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None),
+                loki_url=settings.loki_url if loki_configured else None,
+                prometheus_url=settings.prometheus_url if settings.prometheus_url else None,
+                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None) if azure_configured else None,
             )
             
             if enrich:
@@ -456,41 +521,61 @@ async def get_monitoring_health() -> Dict[str, Any]:
     """
     Get health status of monitoring integrations.
     
-    Returns connection status for Prometheus and Loki.
+    Returns connection status for configured monitoring services.
+    Each integration is checked independently - unconfigured services
+    will show as "not_configured".
     """
     health = {
-        "prometheus": {"status": "unknown", "url": None},
-        "loki": {"status": "unknown", "url": None},
+        "prometheus": {"status": "not_configured", "url": None},
+        "loki": {"status": "not_configured", "url": None},
+        "azure_log_analytics": {"status": "not_configured", "workspace_id": None},
     }
     
-    # Check Prometheus
-    try:
-        prometheus_url = "http://prometheus:9090"
-        collector = PrometheusCollector(prometheus_url)
+    # Check Prometheus (only if configured)
+    if settings.prometheus_url:
         try:
-            # Try a simple query to check connectivity
-            await collector.query("up")
-            health["prometheus"] = {"status": "healthy", "url": prometheus_url}
+            collector = PrometheusCollector(settings.prometheus_url)
+            try:
+                # Try a simple query to check connectivity
+                await collector.query("up")
+                health["prometheus"] = {"status": "healthy", "url": settings.prometheus_url}
+            except Exception:
+                health["prometheus"] = {"status": "unhealthy", "url": settings.prometheus_url}
+            finally:
+                await collector.close()
         except Exception:
-            health["prometheus"] = {"status": "unhealthy", "url": prometheus_url}
-        finally:
-            await collector.close()
-    except Exception:
-        pass
+            health["prometheus"] = {"status": "error", "url": settings.prometheus_url}
     
-    # Check Loki
-    try:
-        loki_url = "http://loki:3100"
-        collector = LokiCollector(loki_url)
+    # Check Loki (only if configured)
+    if settings.loki_url:
         try:
-            # Try a simple query to check connectivity
-            await collector.query('{job="test"}', limit=1)
-            health["loki"] = {"status": "healthy", "url": loki_url}
+            collector = LokiCollector(settings.loki_url)
+            try:
+                # Try a simple query to check connectivity
+                await collector.query('{job="test"}', limit=1)
+                health["loki"] = {"status": "healthy", "url": settings.loki_url}
+            except Exception:
+                health["loki"] = {"status": "unhealthy", "url": settings.loki_url}
+            finally:
+                await collector.close()
         except Exception:
-            health["loki"] = {"status": "unhealthy", "url": loki_url}
-        finally:
-            await collector.close()
-    except Exception:
-        pass
+            health["loki"] = {"status": "error", "url": settings.loki_url}
+    
+    # Check Azure Log Analytics (only if configured)
+    azure_workspace_id = getattr(settings, "azure_log_analytics_workspace_id", None)
+    if azure_workspace_id:
+        try:
+            from topdeck.monitoring.collectors.azure_log_analytics import AzureLogAnalyticsCollector
+            collector = AzureLogAnalyticsCollector(azure_workspace_id)
+            try:
+                # Try a simple query to check connectivity
+                await collector.query("print 'test'", timespan="PT1M")
+                health["azure_log_analytics"] = {"status": "healthy", "workspace_id": azure_workspace_id}
+            except Exception:
+                health["azure_log_analytics"] = {"status": "unhealthy", "workspace_id": azure_workspace_id}
+            finally:
+                await collector.close()
+        except Exception:
+            health["azure_log_analytics"] = {"status": "error", "workspace_id": azure_workspace_id}
     
     return health

@@ -83,19 +83,33 @@ The visualization shows:
 
 ### Environment Variables
 
+**Note:** All integrations are optional and independent. Configure only the ones you have available.
+At least one log source (Loki or Azure Log Analytics) is required for transaction tracing.
+
 ```env
-# Loki Configuration
+# Loki Configuration (Optional - for log aggregation)
 LOKI_URL=http://loki:3100
 
-# Azure Log Analytics Configuration
+# Azure Log Analytics (Optional - for Azure-native logs)
 AZURE_LOG_ANALYTICS_WORKSPACE_ID=your-workspace-id
 AZURE_TENANT_ID=your-tenant-id
 AZURE_CLIENT_ID=your-client-id
 AZURE_CLIENT_SECRET=your-client-secret
 
-# Prometheus Configuration (for metrics enrichment)
+# Prometheus Configuration (Optional - for metrics enrichment)
 PROMETHEUS_URL=http://prometheus:9090
 ```
+
+### Integration Independence
+
+Each integration is **completely independent**:
+- If only Loki is configured, transaction tracing will use Loki logs
+- If only Azure Log Analytics is configured, it will use Azure logs
+- If both are configured, the system will query both and merge results
+- If Prometheus is configured, metrics will be added to flows
+- If Prometheus is not configured, flows will still work without metrics
+
+The system gracefully handles missing integrations and provides clear error messages when a feature requires a specific integration that isn't configured.
 
 ### Logging Best Practices
 

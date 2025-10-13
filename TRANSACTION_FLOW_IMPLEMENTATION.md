@@ -199,24 +199,39 @@ Frontend: TransactionFlowGraph visualizes flow
 
 ### Environment Variables
 
+**Important:** All log integrations (Loki, Azure Log Analytics, Prometheus) are **optional and independent**.
+Configure only the ones you have available. At least one log source is required for transaction tracing.
+
 ```env
-# Loki (for log aggregation)
+# Loki (optional - for log aggregation)
 LOKI_URL=http://loki:3100
 
-# Azure Log Analytics (optional)
+# Azure Log Analytics (optional - for Azure-native logs)
 AZURE_LOG_ANALYTICS_WORKSPACE_ID=your-workspace-id
 AZURE_TENANT_ID=your-tenant-id
 AZURE_CLIENT_ID=your-client-id
 AZURE_CLIENT_SECRET=your-client-secret
 
-# Prometheus (for metrics)
+# Prometheus (optional - for metrics enrichment)
 PROMETHEUS_URL=http://prometheus:9090
 
-# Neo4j (for topology)
+# Neo4j (required - for topology data)
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=your-password
 ```
+
+### Integration Independence
+
+Each monitoring integration is **completely independent**:
+
+- **Loki only**: Transaction tracing will use Loki logs
+- **Azure Log Analytics only**: Will use Azure logs
+- **Both log sources**: System queries both and merges results  
+- **With Prometheus**: Adds metrics to flow nodes
+- **Without Prometheus**: Flows work without metrics
+
+The system gracefully handles missing integrations with clear error messages (HTTP 503) indicating which integration needs to be configured.
 
 ### Application Logging
 
