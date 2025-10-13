@@ -231,7 +231,7 @@ def test_risk_analysis_on_pods(client: Neo4jClient, analyzer: RiskAnalyzer):
             print(f"   Risk Level: {assessment.risk_level}")
             print(f"   SPOF: {'Yes ⚠️' if assessment.single_point_of_failure else 'No ✅'}")
             print(f"   Blast Radius: {assessment.blast_radius}")
-            print(f"   Dependencies: {assessment.dependency_count}")
+            print(f"   Dependencies: {assessment.dependencies_count}")
             print(f"   Dependents: {assessment.dependents_count}")
         except Exception as e:
             print(f"   ❌ Error: {e}")

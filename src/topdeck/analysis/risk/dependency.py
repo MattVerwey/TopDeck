@@ -34,19 +34,23 @@ class DependencyAnalyzer:
         with self.neo4j_client.session() as session:
             # Count upstream dependencies (what this depends on)
             upstream_query = """
-            MATCH (r:Resource {id: $id})-[*1..5]->(dep:Resource)
+            MATCH (r {id: $id})-[*1..5]->(dep)
+            WHERE dep.id IS NOT NULL
             RETURN COUNT(DISTINCT dep) as count
             """
             upstream_result = session.run(upstream_query, id=resource_id)
-            dependencies_count = upstream_result.single()["count"] if upstream_result.single() else 0
+            upstream_record = upstream_result.single()
+            dependencies_count = upstream_record["count"] if upstream_record else 0
             
             # Count downstream dependents (what depends on this)
             downstream_query = """
-            MATCH (r:Resource {id: $id})<-[*1..5]-(dependent:Resource)
+            MATCH (r {id: $id})<-[*1..5]-(dependent)
+            WHERE dependent.id IS NOT NULL
             RETURN COUNT(DISTINCT dependent) as count
             """
             downstream_result = session.run(downstream_query, id=resource_id)
-            dependents_count = downstream_result.single()["count"] if downstream_result.single() else 0
+            downstream_record = downstream_result.single()
+            dependents_count = downstream_record["count"] if downstream_record else 0
         
         return dependencies_count, dependents_count
     
@@ -64,7 +68,8 @@ class DependencyAnalyzer:
             List of resource IDs in the critical path
         """
         query = """
-        MATCH path = (r:Resource {id: $id})<-[*1..10]-(dependent:Resource)
+        MATCH path = (r {id: $id})<-[*1..10]-(dependent)
+        WHERE dependent.id IS NOT NULL
         WITH path, length(path) as depth
         ORDER BY depth DESC
         LIMIT 1
@@ -98,31 +103,35 @@ class DependencyAnalyzer:
         """
         if direction == "upstream":
             query = f"""
-            MATCH path = (r:Resource {{id: $id}})-[*1..{max_depth}]->(dep:Resource)
+            MATCH path = (r {{id: $id}})-[*1..{max_depth}]->(dep)
+            WHERE dep.id IS NOT NULL
             WITH path, relationships(path) as rels
             UNWIND rels as rel
             WITH startNode(rel) as source, endNode(rel) as target
+            WHERE source.id IS NOT NULL AND target.id IS NOT NULL
             RETURN DISTINCT 
                 source.id as source_id,
                 source.name as source_name,
-                source.resource_type as source_type,
+                COALESCE(source.resource_type, labels(source)[0]) as source_type,
                 target.id as target_id,
                 target.name as target_name,
-                target.resource_type as target_type
+                COALESCE(target.resource_type, labels(target)[0]) as target_type
             """
         else:  # downstream
             query = f"""
-            MATCH path = (r:Resource {{id: $id}})<-[*1..{max_depth}]-(dep:Resource)
+            MATCH path = (r {{id: $id}})<-[*1..{max_depth}]-(dep)
+            WHERE dep.id IS NOT NULL
             WITH path, relationships(path) as rels
             UNWIND rels as rel
             WITH startNode(rel) as source, endNode(rel) as target
+            WHERE source.id IS NOT NULL AND target.id IS NOT NULL
             RETURN DISTINCT 
                 source.id as source_id,
                 source.name as source_name,
-                source.resource_type as source_type,
+                COALESCE(source.resource_type, labels(source)[0]) as source_type,
                 target.id as target_id,
                 target.name as target_name,
-                target.resource_type as target_type
+                COALESCE(target.resource_type, labels(target)[0]) as target_type
             """
         
         tree: Dict[str, List[Dict]] = {}
@@ -157,14 +166,16 @@ class DependencyAnalyzer:
             True if this is a SPOF
         """
         query = """
-        MATCH (r:Resource {id: $id})
+        MATCH (r {id: $id})
         
         // Check if it has dependents
-        OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent:Resource)
+        OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent)
+        WHERE dependent.id IS NOT NULL
         WITH r, COUNT(dependent) as dependent_count
         
         // Check if it has redundant alternatives
-        OPTIONAL MATCH (r)-[:REDUNDANT_WITH]->(alt:Resource)
+        OPTIONAL MATCH (r)-[:REDUNDANT_WITH]->(alt)
+        WHERE alt.id IS NOT NULL
         WITH r, dependent_count, COUNT(alt) as redundant_count
         
         RETURN dependent_count > 0 AND redundant_count = 0 as is_spof
@@ -195,11 +206,12 @@ class DependencyAnalyzer:
         """
         # Get directly affected (immediate dependents)
         direct_query = """
-        MATCH (r:Resource {id: $id})<-[:DEPENDS_ON]-(dependent:Resource)
+        MATCH (r {id: $id})<-[:DEPENDS_ON]-(dependent)
+        WHERE dependent.id IS NOT NULL
         RETURN DISTINCT
             dependent.id as id,
             dependent.name as name,
-            dependent.resource_type as type,
+            COALESCE(dependent.resource_type, labels(dependent)[0]) as type,
             dependent.cloud_provider as cloud_provider
         """
         
@@ -216,11 +228,12 @@ class DependencyAnalyzer:
         
         # Get indirectly affected (cascade effects)
         indirect_query = f"""
-        MATCH path = (r:Resource {{id: $id}})<-[:DEPENDS_ON*2..{max_depth}]-(dependent:Resource)
+        MATCH path = (r {{id: $id}})<-[:DEPENDS_ON*2..{max_depth}]-(dependent)
+        WHERE dependent.id IS NOT NULL
         RETURN DISTINCT
             dependent.id as id,
             dependent.name as name,
-            dependent.resource_type as type,
+            COALESCE(dependent.resource_type, labels(dependent)[0]) as type,
             dependent.cloud_provider as cloud_provider,
             length(path) as distance
         ORDER BY distance
