@@ -21,6 +21,8 @@ from .resources import (
     discover_data_resources,
     discover_config_resources,
 )
+from ...common.worker_pool import WorkerPool, WorkerPoolConfig
+from ...common.cache import Cache, CacheConfig
 
 
 class AzureDiscoverer:
@@ -41,6 +43,10 @@ class AzureDiscoverer:
         tenant_id: Optional[str] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
+        enable_parallel: bool = True,
+        max_workers: int = 5,
+        enable_cache: bool = False,
+        cache_config: Optional[CacheConfig] = None,
     ):
         """
         Initialize Azure discoverer.
@@ -51,6 +57,10 @@ class AzureDiscoverer:
             tenant_id: Azure tenant ID (for service principal auth)
             client_id: Azure client ID (for service principal auth)
             client_secret: Azure client secret (for service principal auth)
+            enable_parallel: Enable parallel discovery (default: True)
+            max_workers: Maximum concurrent workers for parallel discovery
+            enable_cache: Enable Redis caching (default: False)
+            cache_config: Optional cache configuration
         """
         self.subscription_id = subscription_id
         
@@ -74,6 +84,21 @@ class AzureDiscoverer:
         
         self.mapper = AzureResourceMapper()
         self.devops_discoverer = None  # Initialized when needed
+        
+        # Initialize worker pool for parallel discovery
+        self.enable_parallel = enable_parallel
+        if enable_parallel:
+            worker_config = WorkerPoolConfig(max_workers=max_workers)
+            self._worker_pool = WorkerPool(worker_config)
+        else:
+            self._worker_pool = None
+        
+        # Initialize cache
+        self.enable_cache = enable_cache
+        if enable_cache:
+            self._cache = Cache(cache_config)
+        else:
+            self._cache = None
     
     async def discover_all_resources(
         self,
@@ -357,6 +382,99 @@ class AzureDiscoverer:
         
         return result
     
+    async def discover_specialized_resources_parallel(
+        self,
+        resource_groups: Optional[List[str]] = None,
+    ) -> DiscoveryResult:
+        """
+        Discover specialized resources in parallel for better performance.
+        
+        This method uses a worker pool to discover compute, networking, data,
+        and config resources concurrently instead of sequentially.
+        
+        Args:
+            resource_groups: Optional list of resource groups to scan
+            
+        Returns:
+            DiscoveryResult with discovered resources
+        """
+        result = DiscoveryResult(subscription_id=self.subscription_id)
+        
+        if not self.enable_parallel or not self._worker_pool:
+            # Fall back to sequential discovery
+            print("⚠️  Parallel discovery disabled, using sequential discovery")
+            return await self.discover_all_resources(resource_groups)
+        
+        print(f"🔍 Discovering resources in parallel (max {self._worker_pool.config.max_workers} workers)...")
+        
+        # Define discovery tasks
+        discovery_tasks = [
+            discover_compute_resources,
+            discover_networking_resources,
+            discover_data_resources,
+            discover_config_resources,
+        ]
+        
+        # Prepare arguments for each task
+        task_args = [
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+        ]
+        
+        # Add resource_group filter to kwargs if specified
+        task_kwargs = []
+        for _ in discovery_tasks:
+            if resource_groups and len(resource_groups) == 1:
+                task_kwargs.append({"resource_group": resource_groups[0]})
+            else:
+                task_kwargs.append({})
+        
+        try:
+            # Execute discovery tasks in parallel
+            results_list = await self._worker_pool.execute(
+                discovery_tasks,
+                task_args,
+                task_kwargs,
+            )
+            
+            # Combine results
+            for resources in results_list:
+                for resource in resources:
+                    result.add_resource(resource)
+            
+            print(f"   Discovered {len(result.resources)} resources across all types")
+            
+            # Discover dependencies
+            print("🔗 Analyzing dependencies...")
+            dependencies = await self._discover_dependencies(result.resources)
+            for dep in dependencies:
+                result.add_dependency(dep)
+            print(f"   Found {len(dependencies)} dependencies")
+            
+            # Infer applications
+            print("📱 Inferring applications...")
+            applications = await self._infer_applications(result.resources)
+            for app in applications:
+                result.add_application(app)
+            print(f"   Found {len(applications)} applications")
+            
+            # Log worker pool summary
+            summary = self._worker_pool.get_summary()
+            if summary['failure'] > 0:
+                print(f"   ⚠️  {summary['failure']} discovery tasks failed")
+            
+        except Exception as e:
+            error_msg = f"Parallel discovery error: {e}"
+            result.add_error(error_msg)
+            print(f"❌ {error_msg}")
+        
+        result.complete()
+        print(f"\n✅ {result.summary()}")
+        
+        return result
+    
     async def discover_resource_group(
         self,
         resource_group_name: str,
@@ -371,3 +489,15 @@ class AzureDiscoverer:
             DiscoveryResult with discovered resources
         """
         return await self.discover_all_resources(resource_groups=[resource_group_name])
+    
+    async def connect_cache(self) -> None:
+        """Connect to cache if enabled."""
+        if self.enable_cache and self._cache:
+            await self._cache.connect()
+    
+    async def close(self) -> None:
+        """Close connections and cleanup resources."""
+        if self.devops_discoverer:
+            await self.devops_discoverer.close()
+        if self.enable_cache and self._cache:
+            await self._cache.close()

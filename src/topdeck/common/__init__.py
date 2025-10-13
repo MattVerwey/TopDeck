@@ -19,6 +19,16 @@ from topdeck.common.logging_config import (
     LoggingContext,
     log_operation_metrics,
 )
+from topdeck.common.worker_pool import (
+    WorkerPool,
+    WorkerPoolConfig,
+    parallel_map,
+)
+from topdeck.common.cache import (
+    Cache,
+    CacheConfig,
+    cached,
+)
 
 __all__ = [
     # Resilience
@@ -35,4 +45,12 @@ __all__ = [
     "get_correlation_id",
     "LoggingContext",
     "log_operation_metrics",
+    # Worker Pool
+    "WorkerPool",
+    "WorkerPoolConfig",
+    "parallel_map",
+    # Cache
+    "Cache",
+    "CacheConfig",
+    "cached",
 ]
