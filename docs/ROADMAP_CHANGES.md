@@ -140,56 +140,69 @@ The overall timeline remains **Months 1-10** for v1.0, with no delays:
 
 ## Progress Update (2025-10-13)
 
-Since the roadmap reorganization, significant progress has been made:
+Since the roadmap reorganization, we've made significant technical progress but need to **refocus on core value delivery**.
 
-### ✅ Completed
+### ✅ Completed - Strong Foundation
 - **Phase 1** (100% Complete)
   - Issue #1: Technology Stack Decision ✅
   - Issue #2: Core Data Models ✅
   - Issue #3: Azure Resource Discovery ✅
-    - Foundation, Phase 2 (enhanced discovery), and Phase 3 (production ready) all complete
-    - Azure DevOps API integration complete
-    - Production resilience patterns implemented
   
-- **Phase 4 Foundation** (70% Complete)
-  - AWS resource discovery mapper ✅
-  - GCP resource discovery mapper ✅
+- **Phase 2** (100% Complete)
+  - Azure DevOps integration ✅
+  - GitHub integration ✅
+  - Topology API endpoints ✅
+
+- **Multi-Cloud Foundation** (70% Complete)
+  - AWS resource mapper ✅
+  - GCP resource mapper ✅
   - Multi-cloud abstraction layer ✅
-  - Terraform templates ✅
   - Orchestrator implementation pending
 
-### 🚧 In Progress
-- **Phase 2** (50% Complete)
-  - Azure DevOps integration ✅
-  - GitHub integration (pending)
-  - Topology visualization (pending)
+### 🎯 Critical Focus Now - Core Value Delivery
 
-### 🎯 Next
-- **Phase 3**: Analysis & Intelligence features
-  - Risk analysis engine
-  - Monitoring integration
-  - Enhanced dependency detection
+**Phase 3: Risk Analysis & Intelligence** (30% Complete) ⚠️ **TOP PRIORITY**
 
-## Next Steps
+**What's Missing (And Why It Matters)**:
+- **Risk Analysis Engine** - This is TopDeck's entire value proposition
+  - Without this, we can discover resources but can't answer "What breaks if this changes?"
+  - Users need risk assessment, not just topology mapping
+  - This is what distinguishes TopDeck from simple discovery tools
 
-1. ✅ **Phase 1 Complete** - All foundation work finished
-2. 🚧 **Complete Phase 2** - GitHub integration and visualization pending
-3. 🎯 **Begin Phase 3** - Start risk analysis and intelligence features
-4. 🔜 **Finalize Phase 4** - Complete AWS/GCP orchestrator implementation
-5. 🔜 **Plan Phase 5** - Production readiness and hardening
+**The Problem**: We've built excellent infrastructure (discovery, storage, integrations) but haven't delivered the **analysis features users actually need**. Time to focus.
 
-**Current Focus**: Complete Phase 2 platform integrations and begin Phase 3 analysis features.
+## Next Steps - Refocused
+
+1. ✅ **Phase 1 Complete** - Foundation solid
+2. ✅ **Phase 2 Complete** - Platform integrations working
+3. 🎯 **Phase 3 Priority** - **Implement Risk Analysis Engine (Issue #5)** ⚠️ **CRITICAL**
+4. 🎯 **Phase 3 Priority** - Enhance visualization with risk data (Issue #6)
+5. 🔜 **Phase 4** - Multi-cloud expansion (after Phase 3 delivers value)
+
+**Critical Insight**: We need to **finish Phase 3** before expanding further. The risk analysis engine is TopDeck's core differentiator.
+
+**Current Focus**: Implement risk analysis algorithms - dependency impact, blast radius, risk scoring.
 
 For detailed progress tracking, see [PROGRESS.md](../PROGRESS.md).
 
-## Questions or Feedback?
+## Lessons Learned
 
-If you have questions about these changes:
-- Open a discussion in GitHub Discussions
-- Comment on the relevant issues
-- Contact the project maintainers
+**What Went Well**:
+- Strong technical foundation
+- Clean architecture and data models
+- Good test coverage
+
+**What Needs Adjustment**:
+- **Too much horizontal progress** (discovery for 3 clouds, integrations, monitoring)
+- **Not enough vertical progress** (core value delivery - risk analysis)
+- Need to **focus on one complete use case** before expanding
+
+**Going Forward**:
+- Complete Phase 3 risk analysis before expanding to more clouds
+- Deliver one full user journey end-to-end
+- Focus on value, not just technical capabilities
 
 ---
 
 **Updated**: 2025-10-13  
-**Status**: ✅ Phase 1 Complete, Phase 4 Foundation Complete, Phases 2 & 3 In Progress
+**Status**: 🎯 Refocused on Core Value Delivery (Risk Analysis Engine)

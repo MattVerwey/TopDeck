@@ -2,14 +2,37 @@
 
 TopDeck is an intelligent multi-cloud integration platform designed to provide comprehensive visibility into cloud infrastructure, application deployments, and their interdependencies. It helps organizations understand their application topology, data flows, and assess risks associated with changes across multi-cloud environments.
 
-## 🎯 Vision
+## 🎯 Vision & Purpose
 
-Build a platform that:
-- **Discovers & Maps**: Automatically discovers cloud resources across multiple cloud providers (Azure, AWS, GCP)
-- **Analyzes Dependencies**: Links code repositories to infrastructure to understand deployment relationships
-- **Visualizes Topology**: Creates network flow diagrams showing how applications communicate
-- **Assesses Risk**: Provides impact analysis for changes - "What breaks if this service fails?"
-- **Tracks Data Flow**: Monitors error paths and performance bottlenecks (API delays, SQL deadlocks, etc.)
+**TopDeck is "Air Traffic Control" for your cloud deployments.**
+
+### The Core Problem We Solve
+
+Modern cloud applications are complex webs of services, databases, and infrastructure. When you need to:
+- Deploy an update to a service
+- Take down infrastructure for maintenance  
+- Investigate why something broke
+
+You need to answer: **"What will this affect?"** and **"What depends on this?"**
+
+TopDeck provides that answer by:
+1. **Discovering** your cloud resources and application deployments
+2. **Mapping** the dependencies between services, databases, and infrastructure
+3. **Analyzing** the risk and blast radius of changes
+4. **Visualizing** the complete topology so you can see what's connected
+
+### Real-World Use Case
+
+**Before TopDeck:**
+- "Can I restart this database?" → Hope for the best or spend hours tracing dependencies
+- "What broke after that deployment?" → Manual log diving across multiple services
+- "Is this API endpoint critical?" → Guesswork based on tribal knowledge
+
+**With TopDeck:**
+- See immediately that 5 services depend on that database
+- Visualize the entire dependency chain in one view
+- Get a risk score showing this is a critical component
+- Understand the blast radius before making changes
 
 ## 📚 Documentation Quick Links
 
@@ -215,12 +238,62 @@ TopDeck/
 
 **Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
 
+## 💡 What Can You Do With TopDeck Today?
+
+### Current Capabilities (v0.3)
+
+**1. Discover Azure Resources**
+```bash
+# Scan your Azure subscription
+python -m topdeck.discovery.azure.discoverer --subscription-id <id>
+
+# Results stored in Neo4j graph database
+# 14+ resource types: AKS, App Services, SQL DB, Storage, VNets, etc.
+```
+
+**2. Link Code to Infrastructure**
+```bash
+# Connect Azure DevOps pipelines to resources
+python examples/azure_devops_integration.py
+
+# Track GitHub deployments
+python examples/github_integration.py
+
+# See which repo deployed to which resource
+```
+
+**3. Query Topology**
+```bash
+# Start the API server
+make run
+
+# Query dependencies
+curl http://localhost:8000/api/v1/topology/resources/{id}/dependencies
+
+# Get complete topology graph
+curl http://localhost:8000/api/v1/topology
+```
+
+### What's NOT Available Yet ⚠️
+
+The **most important feature** is still missing:
+
+❌ **Risk Analysis** - "What breaks if I change this?"
+- No risk scoring
+- No blast radius calculation  
+- No impact assessment
+- No critical component identification
+
+**This is what we're building next** - it's the entire point of TopDeck.
+
+---
+
 ## 🚦 Getting Started
 
 ### Prerequisites
 - Python 3.11 or higher
 - Docker & Docker Compose
-- Cloud credentials (Azure, AWS, GCP)
+- Azure credentials (AWS/GCP support planned)
 
 ### Quick Start
 
@@ -285,117 +358,156 @@ pytest tests/unit/ tests/discovery/ tests/analysis/ -v
 - **[Hosting and Testing Guide](docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete testing guide
 - **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure infrastructure setup
 
-## 📊 Current Status
+## 📊 Where We Are Today
 
-### ✅ Completed
+### ✅ What You Can Use Now
 
-#### Phase 1: Foundation
-- **Issue #1**: Technology Stack Decision ([ADR-001](docs/architecture/adr/001-technology-stack.md))
-  - Evaluated Python vs Go through proof-of-concept implementations
-  - Selected Python 3.11+ with FastAPI
-  - Established project structure and development environment
-  - Created initial test suite and API server
+**Phase 1: Foundation** ✅ **COMPLETE**
+- Azure resource discovery (AKS, App Services, SQL DB, Storage, Networking)
+- Neo4j graph database for storing topology
+- REST API backend with FastAPI
+- Basic dependency detection between resources
 
-- **Issue #2**: Core Data Models ([Completion Report](docs/issues/ISSUE-002-COMPLETION.md))
-  - Designed and implemented cloud-agnostic data models
-  - Created Neo4j schema with 6 node types and 13 relationship types
-  - Implemented Python data models (Application, Repository, Deployment, Resource)
-  - Built comprehensive Neo4j client with CRUD operations
-  - Added 500+ lines of tests with full coverage
+**Phase 2: Platform Integrations** ✅ **COMPLETE**
+- Azure DevOps integration (repos, pipelines, deployments)
+- GitHub integration (repos, workflows, deployments)
+- Code-to-infrastructure linking
+- Basic topology API endpoints
 
-- **Issue #3**: Azure Resource Discovery ([Progress Report](docs/issues/ISSUE-003-PROGRESS.md))
-  - **Phase 1**: Foundation Complete
-    - Azure SDK integration with multiple auth methods
-    - Resource mapper supporting 14+ Azure resource types
-    - Basic dependency detection
-    - Neo4j storage integration
-  - **Phase 2 & 3**: Enhanced Discovery & Production Ready ([Summary](PHASE_2_3_SUMMARY.md))
-    - Azure DevOps API integration (repositories, pipelines, deployments)
-    - Specialized resource discovery (compute, networking, data resources)
-    - Production resilience patterns (rate limiting, retry, circuit breaker)
-    - Structured logging with correlation IDs
-    - Comprehensive error handling
+**Multi-Cloud Foundation** ✅ **MAPPERS READY**
+- AWS resource mappers (18+ types: EKS, EC2, RDS, Lambda, etc.)
+- GCP resource mappers (17+ types: GKE, Compute Engine, Cloud SQL, etc.)
+- Unified data model across clouds
+- Ready for orchestrator implementation
 
-#### Phase 4: Multi-Cloud Architecture
-- **AWS & GCP Discovery Modules** ([Phase 4 Summary](docs/PHASE_4_SUMMARY.md))
-  - AWS resource mapper supporting 18+ resource types
-  - GCP resource mapper supporting 17+ resource types
-  - Consistent Neo4j schema across all cloud providers
-  - Tag/label normalization for unified queries
-  - Terraform templates for multi-cloud deployment
-  - 46 passing tests (21 AWS + 25 GCP)
+### 🎯 What's Next: Core Value Delivery
 
-### 🚧 In Progress
-- **Phase 2**: Platform Integrations
-  - GitHub Actions and repository integration (planned)
-  - Basic topology visualization (planned)
-  
-- **Phase 3**: Analysis & Intelligence
-  - Dependency graph builder (framework in place)
-  - Risk analysis engine (planned)
-  
-### 📝 Next Steps
-1. Complete GitHub integration (Issue #10)
-2. Build topology visualization (Issue #6)
-3. Implement risk analysis engine (Issue #5)
-4. Add monitoring integration (Issue #7)
+**Phase 3: Risk Analysis & Intelligence** 🚧 **TOP PRIORITY**
 
-## 📋 Development Roadmap
+This is where TopDeck delivers its core value. Currently missing:
 
-### Phase 1: Foundation (Months 1-2) ✅ COMPLETE
-- [x] **Issue #1**: Technology Stack Decision
-- [x] **Issue #2**: Design core data models for resources and dependencies
-- [x] **Issue #3**: Implement Azure resource discovery
-  - [x] Foundation: Azure SDK integration, resource mapper, Neo4j client
-  - [x] Phase 2: Azure DevOps API integration, specialized resource discovery
-  - [x] Phase 3: Production resilience patterns, structured logging
-- [x] Build foundational graph database schema (Neo4j with 6 node types, 13 relationships)
+1. **Risk Analysis Engine** (Issue #5) - **THE CRITICAL PIECE**
+   - "What depends on this service?" - Dependency impact analysis
+   - "What breaks if this fails?" - Blast radius calculation
+   - "How risky is this change?" - Risk scoring algorithm
+   - "What are my single points of failure?" - Critical component identification
+   
+2. **Interactive Visualization** (Issue #6)
+   - Frontend UI to see the dependency graph
+   - Visual representation of risk scores
+   - Interactive topology exploration
+   
+3. **Monitoring Integration** (Issue #7)
+   - Correlate failures with dependency chains
+   - Track error propagation through services
+   - Performance bottleneck detection
 
-### Phase 2: Platform Integrations (Months 3-4) 🚧 IN PROGRESS
-- [x] Build Azure DevOps pipeline integration
-  - [x] Repository discovery with commit history
-  - [x] Build/deployment tracking
-  - [x] Application inference from repositories
-- [ ] Add GitHub Actions and repository integration (Issue #10)
-- [x] Implement deployment tracking and linking
-- [ ] Create basic topology visualization (Issue #6)
+### 🔜 Future Phases
 
-### Phase 3: Analysis & Intelligence (Months 5-6) 🎯 NEXT
-- [x] Develop dependency graph builder (framework)
-  - [x] Basic dependency detection
-  - [x] Network relationship analysis
-  - [ ] Advanced dependency inference
-- [ ] Implement risk analysis engine (Issue #5)
-- [ ] Build change impact assessment
-- [ ] Integrate performance metrics and monitoring (Issue #7)
-- [ ] Add error correlation and alerting
+**Phase 4: Multi-Cloud Orchestration** (After Phase 3)
+- Complete AWS/GCP discovery orchestrators
+- Multi-cloud topology unification
+- Cross-cloud dependency tracking
 
-### Phase 4: Multi-Cloud Architecture (Months 7-8) ✅ FOUNDATION COMPLETE
-- [x] Architect and implement AWS resource discovery (Issue #8)
-  - [x] AWS resource mapper (18+ resource types)
-  - [x] Consistent Neo4j schema
-  - [x] 21 passing tests
-- [x] Architect and implement GCP resource discovery (Issue #9)
-  - [x] GCP resource mapper (17+ resource types)
-  - [x] Tag/label normalization
-  - [x] 25 passing tests
-- [x] Build unified multi-cloud resource abstraction layer
-  - [x] Cloud-agnostic data models
-  - [x] Consistent Neo4j storage format
-  - [x] Multi-cloud discovery orchestration
-- [x] Create infrastructure deployment automation (Issue #12)
-  - [x] Terraform templates for Azure, AWS, GCP
-  - [x] Separate state backends per cloud
-  - [ ] Full discovery implementation (mappers ready, orchestrators need enhancement)
+**Phase 5: Production Hardening** (After Phase 4)
+- Production deployment guides
+- Advanced caching and performance
+- Security hardening
+- End-to-end testing
 
-### Phase 5: Production Ready (Months 9-10) 🔜 PLANNED
-- [x] Security hardening (credentials management, read-only access)
-- [x] Performance optimization (rate limiting, retry logic, circuit breaker)
-- [x] Comprehensive testing (100+ tests across all modules)
-- [x] Documentation and user guides (comprehensive docs for all modules)
-- [ ] End-to-end integration tests
+## 📋 Development Roadmap (Refocused)
+
+### ✅ Phase 1: Foundation (Complete)
+Build the infrastructure to discover and store cloud resources.
+
+**Deliverables:**
+- [x] Python/FastAPI backend with Neo4j graph database
+- [x] Azure resource discovery (14+ resource types)
+- [x] Cloud-agnostic data models
+- [x] Basic dependency detection
+
+**Status:** ✅ Ready to use for Azure environments
+
+---
+
+### ✅ Phase 2: Platform Integrations (Complete)
+Connect to CI/CD platforms to link code with infrastructure.
+
+**Deliverables:**
+- [x] Azure DevOps integration (repos, pipelines, deployments)
+- [x] GitHub integration (repos, workflows, deployments)
+- [x] Code-to-infrastructure mapping
+- [x] Topology API endpoints
+
+**Status:** ✅ Can track deployments from Azure DevOps and GitHub
+
+---
+
+### 🎯 Phase 3: Core Value Delivery (IN PROGRESS - FOCUS HERE)
+**THIS IS THE CRITICAL PHASE** - Deliver TopDeck's core value proposition.
+
+**Priority 1: Risk Analysis Engine** (Issue #5) ⚠️ **MOST IMPORTANT**
+- [ ] Dependency impact analysis - "What depends on this?"
+- [ ] Blast radius calculation - "What breaks if this fails?"
+- [ ] Risk scoring - "How critical is this component?"
+- [ ] Single point of failure detection
+- [ ] Change impact assessment
+
+**Priority 2: Interactive Visualization** (Issue #6)
+- [ ] React frontend with Cytoscape.js
+- [ ] Interactive dependency graph
+- [ ] Visual risk indicators
+- [ ] Drill-down into component details
+
+**Priority 3: Monitoring Integration** (Issue #7)
+- [x] Prometheus metrics collection (backend ready)
+- [x] Loki log aggregation (backend ready)
+- [ ] Error correlation with topology
+- [ ] Performance bottleneck identification
+
+**Why This Matters:** Without the risk analysis engine, TopDeck can discover and map resources but can't answer the critical questions: "What will break?" and "How risky is this change?" This is the core value users need.
+
+**Status:** 🚧 Framework exists, core algorithms needed
+
+---
+
+### 🔜 Phase 4: Multi-Cloud Expansion (After Phase 3)
+Expand proven features to AWS and GCP.
+
+**Deliverables:**
+- [x] AWS resource mappers (ready)
+- [x] GCP resource mappers (ready)
+- [ ] AWS/GCP discovery orchestrators
+- [ ] Multi-cloud topology unification
+- [ ] Cross-cloud risk analysis
+
+**Status:** 🔜 Mappers ready, waiting for Phase 3 completion
+
+---
+
+### 🔜 Phase 5: Production Ready (After Phase 4)
+Harden for production use.
+
+**Deliverables:**
 - [ ] Production deployment guides
-- [ ] Monitoring and observability setup
+- [ ] Advanced performance optimization
+- [ ] End-to-end integration tests
+- [ ] Security hardening
+
+**Status:** 🔜 Planned after core features complete
+
+---
+
+### 📅 Updated Timeline
+
+**Immediate Focus (Next 4-6 weeks):**
+1. Implement risk analysis engine (Issue #5) - 3 weeks
+2. Build interactive visualization (Issue #6) - 2 weeks  
+3. Complete monitoring integration (Issue #7) - 1 week
+
+**After Core Value Delivery:**
+4. Multi-cloud orchestration (Phase 4) - 3-4 weeks
+5. Production hardening (Phase 5) - 2-3 weeks
 
 ## 🤝 Contributing
 
@@ -424,16 +536,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🌟 Vision Statement
 
-TopDeck aims to be the **"air traffic control"** for multi-cloud environments - providing real-time visibility, predictive insights, and proactive risk management for modern cloud-native applications.
+TopDeck aims to be the **"air traffic control"** for cloud deployments - providing clear visibility into what depends on what, enabling confident decision-making about changes, and preventing cascading failures through proactive risk assessment.
+
+We believe operations teams should **know** rather than **guess** what will be affected by their changes.
 
 ---
 
-**Status**: 🚀 Active Development - Phase 1 Complete, Phase 4 Foundation Complete
+**Current Status**: 🎯 Focused on Core Value Delivery (Phase 3)
 
-**Latest Milestones**:
-- ✅ Phase 1 Complete: Foundation with Azure discovery
-- ✅ Phase 4 Foundation: Multi-cloud support (AWS & GCP) 
-- 🚧 Phase 2 In Progress: Platform integrations
-- 🎯 Next: Complete Phase 2 & 3 features
+**What Works Today**:
+- ✅ Azure resource discovery and dependency mapping
+- ✅ CI/CD integration (Azure DevOps, GitHub)
+- ✅ REST API for topology queries
+
+**Critical Next Step**:
+- 🚧 **Risk Analysis Engine** - The core feature that delivers TopDeck's value
+
+**Why This Matters**: We have great infrastructure for discovering and mapping resources, but the **critical missing piece** is the risk analysis that answers "What breaks if I change this?" - that's what users actually need.
 
 For current development tasks, see [Issues](https://github.com/MattVerwey/TopDeck/issues)
