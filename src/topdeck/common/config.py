@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     )
     loki_url: str = Field(default="http://loki:3100", description="Loki server URL")
     grafana_url: str = Field(default="http://grafana:3000", description="Grafana server URL")
+    azure_log_analytics_workspace_id: str = Field(
+        default="", description="Azure Log Analytics workspace ID"
+    )
 
     # Feature Flags - Multi-cloud support (can run all simultaneously)
     enable_azure_discovery: bool = Field(default=True, description="Enable Azure discovery")

@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector, ResourceMetrics
 from topdeck.monitoring.collectors.loki import LokiCollector, ErrorAnalysis
+from topdeck.monitoring.transaction_flow import TransactionFlowService
+from topdeck.storage.neo4j_client import Neo4jClient
 from topdeck.common.config import settings
 
 
@@ -78,6 +80,45 @@ class FailurePointResponse(BaseModel):
     error_count: int
     error_types: Dict[str, int]
     recent_errors: List[Dict[str, Any]]
+
+
+class FlowNodeResponse(BaseModel):
+    """Response model for transaction flow node."""
+    
+    resource_id: str
+    resource_name: str
+    resource_type: str
+    timestamp: datetime
+    duration_ms: Optional[float] = None
+    status: str
+    log_count: int
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FlowEdgeResponse(BaseModel):
+    """Response model for transaction flow edge."""
+    
+    source_id: str
+    target_id: str
+    protocol: Optional[str] = None
+    duration_ms: Optional[float] = None
+    status_code: Optional[int] = None
+
+
+class TransactionFlowResponse(BaseModel):
+    """Response model for transaction flow visualization."""
+    
+    transaction_id: str
+    start_time: datetime
+    end_time: datetime
+    total_duration_ms: float
+    nodes: List[FlowNodeResponse]
+    edges: List[FlowEdgeResponse]
+    status: str
+    error_count: int
+    warning_count: int
+    source: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 # Create router
@@ -260,6 +301,153 @@ async def find_flow_failure_point(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to find failure point: {str(e)}"
+        )
+
+
+@router.get("/resources/{resource_id}/correlation-ids", response_model=List[str])
+async def get_resource_correlation_ids(
+    resource_id: str,
+    duration_hours: int = Query(1, ge=1, le=24, description="Duration in hours to search"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of correlation IDs"),
+) -> List[str]:
+    """
+    Get correlation/transaction IDs for a specific resource (pod).
+    
+    Returns a list of correlation IDs found in the logs for this resource,
+    which can be used to trace transaction flows.
+    """
+    try:
+        neo4j_client = Neo4jClient(
+            uri=settings.neo4j_uri,
+            username=settings.neo4j_username,
+            password=settings.neo4j_password,
+        )
+        neo4j_client.connect()
+        
+        try:
+            service = TransactionFlowService(
+                neo4j_client=neo4j_client,
+                loki_url=settings.loki_url,
+                prometheus_url=settings.prometheus_url,
+                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None),
+            )
+            
+            correlation_ids = await service.find_correlation_ids_for_pod(
+                pod_resource_id=resource_id,
+                duration=timedelta(hours=duration_hours),
+                limit=limit,
+            )
+            
+            return correlation_ids
+        finally:
+            neo4j_client.close()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get correlation IDs: {str(e)}"
+        )
+
+
+@router.get("/flows/trace/{correlation_id}", response_model=TransactionFlowResponse)
+async def trace_transaction_flow(
+    correlation_id: str,
+    duration_hours: int = Query(1, ge=1, le=24, description="Duration in hours to search"),
+    source: str = Query(
+        "auto",
+        regex="^(auto|loki|azure_log_analytics|all)$",
+        description="Data source to use for tracing"
+    ),
+    enrich: bool = Query(
+        True,
+        description="Enrich with topology and metrics data"
+    ),
+) -> TransactionFlowResponse:
+    """
+    Trace a transaction through the network using correlation ID.
+    
+    Returns complete flow visualization showing how the transaction moved through
+    resources, including timing, errors, and log entries. This enables users to:
+    - See the path a transaction took through the network
+    - Identify performance bottlenecks
+    - Trace errors to their source
+    - Understand service dependencies in action
+    """
+    try:
+        neo4j_client = Neo4jClient(
+            uri=settings.neo4j_uri,
+            username=settings.neo4j_username,
+            password=settings.neo4j_password,
+        )
+        neo4j_client.connect()
+        
+        try:
+            service = TransactionFlowService(
+                neo4j_client=neo4j_client,
+                loki_url=settings.loki_url,
+                prometheus_url=settings.prometheus_url,
+                azure_workspace_id=getattr(settings, "azure_log_analytics_workspace_id", None),
+            )
+            
+            if enrich:
+                flow = await service.get_flow_with_enrichment(
+                    correlation_id=correlation_id,
+                    duration=timedelta(hours=duration_hours),
+                )
+            else:
+                flow = await service.trace_transaction(
+                    correlation_id=correlation_id,
+                    duration=timedelta(hours=duration_hours),
+                    source=source,
+                )
+            
+            if not flow:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No flow found for correlation ID: {correlation_id}"
+                )
+            
+            return TransactionFlowResponse(
+                transaction_id=flow.transaction_id,
+                start_time=flow.start_time,
+                end_time=flow.end_time,
+                total_duration_ms=flow.total_duration_ms,
+                nodes=[
+                    FlowNodeResponse(
+                        resource_id=node.resource_id,
+                        resource_name=node.resource_name,
+                        resource_type=node.resource_type,
+                        timestamp=node.timestamp,
+                        duration_ms=node.duration_ms,
+                        status=node.status,
+                        log_count=len(node.log_entries),
+                        metrics=node.metrics,
+                    )
+                    for node in flow.nodes
+                ],
+                edges=[
+                    FlowEdgeResponse(
+                        source_id=edge.source_id,
+                        target_id=edge.target_id,
+                        protocol=edge.protocol,
+                        duration_ms=edge.duration_ms,
+                        status_code=edge.status_code,
+                    )
+                    for edge in flow.edges
+                ],
+                status=flow.status,
+                error_count=flow.error_count,
+                warning_count=flow.warning_count,
+                source=flow.source,
+                metadata=flow.metadata,
+            )
+        finally:
+            neo4j_client.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to trace transaction: {str(e)}"
         )
 
 
