@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from topdeck import __version__
 from topdeck.common.config import settings
-from topdeck.api.routes import topology, monitoring
+from topdeck.api.routes import topology, monitoring, risk, integrations
 
 # Create FastAPI application
 app = FastAPI(
@@ -29,6 +29,8 @@ app.add_middleware(
 # Include routers
 app.include_router(topology.router)
 app.include_router(monitoring.router)
+app.include_router(risk.router)
+app.include_router(integrations.router)
 
 
 @app.get("/")
