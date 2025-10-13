@@ -11,6 +11,15 @@ Build a platform that:
 - **Assesses Risk**: Provides impact analysis for changes - "What breaks if this service fails?"
 - **Tracks Data Flow**: Monitors error paths and performance bottlenecks (API delays, SQL deadlocks, etc.)
 
+## 📚 Documentation Quick Links
+
+- **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
+- **[Quick Reference](QUICK_REFERENCE.md)** - Quick start guide and common tasks
+- **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
+- **[Roadmap Changes](docs/ROADMAP_CHANGES.md)** - Roadmap evolution and rationale
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to TopDeck
+
 ## 🏗️ Architecture
 
 ### Core Components
@@ -229,48 +238,114 @@ For detailed development information, see [DEVELOPMENT.md](DEVELOPMENT.md).
 ## 📊 Current Status
 
 ### ✅ Completed
-- **Phase 1 - Issue #1**: Technology Stack Decision ([ADR-001](docs/architecture/adr/001-technology-stack.md))
+
+#### Phase 1: Foundation
+- **Issue #1**: Technology Stack Decision ([ADR-001](docs/architecture/adr/001-technology-stack.md))
   - Evaluated Python vs Go through proof-of-concept implementations
   - Selected Python 3.11+ with FastAPI
   - Established project structure and development environment
   - Created initial test suite and API server
 
+- **Issue #2**: Core Data Models ([Completion Report](docs/issues/ISSUE-002-COMPLETION.md))
+  - Designed and implemented cloud-agnostic data models
+  - Created Neo4j schema with 6 node types and 13 relationship types
+  - Implemented Python data models (Application, Repository, Deployment, Resource)
+  - Built comprehensive Neo4j client with CRUD operations
+  - Added 500+ lines of tests with full coverage
+
+- **Issue #3**: Azure Resource Discovery ([Progress Report](docs/issues/ISSUE-003-PROGRESS.md))
+  - **Phase 1**: Foundation Complete
+    - Azure SDK integration with multiple auth methods
+    - Resource mapper supporting 14+ Azure resource types
+    - Basic dependency detection
+    - Neo4j storage integration
+  - **Phase 2 & 3**: Enhanced Discovery & Production Ready ([Summary](PHASE_2_3_SUMMARY.md))
+    - Azure DevOps API integration (repositories, pipelines, deployments)
+    - Specialized resource discovery (compute, networking, data resources)
+    - Production resilience patterns (rate limiting, retry, circuit breaker)
+    - Structured logging with correlation IDs
+    - Comprehensive error handling
+
+#### Phase 4: Multi-Cloud Architecture
+- **AWS & GCP Discovery Modules** ([Phase 4 Summary](docs/PHASE_4_SUMMARY.md))
+  - AWS resource mapper supporting 18+ resource types
+  - GCP resource mapper supporting 17+ resource types
+  - Consistent Neo4j schema across all cloud providers
+  - Tag/label normalization for unified queries
+  - Terraform templates for multi-cloud deployment
+  - 46 passing tests (21 AWS + 25 GCP)
+
 ### 🚧 In Progress
-- **Phase 1 - Issue #2**: Core Data Models (Next)
-- **Phase 1 - Issue #3**: Azure Resource Discovery
+- **Phase 2**: Platform Integrations
+  - GitHub Actions and repository integration (planned)
+  - Basic topology visualization (planned)
+  
+- **Phase 3**: Analysis & Intelligence
+  - Dependency graph builder (framework in place)
+  - Risk analysis engine (planned)
+  
+### 📝 Next Steps
+1. Complete GitHub integration (Issue #10)
+2. Build topology visualization (Issue #6)
+3. Implement risk analysis engine (Issue #5)
+4. Add monitoring integration (Issue #7)
 
 ## 📋 Development Roadmap
 
-### Phase 1: Foundation (Months 1-2)
+### Phase 1: Foundation (Months 1-2) ✅ COMPLETE
 - [x] **Issue #1**: Technology Stack Decision
-- [ ] **Issue #2**: Design core data models for resources and dependencies
-- [ ] **Issue #3**: Implement Azure resource discovery
-- [ ] Build foundational graph database schema
+- [x] **Issue #2**: Design core data models for resources and dependencies
+- [x] **Issue #3**: Implement Azure resource discovery
+  - [x] Foundation: Azure SDK integration, resource mapper, Neo4j client
+  - [x] Phase 2: Azure DevOps API integration, specialized resource discovery
+  - [x] Phase 3: Production resilience patterns, structured logging
+- [x] Build foundational graph database schema (Neo4j with 6 node types, 13 relationships)
 
-### Phase 2: Platform Integrations (Months 3-4)
-- [ ] Build Azure DevOps pipeline integration
-- [ ] Add GitHub Actions and repository integration
-- [ ] Implement deployment tracking and linking
-- [ ] Create basic topology visualization
+### Phase 2: Platform Integrations (Months 3-4) 🚧 IN PROGRESS
+- [x] Build Azure DevOps pipeline integration
+  - [x] Repository discovery with commit history
+  - [x] Build/deployment tracking
+  - [x] Application inference from repositories
+- [ ] Add GitHub Actions and repository integration (Issue #10)
+- [x] Implement deployment tracking and linking
+- [ ] Create basic topology visualization (Issue #6)
 
-### Phase 3: Analysis & Intelligence (Months 5-6)
-- [ ] Develop dependency graph builder
-- [ ] Implement risk analysis engine
+### Phase 3: Analysis & Intelligence (Months 5-6) 🎯 NEXT
+- [x] Develop dependency graph builder (framework)
+  - [x] Basic dependency detection
+  - [x] Network relationship analysis
+  - [ ] Advanced dependency inference
+- [ ] Implement risk analysis engine (Issue #5)
 - [ ] Build change impact assessment
-- [ ] Integrate performance metrics and monitoring
+- [ ] Integrate performance metrics and monitoring (Issue #7)
 - [ ] Add error correlation and alerting
 
-### Phase 4: Multi-Cloud Architecture (Months 7-8)
-- [ ] Architect and implement AWS resource discovery using Terraform (Issue #8)
-- [ ] Architect and implement GCP resource discovery using Terraform (Issue #9)
-- [ ] Build unified multi-cloud resource abstraction layer (Issue #11)
-- [ ] Create infrastructure deployment automation (Issue #12)
+### Phase 4: Multi-Cloud Architecture (Months 7-8) ✅ FOUNDATION COMPLETE
+- [x] Architect and implement AWS resource discovery (Issue #8)
+  - [x] AWS resource mapper (18+ resource types)
+  - [x] Consistent Neo4j schema
+  - [x] 21 passing tests
+- [x] Architect and implement GCP resource discovery (Issue #9)
+  - [x] GCP resource mapper (17+ resource types)
+  - [x] Tag/label normalization
+  - [x] 25 passing tests
+- [x] Build unified multi-cloud resource abstraction layer
+  - [x] Cloud-agnostic data models
+  - [x] Consistent Neo4j storage format
+  - [x] Multi-cloud discovery orchestration
+- [x] Create infrastructure deployment automation (Issue #12)
+  - [x] Terraform templates for Azure, AWS, GCP
+  - [x] Separate state backends per cloud
+  - [ ] Full discovery implementation (mappers ready, orchestrators need enhancement)
 
-### Phase 5: Production Ready (Months 9-10)
-- [ ] Security hardening
-- [ ] Performance optimization
-- [ ] Comprehensive testing
-- [ ] Documentation and user guides
+### Phase 5: Production Ready (Months 9-10) 🔜 PLANNED
+- [x] Security hardening (credentials management, read-only access)
+- [x] Performance optimization (rate limiting, retry logic, circuit breaker)
+- [x] Comprehensive testing (100+ tests across all modules)
+- [x] Documentation and user guides (comprehensive docs for all modules)
+- [ ] End-to-end integration tests
+- [ ] Production deployment guides
+- [ ] Monitoring and observability setup
 
 ## 🤝 Contributing
 
@@ -303,6 +378,12 @@ TopDeck aims to be the **"air traffic control"** for multi-cloud environments - 
 
 ---
 
-**Status**: 🚧 In Initial Planning Phase
+**Status**: 🚀 Active Development - Phase 1 Complete, Phase 4 Foundation Complete
+
+**Latest Milestones**:
+- ✅ Phase 1 Complete: Foundation with Azure discovery
+- ✅ Phase 4 Foundation: Multi-cloud support (AWS & GCP) 
+- 🚧 Phase 2 In Progress: Platform integrations
+- 🎯 Next: Complete Phase 2 & 3 features
 
 For current development tasks, see [Issues](https://github.com/MattVerwey/TopDeck/issues)
