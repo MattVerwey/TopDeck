@@ -5,6 +5,7 @@ Main orchestrator for discovering Azure resources across subscriptions.
 """
 
 import asyncio
+import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -21,6 +22,10 @@ from .resources import (
     discover_data_resources,
     discover_config_resources,
 )
+from ...common.worker_pool import WorkerPool, WorkerPoolConfig
+from ...common.cache import Cache, CacheConfig
+
+logger = logging.getLogger(__name__)
 
 
 class AzureDiscoverer:
@@ -41,6 +46,10 @@ class AzureDiscoverer:
         tenant_id: Optional[str] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
+        enable_parallel: bool = True,
+        max_workers: int = 5,
+        enable_cache: bool = False,
+        cache_config: Optional[CacheConfig] = None,
     ):
         """
         Initialize Azure discoverer.
@@ -51,6 +60,10 @@ class AzureDiscoverer:
             tenant_id: Azure tenant ID (for service principal auth)
             client_id: Azure client ID (for service principal auth)
             client_secret: Azure client secret (for service principal auth)
+            enable_parallel: Enable parallel discovery (default: True)
+            max_workers: Maximum concurrent workers for parallel discovery
+            enable_cache: Enable Redis caching (default: False)
+            cache_config: Optional cache configuration
         """
         self.subscription_id = subscription_id
         
@@ -74,6 +87,21 @@ class AzureDiscoverer:
         
         self.mapper = AzureResourceMapper()
         self.devops_discoverer = None  # Initialized when needed
+        
+        # Initialize worker pool for parallel discovery
+        self.enable_parallel = enable_parallel
+        if enable_parallel:
+            worker_config = WorkerPoolConfig(max_workers=max_workers)
+            self._worker_pool = WorkerPool(worker_config)
+        else:
+            self._worker_pool = None
+        
+        # Initialize cache
+        self.enable_cache = enable_cache
+        if enable_cache:
+            self._cache = Cache(cache_config)
+        else:
+            self._cache = None
     
     async def discover_all_resources(
         self,
@@ -93,7 +121,7 @@ class AzureDiscoverer:
         
         try:
             # Get all resources using Azure SDK
-            print(f"🔍 Discovering resources in subscription {self.subscription_id}...")
+            logger.info(f"Discovering resources in subscription {self.subscription_id}...")
             
             resources_iterator = self.resource_client.resources.list()
             all_resources = []
@@ -107,7 +135,7 @@ class AzureDiscoverer:
                 
                 all_resources.append(resource)
             
-            print(f"   Found {len(all_resources)} resources")
+            logger.info(f"Found {len(all_resources)} resources")
             
             # Map Azure resources to DiscoveredResource
             for resource in all_resources:
@@ -125,35 +153,35 @@ class AzureDiscoverer:
                 except Exception as e:
                     error_msg = f"Failed to map resource {resource.id}: {e}"
                     result.add_error(error_msg)
-                    print(f"   ⚠️  {error_msg}")
+                    logger.warning(error_msg)
             
             # Discover dependencies
-            print("🔗 Analyzing dependencies...")
+            logger.info("Analyzing dependencies...")
             dependencies = await self._discover_dependencies(result.resources)
             for dep in dependencies:
                 result.add_dependency(dep)
             
-            print(f"   Found {len(dependencies)} dependencies")
+            logger.info(f"Found {len(dependencies)} dependencies")
             
             # Infer applications from resources
-            print("📱 Inferring applications from resources...")
+            logger.info("Inferring applications from resources...")
             applications = await self._infer_applications(result.resources)
             for app in applications:
                 result.add_application(app)
             
-            print(f"   Found {len(applications)} applications")
+            logger.info(f"Found {len(applications)} applications")
             
         except AzureError as e:
             error_msg = f"Azure API error: {e}"
             result.add_error(error_msg)
-            print(f"❌ {error_msg}")
+            logger.error(error_msg)
         except Exception as e:
             error_msg = f"Unexpected error: {e}"
             result.add_error(error_msg)
-            print(f"❌ {error_msg}")
+            logger.error(error_msg)
         
         result.complete()
-        print(f"\n✅ {result.summary()}")
+        logger.info(result.summary())
         
         return result
     
@@ -332,28 +360,121 @@ class AzureDiscoverer:
         )
         
         try:
-            print(f"📚 Discovering repositories from Azure DevOps...")
+            logger.info("Discovering repositories from Azure DevOps...")
             repositories = await self.devops_discoverer.discover_repositories()
             for repo in repositories:
                 result.add_repository(repo)
-            print(f"   Found {len(repositories)} repositories")
+            logger.info(f"Found {len(repositories)} repositories")
             
-            print(f"🚀 Discovering deployments from Azure DevOps...")
+            logger.info("Discovering deployments from Azure DevOps...")
             deployments = await self.devops_discoverer.discover_deployments()
             for deployment in deployments:
                 result.add_deployment(deployment)
-            print(f"   Found {len(deployments)} deployments")
+            logger.info(f"Found {len(deployments)} deployments")
             
-            print(f"📱 Discovering applications from Azure DevOps...")
+            logger.info("Discovering applications from Azure DevOps...")
             devops_applications = await self.devops_discoverer.discover_applications()
             for app in devops_applications:
                 result.add_application(app)
-            print(f"   Found {len(devops_applications)} applications from DevOps")
+            logger.info(f"Found {len(devops_applications)} applications from DevOps")
             
         except Exception as e:
             error_msg = f"Failed to discover from Azure DevOps: {e}"
             result.add_error(error_msg)
-            print(f"   ⚠️  {error_msg}")
+            logger.warning(error_msg)
+        
+        return result
+    
+    async def discover_specialized_resources_parallel(
+        self,
+        resource_groups: Optional[List[str]] = None,
+    ) -> DiscoveryResult:
+        """
+        Discover specialized resources in parallel for better performance.
+        
+        This method uses a worker pool to discover compute, networking, data,
+        and config resources concurrently instead of sequentially.
+        
+        Args:
+            resource_groups: Optional list of resource groups to scan
+            
+        Returns:
+            DiscoveryResult with discovered resources
+        """
+        result = DiscoveryResult(subscription_id=self.subscription_id)
+        
+        if not self.enable_parallel or not self._worker_pool:
+            # Fall back to sequential discovery
+            logger.warning("Parallel discovery disabled, using sequential discovery")
+            return await self.discover_all_resources(resource_groups)
+        
+        logger.info(f"Discovering resources in parallel (max {self._worker_pool.config.max_workers} workers)...")
+        
+        # Define discovery tasks
+        discovery_tasks = [
+            discover_compute_resources,
+            discover_networking_resources,
+            discover_data_resources,
+            discover_config_resources,
+        ]
+        
+        # Prepare arguments for each task
+        task_args = [
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+            (self.subscription_id, self.credential),
+        ]
+        
+        # Add resource_group filter to kwargs if specified
+        task_kwargs = []
+        for _ in discovery_tasks:
+            if resource_groups and len(resource_groups) == 1:
+                task_kwargs.append({"resource_group": resource_groups[0]})
+            else:
+                task_kwargs.append({})
+        
+        try:
+            # Execute discovery tasks in parallel
+            results_list = await self._worker_pool.execute(
+                discovery_tasks,
+                task_args,
+                task_kwargs,
+            )
+            
+            # Combine results
+            for resources in results_list:
+                for resource in resources:
+                    result.add_resource(resource)
+            
+            logger.info(f"Discovered {len(result.resources)} resources across all types")
+            
+            # Discover dependencies
+            logger.info("Analyzing dependencies...")
+            dependencies = await self._discover_dependencies(result.resources)
+            for dep in dependencies:
+                result.add_dependency(dep)
+            logger.info(f"Found {len(dependencies)} dependencies")
+            
+            # Infer applications
+            logger.info("Inferring applications...")
+            applications = await self._infer_applications(result.resources)
+            for app in applications:
+                result.add_application(app)
+            logger.info(f"Found {len(applications)} applications")
+            
+            # Log worker pool summary
+            summary = self._worker_pool.get_summary()
+            if summary['failure'] > 0:
+                logger.warning(f"{summary['failure']} discovery tasks failed")
+            
+        except Exception as e:
+            error_msg = f"Parallel discovery error: {e}"
+            result.add_error(error_msg)
+            logger.error(error_msg)
+        
+        result.complete()
+        logger.info(result.summary())
         
         return result
     
@@ -371,3 +492,15 @@ class AzureDiscoverer:
             DiscoveryResult with discovered resources
         """
         return await self.discover_all_resources(resource_groups=[resource_group_name])
+    
+    async def connect_cache(self) -> None:
+        """Connect to cache if enabled."""
+        if self.enable_cache and self._cache:
+            await self._cache.connect()
+    
+    async def close(self) -> None:
+        """Close connections and cleanup resources."""
+        if self.devops_discoverer:
+            await self.devops_discoverer.close()
+        if self.enable_cache and self._cache:
+            await self._cache.close()
