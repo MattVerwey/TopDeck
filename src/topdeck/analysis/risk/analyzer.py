@@ -302,8 +302,8 @@ class RiskAnalyzer:
                     "id": record["id"],
                     "name": record["name"],
                     "resource_type": record["resource_type"] or "unknown",
-                    "cloud_provider": record.get("cloud_provider", "azure"),
-                    "region": record.get("region", "unknown"),
+                    "cloud_provider": record["cloud_provider"] if "cloud_provider" in record and record["cloud_provider"] is not None else "azure",
+                    "region": record["region"] if "region" in record and record["region"] is not None else "unknown",
                 }
         
         return None
