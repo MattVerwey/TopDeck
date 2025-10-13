@@ -102,7 +102,7 @@ async def get_resource_metrics(
     """
     try:
         # In production, use configured Prometheus URL
-        prometheus_url = "http://prometheus:9090"
+        prometheus_url = settings.prometheus_url
         collector = PrometheusCollector(prometheus_url)
         
         try:
