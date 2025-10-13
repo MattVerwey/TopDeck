@@ -1,10 +1,79 @@
 # TopDeck Scripts
 
-Utility scripts for project setup and management.
+Utility scripts for project setup, management, and testing.
 
 ## Available Scripts
 
-### create-github-issues.sh
+### Testing Scripts
+
+#### e2e-test.sh
+
+**End-to-End Testing Script** - Performs a complete test of TopDeck from start to finish.
+
+**What it does**:
+1. Checks prerequisites (Docker, Python, curl)
+2. Starts infrastructure services (Neo4j, Redis, RabbitMQ)
+3. Starts the TopDeck API server
+4. Tests all API endpoints
+5. Runs Azure discovery (if configured)
+6. Verifies data in Neo4j
+7. Runs integration tests
+8. Displays service URLs
+
+**Usage**:
+```bash
+./scripts/e2e-test.sh
+```
+
+**Prerequisites**:
+- Docker and Docker Compose installed
+- Python 3.11+ installed
+- `.env` file configured with Azure credentials
+- Azure test infrastructure deployed (optional, for discovery)
+
+**Output**: Services will remain running. Press Ctrl+C to stop.
+
+#### test_discovery.py
+
+**Azure Discovery Test Script** - Tests Azure resource discovery functionality.
+
+**What it does**:
+1. Loads Azure credentials from `.env`
+2. Initializes Azure discoverer
+3. Discovers resources in test resource group
+4. Displays detailed results
+
+**Usage**:
+```bash
+python scripts/test_discovery.py
+```
+
+**Prerequisites**:
+- `.env` file configured with Azure credentials
+- Azure test infrastructure deployed
+- Virtual environment activated
+
+**Example Output**:
+```
+🔍 TopDeck Azure Resource Discovery Test
+========================================
+
+   Subscription: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   Resource Group: topdeck-test-rg
+
+✅ Resources found: 5
+✅ Dependencies found: 3
+
+📦 DISCOVERED RESOURCES
+   storage_account (1):
+      - topdeck-storage
+   virtual_network (1):
+      - topdeck-vnet
+```
+
+### Project Management Scripts
+
+#### create-github-issues.sh
 
 Creates GitHub issues from the templates in `docs/issues/`.
 
@@ -82,3 +151,31 @@ gh label create "monitoring" --color "bfdadc" --description "Monitoring"
 gh label create "ui" --color "bfdadc" --description "User interface"
 gh label create "architecture" --color "bfdadc" --description "Architecture decisions"
 ```
+
+## Related Documentation
+
+- **[HOSTING_AND_TESTING_GUIDE.md](../docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete guide for hosting and testing TopDeck
+- **[AZURE_TESTING_GUIDE.md](../docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
+- **[DEVELOPMENT.md](../DEVELOPMENT.md)** - Development workflow and setup
+
+## Quick Start for Testing
+
+```bash
+# 1. Set up Azure test infrastructure (first time only)
+cd scripts/azure-testing
+./setup-azure-trial.sh
+./deploy-test-infrastructure.sh
+cd ../..
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your Azure credentials
+
+# 3. Run end-to-end test
+./scripts/e2e-test.sh
+
+# 4. Or test discovery only
+python scripts/test_discovery.py
+```
+
+For detailed instructions, see [HOSTING_AND_TESTING_GUIDE.md](../docs/HOSTING_AND_TESTING_GUIDE.md).
