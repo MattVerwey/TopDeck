@@ -199,20 +199,24 @@ class RiskAnalyzer:
             List of SinglePointOfFailure resources
         """
         query = """
-        MATCH (r:Resource)
-        WHERE EXISTS {
-            MATCH (r)<-[:DEPENDS_ON]-(dependent:Resource)
+        MATCH (r)
+        WHERE r.id IS NOT NULL
+        AND EXISTS {
+            MATCH (r)<-[:DEPENDS_ON]-(dependent)
+            WHERE dependent.id IS NOT NULL
         }
         AND NOT EXISTS {
-            MATCH (r)-[:REDUNDANT_WITH]->(:Resource)
+            MATCH (r)-[:REDUNDANT_WITH]->(alt)
+            WHERE alt.id IS NOT NULL
         }
         WITH r
-        OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent:Resource)
+        OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent)
+        WHERE dependent.id IS NOT NULL
         WITH r, COUNT(DISTINCT dependent) as dependents_count
         WHERE dependents_count > 0
         RETURN r.id as id,
                r.name as name,
-               r.resource_type as resource_type,
+               COALESCE(r.resource_type, labels(r)[0]) as resource_type,
                dependents_count
         ORDER BY dependents_count DESC
         """
@@ -282,10 +286,10 @@ class RiskAnalyzer:
             Dictionary with resource details or None if not found
         """
         query = """
-        MATCH (r:Resource {id: $id})
+        MATCH (r {id: $id})
         RETURN r.id as id,
                r.name as name,
-               r.resource_type as resource_type,
+               COALESCE(r.resource_type, labels(r)[0]) as resource_type,
                r.cloud_provider as cloud_provider,
                r.region as region
         """
@@ -297,9 +301,9 @@ class RiskAnalyzer:
                 return {
                     "id": record["id"],
                     "name": record["name"],
-                    "resource_type": record["resource_type"],
-                    "cloud_provider": record["cloud_provider"],
-                    "region": record["region"],
+                    "resource_type": record["resource_type"] or "unknown",
+                    "cloud_provider": record["cloud_provider"] if "cloud_provider" in record and record["cloud_provider"] is not None else "azure",
+                    "region": record["region"] if "region" in record and record["region"] is not None else "unknown",
                 }
         
         return None
@@ -315,7 +319,8 @@ class RiskAnalyzer:
             True if redundancy exists
         """
         query = """
-        MATCH (r:Resource {id: $id})-[:REDUNDANT_WITH]->(alt:Resource)
+        MATCH (r {id: $id})-[:REDUNDANT_WITH]->(alt)
+        WHERE alt.id IS NOT NULL
         RETURN COUNT(alt) as redundant_count
         """
         
