@@ -6,4 +6,6 @@ This module contains integrations with:
 - GitLab: CI/CD, repositories (future)
 """
 
-__all__ = []
+from .github import GitHubIntegration
+
+__all__ = ["GitHubIntegration"]
