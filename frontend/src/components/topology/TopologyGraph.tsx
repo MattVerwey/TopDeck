@@ -3,10 +3,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Box, Paper, Typography, Chip } from '@mui/material';
+import { Box, Paper, Typography, Chip, Button, Stack } from '@mui/material';
+import { Timeline } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
 import type { TopologyGraph as TopologyGraphType, ViewMode } from '../../types';
 import { useStore } from '../../store/useStore';
+import TransactionFlowDialog from './TransactionFlowDialog';
 
 interface TopologyGraphProps {
   data: TopologyGraphType;
@@ -30,6 +32,7 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { setSelectedResource } = useStore();
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [flowDialogOpen, setFlowDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !data) return;
@@ -211,16 +214,40 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
             opacity: 0.95,
           }}
         >
-          <Typography variant="h6" gutterBottom>
-            {selectedNode.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            {selectedNode.resource_type} • {selectedNode.cloud_provider.toUpperCase()}
-          </Typography>
-          <Typography variant="body2">
-            Region: {selectedNode.region || 'N/A'}
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                {selectedNode.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {selectedNode.resource_type} • {selectedNode.cloud_provider.toUpperCase()}
+              </Typography>
+              <Typography variant="body2">
+                Region: {selectedNode.region || 'N/A'}
+              </Typography>
+            </Box>
+            {selectedNode.resource_type === 'pod' && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Timeline />}
+                onClick={() => setFlowDialogOpen(true)}
+              >
+                Visualize Flow
+              </Button>
+            )}
+          </Stack>
         </Paper>
+      )}
+
+      {/* Transaction Flow Dialog */}
+      {selectedNode && selectedNode.resource_type === 'pod' && (
+        <TransactionFlowDialog
+          open={flowDialogOpen}
+          onClose={() => setFlowDialogOpen(false)}
+          resourceId={selectedNode.id}
+          resourceName={selectedNode.name}
+        />
       )}
     </Box>
   );

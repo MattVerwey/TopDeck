@@ -90,4 +90,37 @@ export interface Integration {
   last_sync?: string;
 }
 
+export interface FlowNode {
+  resource_id: string;
+  resource_name: string;
+  resource_type: string;
+  timestamp: string;
+  duration_ms?: number;
+  status: 'success' | 'error' | 'warning';
+  log_count: number;
+  metrics: Record<string, any>;
+}
+
+export interface FlowEdge {
+  source_id: string;
+  target_id: string;
+  protocol?: string;
+  duration_ms?: number;
+  status_code?: number;
+}
+
+export interface TransactionFlow {
+  transaction_id: string;
+  start_time: string;
+  end_time: string;
+  total_duration_ms: number;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  status: 'success' | 'error' | 'partial';
+  error_count: number;
+  warning_count: number;
+  source: string;
+  metadata: Record<string, any>;
+}
+
 export type ViewMode = 'service' | 'cluster' | 'namespace' | 'network';
