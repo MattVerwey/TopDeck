@@ -142,9 +142,8 @@ async def get_resource_metrics(
         )
 
 
-@router.get("/flows/{flow_id}/bottlenecks", response_model=List[BottleneckResponse])
+@router.get("/flows/bottlenecks", response_model=List[BottleneckResponse])
 async def detect_flow_bottlenecks(
-    flow_id: str,
     flow_path: List[str] = Query(..., description="List of resource IDs in the flow path"),
 ) -> List[BottleneckResponse]:
     """
