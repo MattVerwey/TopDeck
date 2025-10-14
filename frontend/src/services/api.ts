@@ -11,6 +11,7 @@ import type {
   RiskAssessment,
   ChangeImpact,
   Integration,
+  TransactionFlow,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -82,6 +83,38 @@ class ApiClient {
     const { data } = await this.client.get(`/api/v1/monitoring/flows/bottlenecks`, {
       params: { flow_path: flowPath },
     });
+    return data;
+  }
+
+  async getResourceCorrelationIds(
+    resourceId: string,
+    durationHours: number = 1
+  ): Promise<string[]> {
+    const { data } = await this.client.get(
+      `/api/v1/monitoring/resources/${resourceId}/correlation-ids`,
+      {
+        params: { duration_hours: durationHours },
+      }
+    );
+    return data;
+  }
+
+  async traceTransactionFlow(
+    correlationId: string,
+    durationHours: number = 1,
+    source: string = 'auto',
+    enrich: boolean = true
+  ): Promise<TransactionFlow> {
+    const { data } = await this.client.get(
+      `/api/v1/monitoring/flows/trace/${correlationId}`,
+      {
+        params: {
+          duration_hours: durationHours,
+          source,
+          enrich,
+        },
+      }
+    );
     return data;
   }
 
