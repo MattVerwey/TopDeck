@@ -38,10 +38,12 @@ TopDeck provides that answer by:
 
 ### Getting Started
 - **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute test deployment guide
 - **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
 
-### Testing & Deployment
+### Deployment & Readiness
+- **[Deployment Readiness Assessment](DEPLOYMENT_READINESS.md)** - Complete readiness evaluation
 - **[Hosting and Testing Guide](docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete guide for hosting and testing
 - **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
 - **[Scripts Documentation](scripts/README.md)** - Available testing and management scripts
@@ -237,6 +239,23 @@ TopDeck/
 - GitLab API (future)
 
 **Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
+
+## 🚀 Deployment Status
+
+**✅ READY FOR TEST ENVIRONMENT DEPLOYMENT**
+
+TopDeck has reached a significant milestone and is **ready to be deployed to a test environment** with full integration capabilities:
+
+- ✅ **Azure Discovery**: Fully functional (14+ resource types)
+- ✅ **Risk Analysis**: Complete engine with scoring and recommendations
+- ✅ **CI/CD Integration**: GitHub and Azure DevOps working
+- ✅ **Interactive UI**: React dashboard with 5 main views
+- ✅ **API Server**: FastAPI with comprehensive endpoints
+- ✅ **Documentation**: Complete deployment and testing guides
+
+**See [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) for complete assessment** or **[DEPLOY_TO_TEST.md](DEPLOY_TO_TEST.md) for 15-minute deployment guide**.
+
+---
 
 ## 💡 What Can You Do With TopDeck Today?
 
