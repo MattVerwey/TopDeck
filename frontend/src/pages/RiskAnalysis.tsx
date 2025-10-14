@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStore } from '../store/useStore';
+import RiskBreakdown from '../components/risk/RiskBreakdown';
 
 interface RiskMetric {
   name: string;
@@ -39,17 +40,33 @@ export default function RiskAnalysis() {
   }, [topology]);
 
   const loadRiskData = async () => {
-    if (!topology) return;
-
     setLoading(true);
     setError(null);
     try {
+      // Create mock topology if not available
+      if (!topology) {
+        const mockTopology = {
+          nodes: [
+            { id: '1', name: 'API Gateway', resource_type: 'gateway', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
+            { id: '2', name: 'Database Primary', resource_type: 'database', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
+            { id: '3', name: 'Cache Service', resource_type: 'cache', cloud_provider: 'aws' as const, properties: {}, metadata: {} },
+            { id: '4', name: 'Auth Service', resource_type: 'service', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
+            { id: '5', name: 'Storage Account', resource_type: 'storage', cloud_provider: 'gcp' as const, properties: {}, metadata: {} },
+          ],
+          edges: [],
+          metadata: { total_nodes: 5, total_edges: 0 },
+        };
+        useStore.getState().setTopology(mockTopology);
+      }
+
+      const nodeCount = topology?.nodes.length || 5;
+      
       // Simulate risk calculation based on topology
       const riskMetrics: RiskMetric[] = [
         { name: 'Critical', count: 3, color: '#f44336' },
         { name: 'High', count: 12, color: '#ff9800' },
         { name: 'Medium', count: 25, color: '#ff9800' },
-        { name: 'Low', count: topology.nodes.length - 40, color: '#4caf50' },
+        { name: 'Low', count: Math.max(nodeCount - 40, 10), color: '#4caf50' },
       ];
 
       setRiskData(riskMetrics);
@@ -181,7 +198,7 @@ export default function RiskAnalysis() {
       </Paper>
 
       {/* Default Risks Detected */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" gutterBottom fontWeight={600}>
           Default Risks Detected
         </Typography>
@@ -215,6 +232,9 @@ export default function RiskAnalysis() {
           ))}
         </Grid>
       </Paper>
+
+      {/* Risk Breakdown Component */}
+      <RiskBreakdown />
     </Box>
   );
 }

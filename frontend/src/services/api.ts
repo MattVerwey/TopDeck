@@ -71,6 +71,11 @@ class ApiClient {
     return data;
   }
 
+  async getBlastRadius(resourceId: string): Promise<any> {
+    const { data } = await this.client.get(`/api/v1/risk/blast-radius/${resourceId}`);
+    return data;
+  }
+
   // Monitoring API
   async getResourceMetrics(resourceId: string, duration_hours: number = 24) {
     const { data } = await this.client.get(`/api/v1/monitoring/resources/${resourceId}/metrics`, {
