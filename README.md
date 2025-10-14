@@ -43,7 +43,11 @@ TopDeck provides that answer by:
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
 
 ### Deployment & Readiness
+- **[Executive Summary](DEPLOYMENT_STATUS_SUMMARY.md)** - Quick status overview (2 min read)
+- **[Deployment Answer](DEPLOYMENT_ANSWER.md)** - Direct answer to "Is it ready?" (5 min read)
+- **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute deployment guide ⚡
 - **[Deployment Readiness Assessment](DEPLOYMENT_READINESS.md)** - Complete readiness evaluation
+- **[Deployment Decision Flowchart](docs/DEPLOYMENT_DECISION_FLOWCHART.md)** - Decision support tool
 - **[Hosting and Testing Guide](docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete guide for hosting and testing
 - **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
 - **[Scripts Documentation](scripts/README.md)** - Available testing and management scripts
