@@ -25,6 +25,9 @@ class DependencyAnalyzer:
         """
         Get count of upstream and downstream dependencies.
         
+        Searches ALL relationship types (not just DEPENDS_ON) to find
+        genuine dependencies in the infrastructure graph.
+        
         Args:
             resource_id: Resource to analyze
             
@@ -33,26 +36,77 @@ class DependencyAnalyzer:
         """
         with self.neo4j_client.session() as session:
             # Count upstream dependencies (what this depends on)
+            # Include all outgoing relationships that indicate dependency
             upstream_query = """
-            MATCH (r {id: $id})-[*1..5]->(dep)
+            MATCH (r {id: $id})-[rel]->(dep)
             WHERE dep.id IS NOT NULL
-            RETURN COUNT(DISTINCT dep) as count
+            AND type(rel) IN [
+                'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO',
+                'ACCESSES', 'AUTHENTICATES_WITH', 'READS_FROM', 'WRITES_TO'
+            ]
+            WITH DISTINCT dep
+            RETURN COUNT(dep) as count
             """
             upstream_result = session.run(upstream_query, id=resource_id)
             upstream_record = upstream_result.single()
             dependencies_count = upstream_record["count"] if upstream_record else 0
             
             # Count downstream dependents (what depends on this)
+            # Include all incoming relationships that indicate dependency
             downstream_query = """
-            MATCH (r {id: $id})<-[*1..5]-(dependent)
+            MATCH (r {id: $id})<-[rel]-(dependent)
             WHERE dependent.id IS NOT NULL
-            RETURN COUNT(DISTINCT dependent) as count
+            AND type(rel) IN [
+                'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO',
+                'ACCESSES', 'AUTHENTICATES_WITH', 'READS_FROM', 'WRITES_TO'
+            ]
+            WITH DISTINCT dependent
+            RETURN COUNT(dependent) as count
             """
             downstream_result = session.run(downstream_query, id=resource_id)
             downstream_record = downstream_result.single()
             dependents_count = downstream_record["count"] if downstream_record else 0
         
         return dependencies_count, dependents_count
+    
+    def get_all_dependency_types(self, resource_id: str) -> Dict[str, List[Dict]]:
+        """
+        Get detailed breakdown of all dependency types.
+        
+        This provides in-depth analysis of what depends on this resource
+        and how (via which relationship type).
+        
+        Args:
+            resource_id: Resource to analyze
+            
+        Returns:
+            Dictionary mapping relationship type to list of dependencies
+        """
+        query = """
+        MATCH (r {id: $id})<-[rel]-(dependent)
+        WHERE dependent.id IS NOT NULL
+        RETURN type(rel) as relationship_type,
+               dependent.id as dep_id,
+               dependent.name as dep_name,
+               COALESCE(dependent.resource_type, labels(dependent)[0]) as dep_type
+        """
+        
+        dependencies_by_type: Dict[str, List[Dict]] = {}
+        
+        with self.neo4j_client.session() as session:
+            result = session.run(query, id=resource_id)
+            for record in result:
+                rel_type = record["relationship_type"]
+                if rel_type not in dependencies_by_type:
+                    dependencies_by_type[rel_type] = []
+                
+                dependencies_by_type[rel_type].append({
+                    "id": record["dep_id"],
+                    "name": record["dep_name"],
+                    "type": record["dep_type"],
+                })
+        
+        return dependencies_by_type
     
     def find_critical_path(self, resource_id: str) -> List[str]:
         """
