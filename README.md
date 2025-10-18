@@ -42,6 +42,11 @@ TopDeck provides that answer by:
 - **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
 
+### Risk Analysis (NEW!)
+- **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
+- **[Risk Analysis Quick Reference](docs/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
+- **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
+
 ### Deployment & Readiness
 - **[Executive Summary](DEPLOYMENT_STATUS_SUMMARY.md)** - Quick status overview (2 min read)
 - **[Deployment Answer](DEPLOYMENT_ANSWER.md)** - Direct answer to "Is it ready?" (5 min read)
@@ -320,17 +325,45 @@ The web interface provides:
 
 See [FRONTEND_README.md](FRONTEND_README.md) for complete UI documentation.
 
-### What's NOT Available Yet ⚠️
+**5. Analyze Risk - NEW Enhanced Capabilities! 🎯**
+```bash
+# Comprehensive risk analysis (combines all scenarios)
+curl "http://localhost:8000/api/v1/risk/resources/{id}/comprehensive?project_path=/app"
 
-The **most important feature** is still missing:
+# Degraded performance scenario (realistic production issues)
+curl "http://localhost:8000/api/v1/risk/resources/{id}/degraded-performance?current_load=0.8"
 
-❌ **Risk Analysis** - "What breaks if I change this?"
-- No risk scoring
-- No blast radius calculation  
-- No impact assessment
-- No critical component identification
+# Intermittent failure analysis (service blips)
+curl "http://localhost:8000/api/v1/risk/resources/{id}/intermittent-failure?failure_frequency=0.05"
 
-**This is what we're building next** - it's the entire point of TopDeck.
+# Partial outage analysis (multi-zone failures)
+curl "http://localhost:8000/api/v1/risk/resources/{id}/partial-outage?affected_zones=zone-a"
+
+# Standard risk assessment
+curl "http://localhost:8000/api/v1/risk/resources/{id}"
+
+# Find all single points of failure
+curl "http://localhost:8000/api/v1/risk/spof"
+```
+
+**New Risk Analysis Features:**
+- ✅ **Degraded Performance**: Analyzes realistic degradation (slow responses, timeouts, blips)
+- ✅ **Intermittent Failures**: Models occasional errors and service blips
+- ✅ **Partial Outages**: Multi-zone failure scenarios
+- ✅ **Dependency Vulnerabilities**: Scans npm/pip packages for CVEs
+- ✅ **Multiple Outcomes**: Probability-weighted scenarios with user impact
+- ✅ **Enhanced Dependency Search**: All relationship types in graph
+- ✅ **Combined Risk Score**: Weighted average across all scenarios
+
+See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** for complete documentation.
+
+### What's Next 🚀
+
+Areas for future enhancement:
+- **Multi-Cloud Support**: Complete AWS/GCP discovery (Azure is fully implemented)
+- **ML-Based Predictions**: Use historical data for failure prediction
+- **Cost Impact Analysis**: Estimate financial impact of failures
+- **Automated Remediation**: Suggest and apply infrastructure changes
 
 ---
 
