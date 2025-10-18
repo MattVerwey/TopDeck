@@ -2,7 +2,7 @@
 Main risk analysis orchestrator.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -11,11 +11,15 @@ from .models import (
     BlastRadius,
     FailureSimulation,
     SinglePointOfFailure,
+    PartialFailureScenario,
+    DependencyVulnerability,
 )
 from .dependency import DependencyAnalyzer
 from .scoring import RiskScorer
 from .impact import ImpactAnalyzer
 from .simulation import FailureSimulator
+from .partial_failure import PartialFailureAnalyzer
+from .dependency_scanner import DependencyScanner
 
 
 class RiskAnalyzer:
@@ -40,6 +44,8 @@ class RiskAnalyzer:
         self.risk_scorer = RiskScorer()
         self.impact_analyzer = ImpactAnalyzer(self.dependency_analyzer)
         self.failure_simulator = FailureSimulator(self.impact_analyzer)
+        self.partial_failure_analyzer = PartialFailureAnalyzer()
+        self.dependency_scanner = DependencyScanner()
     
     def analyze_resource(self, resource_id: str) -> RiskAssessment:
         """
@@ -331,3 +337,226 @@ class RiskAnalyzer:
                 return record["redundant_count"] > 0
         
         return False
+    
+    def analyze_degraded_performance(
+        self,
+        resource_id: str,
+        current_load: float = 0.7
+    ) -> PartialFailureScenario:
+        """
+        Analyze degraded performance scenario.
+        
+        This provides more realistic failure analysis than complete outage.
+        Most production issues are degradation, not total failure.
+        
+        Args:
+            resource_id: Resource to analyze
+            current_load: Current load percentage (0-1)
+            
+        Returns:
+            PartialFailureScenario with degraded performance analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        return self.partial_failure_analyzer.analyze_degraded_performance(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            current_load=current_load,
+        )
+    
+    def analyze_intermittent_failure(
+        self,
+        resource_id: str,
+        failure_frequency: float = 0.05
+    ) -> PartialFailureScenario:
+        """
+        Analyze intermittent failure scenario (service blips).
+        
+        Args:
+            resource_id: Resource to analyze
+            failure_frequency: Percentage of requests failing (0-1)
+            
+        Returns:
+            PartialFailureScenario with intermittent failure analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        return self.partial_failure_analyzer.analyze_intermittent_failure(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            failure_frequency=failure_frequency,
+        )
+    
+    def analyze_partial_outage(
+        self,
+        resource_id: str,
+        affected_zones: List[str] = None
+    ) -> PartialFailureScenario:
+        """
+        Analyze partial outage scenario.
+        
+        Args:
+            resource_id: Resource to analyze
+            affected_zones: List of affected availability zones
+            
+        Returns:
+            PartialFailureScenario with partial outage analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        return self.partial_failure_analyzer.analyze_partial_outage(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            affected_zones=affected_zones,
+        )
+    
+    def scan_dependency_vulnerabilities(
+        self,
+        project_path: str,
+        resource_id: str = "unknown"
+    ) -> List[DependencyVulnerability]:
+        """
+        Scan project dependencies for known vulnerabilities.
+        
+        Checks package dependencies (npm, pip, maven, etc.) for security issues.
+        
+        Args:
+            project_path: Path to project root directory
+            resource_id: ID of resource using these dependencies
+            
+        Returns:
+            List of vulnerabilities found
+        """
+        return self.dependency_scanner.scan_all_dependencies(
+            project_path=project_path,
+            resource_id=resource_id,
+        )
+    
+    def get_comprehensive_risk_analysis(
+        self,
+        resource_id: str,
+        project_path: Optional[str] = None,
+        current_load: float = 0.7
+    ) -> Dict[str, Any]:
+        """
+        Get comprehensive risk analysis including all failure scenarios.
+        
+        This is the most in-depth analysis, covering:
+        - Complete outage scenario
+        - Degraded performance scenario
+        - Intermittent failure scenario
+        - Dependency vulnerabilities (if project_path provided)
+        
+        Args:
+            resource_id: Resource to analyze
+            project_path: Optional path to project for dependency scanning
+            current_load: Current load factor (0-1)
+            
+        Returns:
+            Dictionary with complete risk analysis
+            
+        Raises:
+            ValueError: If resource not found
+        """
+        # Standard risk assessment
+        risk_assessment = self.analyze_resource(resource_id)
+        
+        # Partial failure scenarios
+        degraded_scenario = self.analyze_degraded_performance(
+            resource_id, current_load
+        )
+        intermittent_scenario = self.analyze_intermittent_failure(
+            resource_id, failure_frequency=0.05
+        )
+        
+        # Dependency vulnerabilities
+        vulnerabilities = []
+        vuln_risk_score = 0.0
+        if project_path:
+            vulnerabilities = self.scan_dependency_vulnerabilities(
+                project_path, resource_id
+            )
+            vuln_risk_score = self.dependency_scanner.get_vulnerability_risk_score(
+                vulnerabilities
+            )
+        
+        # Combined risk score (weighted average)
+        combined_risk = (
+            risk_assessment.risk_score * 0.5 +  # Infrastructure risk
+            vuln_risk_score * 0.3 +  # Dependency vulnerabilities
+            self._scenario_to_risk_score(degraded_scenario) * 0.2  # Degradation risk
+        )
+        
+        return {
+            "resource_id": resource_id,
+            "combined_risk_score": combined_risk,
+            "standard_assessment": risk_assessment,
+            "degraded_performance_scenario": degraded_scenario,
+            "intermittent_failure_scenario": intermittent_scenario,
+            "dependency_vulnerabilities": vulnerabilities,
+            "vulnerability_risk_score": vuln_risk_score,
+            "all_recommendations": self._combine_recommendations(
+                risk_assessment,
+                degraded_scenario,
+                intermittent_scenario,
+                vulnerabilities,
+            ),
+        }
+    
+    def _scenario_to_risk_score(self, scenario: PartialFailureScenario) -> float:
+        """Convert partial failure scenario to risk score."""
+        impact_scores = {
+            "minimal": 10,
+            "low": 25,
+            "medium": 50,
+            "high": 75,
+            "severe": 95,
+        }
+        return float(impact_scores.get(scenario.overall_impact.value, 50))
+    
+    def _combine_recommendations(
+        self,
+        assessment: RiskAssessment,
+        degraded: PartialFailureScenario,
+        intermittent: PartialFailureScenario,
+        vulnerabilities: List[DependencyVulnerability],
+    ) -> List[str]:
+        """Combine and deduplicate recommendations."""
+        all_recommendations = set()
+        
+        # Add from standard assessment
+        all_recommendations.update(assessment.recommendations)
+        
+        # Add from degraded scenario
+        all_recommendations.update(degraded.mitigation_strategies[:3])
+        all_recommendations.update(degraded.monitoring_recommendations[:2])
+        
+        # Add from intermittent scenario
+        all_recommendations.update(intermittent.mitigation_strategies[:3])
+        
+        # Add vulnerability recommendations
+        if vulnerabilities:
+            vuln_recs = self.dependency_scanner.generate_vulnerability_recommendations(
+                vulnerabilities
+            )
+            all_recommendations.update(vuln_recs[:3])
+        
+        return sorted(list(all_recommendations))
