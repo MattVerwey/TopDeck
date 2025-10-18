@@ -59,7 +59,7 @@ curl "http://localhost:8000/api/v1/risk/resources/web-app/comprehensive?project_
 ### Pre-Deployment Check
 ```bash
 RISK=$(curl -s "http://localhost:8000/api/v1/risk/resources/$ID/comprehensive" | jq -r '.combined_risk_score')
-if (( $(echo "$RISK > 75" | bc -l) )); then
+if [ $(echo "$RISK 75" | awk '{print ($1 > $2)}') -eq 1 ]; then
     echo "❌ Risk too high: $RISK"
     exit 1
 fi

@@ -203,7 +203,9 @@ curl "http://localhost:8000/api/v1/risk/resources/{resource_id}/comprehensive?pr
 Calculates aggregate risk from all vulnerabilities:
 
 ```
-risk_score = Σ(severity_score) + exploit_bonus
+risk_score = sum of all (severity_score) + exploit_bonus
+
+Where:
 - Critical: 25 points
 - High: 15 points
 - Medium: 8 points
@@ -349,15 +351,15 @@ RESPONSE=$(curl -s "http://topdeck:8000/api/v1/risk/resources/$RESOURCE_ID/compr
 COMBINED_RISK=$(echo $RESPONSE | jq -r '.combined_risk_score')
 VULN_RISK=$(echo $RESPONSE | jq -r '.vulnerability_risk_score')
 
-# Check thresholds
-if (( $(echo "$COMBINED_RISK > 75" | bc -l) )); then
+# Check thresholds using awk for portability
+if [ $(echo "$COMBINED_RISK 75" | awk '{print ($1 > $2)}') -eq 1 ]; then
     echo "❌ Combined risk score too high: $COMBINED_RISK"
     echo "Recommendations:"
     echo $RESPONSE | jq -r '.all_recommendations[]'
     exit 1
 fi
 
-if (( $(echo "$VULN_RISK > 20" | bc -l) )); then
+if [ $(echo "$VULN_RISK 20" | awk '{print ($1 > $2)}') -eq 1 ]; then
     echo "❌ Critical vulnerabilities found. Risk score: $VULN_RISK"
     echo "Vulnerabilities:"
     echo $RESPONSE | jq -r '.dependency_vulnerabilities[] | "\(.package_name): \(.vulnerability_id) (\(.severity))"'

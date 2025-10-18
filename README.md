@@ -327,20 +327,22 @@ See [FRONTEND_README.md](FRONTEND_README.md) for complete UI documentation.
 
 **5. Analyze Risk - NEW Enhanced Capabilities! 🎯**
 ```bash
+# Note: Replace {resource-id} with actual resource ID from your Neo4j database
+
 # Comprehensive risk analysis (combines all scenarios)
-curl "http://localhost:8000/api/v1/risk/resources/{id}/comprehensive?project_path=/app"
+curl "http://localhost:8000/api/v1/risk/resources/{resource-id}/comprehensive?project_path=/app"
 
 # Degraded performance scenario (realistic production issues)
-curl "http://localhost:8000/api/v1/risk/resources/{id}/degraded-performance?current_load=0.8"
+curl "http://localhost:8000/api/v1/risk/resources/{resource-id}/degraded-performance?current_load=0.8"
 
 # Intermittent failure analysis (service blips)
-curl "http://localhost:8000/api/v1/risk/resources/{id}/intermittent-failure?failure_frequency=0.05"
+curl "http://localhost:8000/api/v1/risk/resources/{resource-id}/intermittent-failure?failure_frequency=0.05"
 
 # Partial outage analysis (multi-zone failures)
-curl "http://localhost:8000/api/v1/risk/resources/{id}/partial-outage?affected_zones=zone-a"
+curl "http://localhost:8000/api/v1/risk/resources/{resource-id}/partial-outage?affected_zones=zone-a"
 
 # Standard risk assessment
-curl "http://localhost:8000/api/v1/risk/resources/{id}"
+curl "http://localhost:8000/api/v1/risk/resources/{resource-id}"
 
 # Find all single points of failure
 curl "http://localhost:8000/api/v1/risk/spof"
