@@ -89,7 +89,7 @@ export default function ResourceQuery() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
+    } catch {
       const errorMessage: QueryMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
