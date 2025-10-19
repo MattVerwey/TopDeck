@@ -13,11 +13,18 @@ from .models import (
     SinglePointOfFailure,
     RiskLevel,
     ImpactLevel,
+    FailureType,
+    OutcomeType,
+    FailureOutcome,
+    PartialFailureScenario,
+    DependencyVulnerability,
 )
 from .scoring import RiskScorer
 from .dependency import DependencyAnalyzer
 from .impact import ImpactAnalyzer
 from .simulation import FailureSimulator
+from .partial_failure import PartialFailureAnalyzer
+from .dependency_scanner import DependencyScanner
 
 __all__ = [
     "RiskAnalyzer",
@@ -27,8 +34,15 @@ __all__ = [
     "SinglePointOfFailure",
     "RiskLevel",
     "ImpactLevel",
+    "FailureType",
+    "OutcomeType",
+    "FailureOutcome",
+    "PartialFailureScenario",
+    "DependencyVulnerability",
     "RiskScorer",
     "DependencyAnalyzer",
     "ImpactAnalyzer",
     "FailureSimulator",
+    "PartialFailureAnalyzer",
+    "DependencyScanner",
 ]

@@ -27,6 +27,26 @@ class ImpactLevel(str, Enum):
     SEVERE = "severe"
 
 
+class FailureType(str, Enum):
+    """Type of failure scenario."""
+    
+    COMPLETE_OUTAGE = "complete_outage"
+    DEGRADED_PERFORMANCE = "degraded_performance"
+    INTERMITTENT_FAILURE = "intermittent_failure"
+    PARTIAL_OUTAGE = "partial_outage"
+
+
+class OutcomeType(str, Enum):
+    """Type of service outcome impact."""
+    
+    DOWNTIME = "downtime"  # Complete service unavailability
+    DEGRADED = "degraded"  # Reduced performance/capacity
+    BLIP = "blip"  # Brief intermittent issues
+    TIMEOUT = "timeout"  # Increased latency/timeouts
+    ERROR_RATE = "error_rate"  # Increased error responses
+    PARTIAL_OUTAGE = "partial_outage"  # Some instances/regions down
+
+
 @dataclass
 class RiskAssessment:
     """
@@ -143,3 +163,75 @@ class SinglePointOfFailure:
     blast_radius: int
     risk_score: float
     recommendations: List[str] = field(default_factory=list)
+
+
+@dataclass
+class FailureOutcome:
+    """
+    Detailed outcome analysis for a specific failure type.
+    
+    Attributes:
+        outcome_type: Type of outcome (downtime, degraded, blip, etc.)
+        probability: Likelihood of this outcome (0-1)
+        duration_seconds: Expected duration of impact
+        affected_percentage: Percentage of service affected (0-100)
+        user_impact_description: Human-readable impact description
+        technical_details: Technical details of the impact
+    """
+    
+    outcome_type: OutcomeType
+    probability: float
+    duration_seconds: int
+    affected_percentage: float
+    user_impact_description: str
+    technical_details: str = ""
+
+
+@dataclass
+class PartialFailureScenario:
+    """
+    Analysis of partial/degraded failure scenarios.
+    
+    Attributes:
+        resource_id: ID of the resource
+        resource_name: Name of the resource
+        failure_type: Type of failure being analyzed
+        outcomes: List of possible outcomes
+        overall_impact: Overall impact level
+        mitigation_strategies: Strategies to prevent/reduce impact
+        monitoring_recommendations: What to monitor
+    """
+    
+    resource_id: str
+    resource_name: str
+    failure_type: FailureType
+    outcomes: List[FailureOutcome] = field(default_factory=list)
+    overall_impact: ImpactLevel = ImpactLevel.MEDIUM
+    mitigation_strategies: List[str] = field(default_factory=list)
+    monitoring_recommendations: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DependencyVulnerability:
+    """
+    Vulnerability found in a package dependency.
+    
+    Attributes:
+        package_name: Name of the vulnerable package
+        current_version: Currently installed version
+        vulnerability_id: CVE or vulnerability identifier
+        severity: Severity level (low, medium, high, critical)
+        description: Vulnerability description
+        fixed_version: Version that fixes the vulnerability
+        exploit_available: Whether a public exploit exists
+        affected_resources: Resources using this dependency
+    """
+    
+    package_name: str
+    current_version: str
+    vulnerability_id: str
+    severity: str
+    description: str
+    fixed_version: Optional[str] = None
+    exploit_available: bool = False
+    affected_resources: List[str] = field(default_factory=list)

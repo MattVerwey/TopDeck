@@ -17,6 +17,9 @@ from topdeck.analysis.risk import (
     SinglePointOfFailure,
     RiskLevel,
     ImpactLevel,
+    PartialFailureScenario,
+    FailureOutcome,
+    DependencyVulnerability,
 )
 from topdeck.storage.neo4j_client import Neo4jClient
 from topdeck.common.config import settings
@@ -80,6 +83,55 @@ class SinglePointOfFailureResponse(BaseModel):
     blast_radius: int
     risk_score: float
     recommendations: List[str]
+
+
+class FailureOutcomeResponse(BaseModel):
+    """Response model for failure outcome."""
+    
+    outcome_type: str
+    probability: float
+    duration_seconds: int
+    affected_percentage: float
+    user_impact_description: str
+    technical_details: str
+
+
+class PartialFailureScenarioResponse(BaseModel):
+    """Response model for partial failure scenario."""
+    
+    resource_id: str
+    resource_name: str
+    failure_type: str
+    outcomes: List[FailureOutcomeResponse]
+    overall_impact: str
+    mitigation_strategies: List[str]
+    monitoring_recommendations: List[str]
+
+
+class DependencyVulnerabilityResponse(BaseModel):
+    """Response model for dependency vulnerability."""
+    
+    package_name: str
+    current_version: str
+    vulnerability_id: str
+    severity: str
+    description: str
+    fixed_version: Optional[str] = None
+    exploit_available: bool = False
+    affected_resources: List[str]
+
+
+class ComprehensiveRiskAnalysisResponse(BaseModel):
+    """Response model for comprehensive risk analysis."""
+    
+    resource_id: str
+    combined_risk_score: float
+    standard_assessment: RiskAssessmentResponse
+    degraded_performance_scenario: PartialFailureScenarioResponse
+    intermittent_failure_scenario: PartialFailureScenarioResponse
+    dependency_vulnerabilities: List[DependencyVulnerabilityResponse]
+    vulnerability_risk_score: float
+    all_recommendations: List[str]
 
 
 # Create router
@@ -269,4 +321,269 @@ async def get_change_risk_score(resource_id: str) -> dict:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get risk score: {str(e)}"
+        )
+
+
+@router.get("/resources/{resource_id}/degraded-performance", response_model=PartialFailureScenarioResponse)
+async def analyze_degraded_performance(
+    resource_id: str,
+    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)")
+) -> PartialFailureScenarioResponse:
+    """
+    Analyze degraded performance scenario for a resource.
+    
+    This provides realistic analysis of what happens when a resource is under
+    stress but not completely failed. More common in production than total outages.
+    
+    Args:
+        resource_id: Resource to analyze
+        current_load: Current load percentage (0-1, default 0.7)
+        
+    Returns:
+        Partial failure scenario with multiple possible outcomes
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        scenario = analyzer.analyze_degraded_performance(resource_id, current_load)
+        
+        return PartialFailureScenarioResponse(
+            resource_id=scenario.resource_id,
+            resource_name=scenario.resource_name,
+            failure_type=scenario.failure_type.value,
+            outcomes=[
+                FailureOutcomeResponse(
+                    outcome_type=o.outcome_type.value,
+                    probability=o.probability,
+                    duration_seconds=o.duration_seconds,
+                    affected_percentage=o.affected_percentage,
+                    user_impact_description=o.user_impact_description,
+                    technical_details=o.technical_details,
+                )
+                for o in scenario.outcomes
+            ],
+            overall_impact=scenario.overall_impact.value,
+            mitigation_strategies=scenario.mitigation_strategies,
+            monitoring_recommendations=scenario.monitoring_recommendations,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to analyze degraded performance: {str(e)}"
+        )
+
+
+@router.get("/resources/{resource_id}/intermittent-failure", response_model=PartialFailureScenarioResponse)
+async def analyze_intermittent_failure(
+    resource_id: str,
+    failure_frequency: float = Query(0.05, ge=0.0, le=1.0, description="Percentage of requests that fail (0-1)")
+) -> PartialFailureScenarioResponse:
+    """
+    Analyze intermittent failure scenario (service blips).
+    
+    Analyzes what happens when a service has occasional errors rather than
+    complete failure. Common in distributed systems.
+    
+    Args:
+        resource_id: Resource to analyze
+        failure_frequency: Percentage of requests that fail (0-1, default 0.05)
+        
+    Returns:
+        Partial failure scenario with blip/error rate outcomes
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        scenario = analyzer.analyze_intermittent_failure(resource_id, failure_frequency)
+        
+        return PartialFailureScenarioResponse(
+            resource_id=scenario.resource_id,
+            resource_name=scenario.resource_name,
+            failure_type=scenario.failure_type.value,
+            outcomes=[
+                FailureOutcomeResponse(
+                    outcome_type=o.outcome_type.value,
+                    probability=o.probability,
+                    duration_seconds=o.duration_seconds,
+                    affected_percentage=o.affected_percentage,
+                    user_impact_description=o.user_impact_description,
+                    technical_details=o.technical_details,
+                )
+                for o in scenario.outcomes
+            ],
+            overall_impact=scenario.overall_impact.value,
+            mitigation_strategies=scenario.mitigation_strategies,
+            monitoring_recommendations=scenario.monitoring_recommendations,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to analyze intermittent failure: {str(e)}"
+        )
+
+
+@router.get("/resources/{resource_id}/partial-outage", response_model=PartialFailureScenarioResponse)
+async def analyze_partial_outage(
+    resource_id: str,
+    affected_zones: Optional[str] = Query(None, description="Comma-separated list of affected zones")
+) -> PartialFailureScenarioResponse:
+    """
+    Analyze partial outage scenario (some instances/zones down).
+    
+    Analyzes impact when only some availability zones or instances fail,
+    rather than complete service outage.
+    
+    Args:
+        resource_id: Resource to analyze
+        affected_zones: Comma-separated list of affected zones (e.g., "zone-a,zone-b")
+        
+    Returns:
+        Partial failure scenario with zone-specific outcomes
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        zones_list = affected_zones.split(',') if affected_zones else None
+        scenario = analyzer.analyze_partial_outage(resource_id, zones_list)
+        
+        return PartialFailureScenarioResponse(
+            resource_id=scenario.resource_id,
+            resource_name=scenario.resource_name,
+            failure_type=scenario.failure_type.value,
+            outcomes=[
+                FailureOutcomeResponse(
+                    outcome_type=o.outcome_type.value,
+                    probability=o.probability,
+                    duration_seconds=o.duration_seconds,
+                    affected_percentage=o.affected_percentage,
+                    user_impact_description=o.user_impact_description,
+                    technical_details=o.technical_details,
+                )
+                for o in scenario.outcomes
+            ],
+            overall_impact=scenario.overall_impact.value,
+            mitigation_strategies=scenario.mitigation_strategies,
+            monitoring_recommendations=scenario.monitoring_recommendations,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to analyze partial outage: {str(e)}"
+        )
+
+
+@router.get("/resources/{resource_id}/comprehensive", response_model=ComprehensiveRiskAnalysisResponse)
+async def get_comprehensive_risk_analysis(
+    resource_id: str,
+    project_path: Optional[str] = Query(None, description="Path to project for dependency scanning"),
+    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)")
+) -> ComprehensiveRiskAnalysisResponse:
+    """
+    Get comprehensive risk analysis including all failure scenarios.
+    
+    This is the most in-depth analysis available, covering:
+    - Standard risk assessment (SPOF, blast radius, etc.)
+    - Degraded performance scenario
+    - Intermittent failure scenario
+    - Dependency vulnerabilities (if project_path provided)
+    
+    Args:
+        resource_id: Resource to analyze
+        project_path: Optional path to project directory for dependency scanning
+        current_load: Current load factor (0-1)
+        
+    Returns:
+        Comprehensive risk analysis with all scenarios and combined risk score
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        analysis = analyzer.get_comprehensive_risk_analysis(
+            resource_id,
+            project_path,
+            current_load
+        )
+        
+        return ComprehensiveRiskAnalysisResponse(
+            resource_id=analysis["resource_id"],
+            combined_risk_score=analysis["combined_risk_score"],
+            standard_assessment=RiskAssessmentResponse(
+                resource_id=analysis["standard_assessment"].resource_id,
+                resource_name=analysis["standard_assessment"].resource_name,
+                resource_type=analysis["standard_assessment"].resource_type,
+                risk_score=analysis["standard_assessment"].risk_score,
+                risk_level=analysis["standard_assessment"].risk_level.value,
+                criticality_score=analysis["standard_assessment"].criticality_score,
+                dependencies_count=analysis["standard_assessment"].dependencies_count,
+                dependents_count=analysis["standard_assessment"].dependents_count,
+                blast_radius=analysis["standard_assessment"].blast_radius,
+                single_point_of_failure=analysis["standard_assessment"].single_point_of_failure,
+                deployment_failure_rate=analysis["standard_assessment"].deployment_failure_rate,
+                time_since_last_change=analysis["standard_assessment"].time_since_last_change,
+                recommendations=analysis["standard_assessment"].recommendations,
+                factors=analysis["standard_assessment"].factors,
+                assessed_at=analysis["standard_assessment"].assessed_at.isoformat(),
+            ),
+            degraded_performance_scenario=PartialFailureScenarioResponse(
+                resource_id=analysis["degraded_performance_scenario"].resource_id,
+                resource_name=analysis["degraded_performance_scenario"].resource_name,
+                failure_type=analysis["degraded_performance_scenario"].failure_type.value,
+                outcomes=[
+                    FailureOutcomeResponse(
+                        outcome_type=o.outcome_type.value,
+                        probability=o.probability,
+                        duration_seconds=o.duration_seconds,
+                        affected_percentage=o.affected_percentage,
+                        user_impact_description=o.user_impact_description,
+                        technical_details=o.technical_details,
+                    )
+                    for o in analysis["degraded_performance_scenario"].outcomes
+                ],
+                overall_impact=analysis["degraded_performance_scenario"].overall_impact.value,
+                mitigation_strategies=analysis["degraded_performance_scenario"].mitigation_strategies,
+                monitoring_recommendations=analysis["degraded_performance_scenario"].monitoring_recommendations,
+            ),
+            intermittent_failure_scenario=PartialFailureScenarioResponse(
+                resource_id=analysis["intermittent_failure_scenario"].resource_id,
+                resource_name=analysis["intermittent_failure_scenario"].resource_name,
+                failure_type=analysis["intermittent_failure_scenario"].failure_type.value,
+                outcomes=[
+                    FailureOutcomeResponse(
+                        outcome_type=o.outcome_type.value,
+                        probability=o.probability,
+                        duration_seconds=o.duration_seconds,
+                        affected_percentage=o.affected_percentage,
+                        user_impact_description=o.user_impact_description,
+                        technical_details=o.technical_details,
+                    )
+                    for o in analysis["intermittent_failure_scenario"].outcomes
+                ],
+                overall_impact=analysis["intermittent_failure_scenario"].overall_impact.value,
+                mitigation_strategies=analysis["intermittent_failure_scenario"].mitigation_strategies,
+                monitoring_recommendations=analysis["intermittent_failure_scenario"].monitoring_recommendations,
+            ),
+            dependency_vulnerabilities=[
+                DependencyVulnerabilityResponse(
+                    package_name=v.package_name,
+                    current_version=v.current_version,
+                    vulnerability_id=v.vulnerability_id,
+                    severity=v.severity,
+                    description=v.description,
+                    fixed_version=v.fixed_version,
+                    exploit_available=v.exploit_available,
+                    affected_resources=v.affected_resources,
+                )
+                for v in analysis["dependency_vulnerabilities"]
+            ],
+            vulnerability_risk_score=analysis["vulnerability_risk_score"],
+            all_recommendations=analysis["all_recommendations"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get comprehensive risk analysis: {str(e)}"
         )
