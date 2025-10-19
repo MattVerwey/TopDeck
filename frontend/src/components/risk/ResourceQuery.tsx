@@ -89,7 +89,8 @@ export default function ResourceQuery() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch {
+    } catch (err) {
+      console.error('Query processing failed:', err);
       const errorMessage: QueryMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
