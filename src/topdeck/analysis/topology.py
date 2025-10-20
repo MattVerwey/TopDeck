@@ -93,6 +93,45 @@ class TopologyService:
         """
         self.neo4j_client = neo4j_client
     
+    @staticmethod
+    def _deserialize_json_properties(properties: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Deserialize JSON strings in properties back to Python objects.
+        
+        Properties like 'tags' and 'properties' are stored as JSON strings in Neo4j
+        for compatibility. This method deserializes them back to dicts/lists.
+        
+        Args:
+            properties: Properties dict from Neo4j
+            
+        Returns:
+            Properties dict with JSON strings deserialized
+        """
+        import json
+        
+        result = {}
+        for key, value in properties.items():
+            # Try to deserialize known JSON string fields
+            if key in ('tags', 'properties') and isinstance(value, str):
+                try:
+                    result[key] = json.loads(value)
+                except (json.JSONDecodeError, TypeError):
+                    # If it fails, keep as-is
+                    result[key] = value
+            # Handle other JSON string fields (lists like topics, approvers, etc.)
+            elif key in ('topics', 'identifier_uris', 'redirect_uris', 'target_resources', 
+                        'approvers', 'containers', 'init_containers', 'volumes', 
+                        'conditions', 'labels', 'annotations', 'app_roles', 
+                        'oauth2_permissions', 'required_resource_access') and isinstance(value, str):
+                try:
+                    result[key] = json.loads(value)
+                except (json.JSONDecodeError, TypeError):
+                    result[key] = value
+            else:
+                result[key] = value
+        
+        return result
+    
     def get_topology(
         self,
         cloud_provider: Optional[str] = None,
@@ -144,13 +183,17 @@ class TopologyService:
         with self.neo4j_client.session() as session:
             result = session.run(nodes_query, params)
             for record in result:
+                # Deserialize properties (tags and properties are JSON strings)
+                raw_props = dict(record["properties"]) if record["properties"] else {}
+                deserialized_props = self._deserialize_json_properties(raw_props)
+                
                 nodes.append(TopologyNode(
                     id=record["id"],
                     resource_type=record["resource_type"],
                     name=record["name"],
                     cloud_provider=record["cloud_provider"],
                     region=record["region"],
-                    properties=dict(record["properties"]) if record["properties"] else {},
+                    properties=deserialized_props,
                 ))
         
         # Get all relationships (edges)
@@ -238,13 +281,16 @@ class TopologyService:
                 
                 result = session.run(upstream_query, id=resource_id)
                 for record in result:
+                    raw_props = dict(record["properties"]) if record["properties"] else {}
+                    deserialized_props = self._deserialize_json_properties(raw_props)
+                    
                     upstream.append(TopologyNode(
                         id=record["id"],
                         resource_type=record["resource_type"],
                         name=record["name"],
                         cloud_provider=record["cloud_provider"],
                         region=record["region"],
-                        properties=dict(record["properties"]) if record["properties"] else {},
+                        properties=deserialized_props,
                     ))
             
             # Get downstream dependencies (what depends on this resource)
@@ -261,13 +307,16 @@ class TopologyService:
                 
                 result = session.run(downstream_query, id=resource_id)
                 for record in result:
+                    raw_props = dict(record["properties"]) if record["properties"] else {}
+                    deserialized_props = self._deserialize_json_properties(raw_props)
+                    
                     downstream.append(TopologyNode(
                         id=record["id"],
                         resource_type=record["resource_type"],
                         name=record["name"],
                         cloud_provider=record["cloud_provider"],
                         region=record["region"],
-                        properties=dict(record["properties"]) if record["properties"] else {},
+                        properties=deserialized_props,
                     ))
         
         return ResourceDependencies(
