@@ -48,8 +48,8 @@ TopDeck provides that answer by:
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
 
 ### Deployment & Readiness
-- **[Executive Summary](DEPLOYMENT_STATUS_SUMMARY.md)** - Quick status overview (2 min read)
-- **[Deployment Answer](DEPLOYMENT_ANSWER.md)** - Direct answer to "Is it ready?" (5 min read)
+- **[Executive Summary](docs/archive/DEPLOYMENT_STATUS_SUMMARY.md)** - Quick status overview (2 min read)
+- **[Deployment Answer](docs/archive/DEPLOYMENT_ANSWER.md)** - Direct answer to "Is it ready?" (5 min read)
 - **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute deployment guide ⚡
 - **[Deployment Readiness Assessment](DEPLOYMENT_READINESS.md)** - Complete readiness evaluation
 - **[Deployment Decision Flowchart](docs/DEPLOYMENT_DECISION_FLOWCHART.md)** - Decision support tool
