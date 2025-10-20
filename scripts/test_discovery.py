@@ -58,13 +58,14 @@ async def test_discovery():
         
         # Create discoverer
         print("📡 Initializing Azure discoverer...")
-        discoverer = AzureDiscoverer(credential, subscription_id)
+        discoverer = AzureDiscoverer(subscription_id, credential=credential)
         print("✓ Discoverer initialized")
         print()
         
         # Discover resources
         print("🔄 Starting resource discovery...")
-        result = await discoverer.discover_resources(resource_group_filter=resource_group)
+        print("   Scanning entire subscription (this may take a moment)...")
+        result = await discoverer.discover_all_resources()  # No resource_groups filter = scan entire subscription
         print("✓ Discovery complete")
         print()
         
@@ -118,7 +119,7 @@ async def test_discovery():
             print()
             for dep in result.dependencies[:10]:  # Show first 10
                 print(f"   {dep.source_id}")
-                print(f"   └─> {dep.target_id} ({dep.relationship_type})")
+                print(f"   └─> {dep.target_id} ({dep.dependency_type.value})")
             if len(result.dependencies) > 10:
                 print(f"   ... and {len(result.dependencies) - 10} more")
         

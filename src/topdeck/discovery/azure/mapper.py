@@ -163,6 +163,30 @@ class AzureResourceMapper:
         Returns:
             DiscoveredResource instance
         """
+        import json
+        
+        # Flatten complex tag values to JSON strings for Neo4j compatibility
+        flattened_tags = {}
+        if tags:
+            for key, value in tags.items():
+                if isinstance(value, (dict, list)):
+                    # Convert complex objects to JSON strings
+                    flattened_tags[key] = json.dumps(value)
+                else:
+                    # Keep simple values as-is
+                    flattened_tags[key] = str(value) if value is not None else ""
+
+        # Flatten complex properties as well for Neo4j compatibility
+        flattened_properties = {}
+        if properties:
+            for key, value in properties.items():
+                if isinstance(value, (dict, list)):
+                    # Convert complex objects to JSON strings
+                    flattened_properties[key] = json.dumps(value)
+                else:
+                    # Keep simple values as-is
+                    flattened_properties[key] = str(value) if value is not None else ""
+
         return DiscoveredResource(
             id=resource_id,
             name=resource_name,
@@ -172,7 +196,7 @@ class AzureResourceMapper:
             resource_group=AzureResourceMapper.extract_resource_group(resource_id),
             subscription_id=AzureResourceMapper.extract_subscription_id(resource_id),
             status=AzureResourceMapper.map_provisioning_state_to_status(provisioning_state),
-            environment=AzureResourceMapper.extract_environment_from_tags(tags),
-            tags=tags or {},
-            properties=properties or {},
+            environment=AzureResourceMapper.extract_environment_from_tags(flattened_tags),
+            tags=flattened_tags,
+            properties=flattened_properties,
         )

@@ -81,6 +81,26 @@ class DiscoveredResource:
         """Convert to Neo4j node properties"""
         import json
         
+        # Ensure tags are flattened for Neo4j compatibility
+        flattened_tags = {}
+        for key, value in self.tags.items():
+            if isinstance(value, (dict, list)):
+                # Convert complex objects to JSON strings
+                flattened_tags[key] = json.dumps(value)
+            else:
+                # Keep simple values as-is
+                flattened_tags[key] = str(value) if value is not None else ""
+        
+        # Ensure properties are flattened for Neo4j compatibility
+        flattened_properties = {}
+        for key, value in self.properties.items():
+            if isinstance(value, (dict, list)):
+                # Convert complex objects to JSON strings
+                flattened_properties[key] = json.dumps(value)
+            else:
+                # Keep simple values as-is
+                flattened_properties[key] = str(value) if value is not None else ""
+        
         return {
             'id': self.id,
             'name': self.name,
@@ -91,8 +111,8 @@ class DiscoveredResource:
             'subscription_id': self.subscription_id,
             'status': self.status.value,
             'environment': self.environment,
-            'tags': self.tags,
-            'properties': json.dumps(self.properties),
+            'tags': flattened_tags,
+            'properties': flattened_properties,
             'discovered_at': self.discovered_at.isoformat(),
             'last_seen': self.last_seen.isoformat(),
             'discovered_method': self.discovered_method,

@@ -18,12 +18,12 @@ azure-mgmt-web==7.2.0
 # AWS SDK
 boto3==1.34.11
 
-# GCP SDK
-google-cloud-resource-manager==1.11.0
-google-cloud-compute==1.15.0
-google-cloud-container==2.37.0
-google-cloud-sql==1.6.1
-google-cloud-storage==2.14.0
+# GCP SDK (commented out for now)
+# google-cloud-resource-manager==1.11.0
+# google-cloud-compute==1.15.0
+# google-cloud-container==2.37.0
+# google-cloud-sql==1.6.1
+# google-cloud-storage==2.14.0
 
 # Graph Database
 neo4j==5.15.0
