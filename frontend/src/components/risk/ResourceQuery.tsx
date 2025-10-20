@@ -66,7 +66,7 @@ export default function ResourceQuery() {
     if (!query.trim() || loading) return;
 
     const userMessage: QueryMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type: 'user',
       content: query,
       timestamp: new Date(),
@@ -81,7 +81,7 @@ export default function ResourceQuery() {
       const result = await processQuery(query.toLowerCase());
 
       const assistantMessage: QueryMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         type: 'assistant',
         content: result.answer,
         timestamp: new Date(),
@@ -92,7 +92,7 @@ export default function ResourceQuery() {
     } catch (err) {
       console.error('Query processing failed:', err);
       const errorMessage: QueryMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         type: 'assistant',
         content: 'I encountered an error processing your query. Please try rephrasing your question.',
         timestamp: new Date(),
