@@ -81,25 +81,13 @@ class DiscoveredResource:
         """Convert to Neo4j node properties"""
         import json
         
-        # Ensure tags are flattened for Neo4j compatibility
-        flattened_tags = {}
-        for key, value in self.tags.items():
-            if isinstance(value, (dict, list)):
-                # Convert complex objects to JSON strings
-                flattened_tags[key] = json.dumps(value)
-            else:
-                # Keep simple values as-is
-                flattened_tags[key] = str(value) if value is not None else ""
+        # Convert tags dict to JSON string for Neo4j compatibility
+        # Neo4j doesn't accept nested Maps as property values
+        tags_json = json.dumps(self.tags) if self.tags else "{}"
         
-        # Ensure properties are flattened for Neo4j compatibility
-        flattened_properties = {}
-        for key, value in self.properties.items():
-            if isinstance(value, (dict, list)):
-                # Convert complex objects to JSON strings
-                flattened_properties[key] = json.dumps(value)
-            else:
-                # Keep simple values as-is
-                flattened_properties[key] = str(value) if value is not None else ""
+        # Convert properties dict to JSON string for Neo4j compatibility
+        # Neo4j doesn't accept nested Maps as property values
+        properties_json = json.dumps(self.properties) if self.properties else "{}"
         
         return {
             'id': self.id,
@@ -111,8 +99,8 @@ class DiscoveredResource:
             'subscription_id': self.subscription_id,
             'status': self.status.value,
             'environment': self.environment,
-            'tags': flattened_tags,
-            'properties': flattened_properties,
+            'tags': tags_json,
+            'properties': properties_json,
             'discovered_at': self.discovered_at.isoformat(),
             'last_seen': self.last_seen.isoformat(),
             'discovered_method': self.discovered_method,
@@ -257,6 +245,8 @@ class Repository:
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j node properties"""
+        import json
+        
         return {
             'id': self.id,
             'platform': self.platform,
@@ -270,7 +260,7 @@ class Repository:
             'last_commit_author': self.last_commit_author,
             'description': self.description,
             'language': self.language,
-            'topics': self.topics,
+            'topics': json.dumps(self.topics) if self.topics else "[]",
             'is_private': self.is_private,
             'is_archived': self.is_archived,
             'stars': self.stars,
@@ -325,6 +315,8 @@ class Deployment:
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j node properties"""
+        import json
+        
         return {
             'id': self.id,
             'pipeline_id': self.pipeline_id,
@@ -338,10 +330,10 @@ class Deployment:
             'deployment_duration': self.deployment_duration,
             'status': self.status,
             'environment': self.environment,
-            'target_resources': self.target_resources,
+            'target_resources': json.dumps(self.target_resources) if self.target_resources else "[]",
             'change_ticket_id': self.change_ticket_id,
             'approval_status': self.approval_status,
-            'approvers': self.approvers,
+            'approvers': json.dumps(self.approvers) if self.approvers else "[]",
             'notes': self.notes,
             'rollback_available': self.rollback_available,
             'previous_version': self.previous_version,
@@ -375,15 +367,17 @@ class Namespace:
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j node properties"""
+        import json
+        
         return {
             'id': self.id,
             'name': self.name,
             'cluster_id': self.cluster_id,
-            'labels': self.labels,
-            'annotations': self.annotations,
+            'labels': json.dumps(self.labels) if self.labels else "{}",
+            'annotations': json.dumps(self.annotations) if self.annotations else "{}",
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'resource_quota': self.resource_quota,
-            'limit_ranges': self.limit_ranges,
+            'resource_quota': json.dumps(self.resource_quota) if self.resource_quota else None,
+            'limit_ranges': json.dumps(self.limit_ranges) if self.limit_ranges else None,
             'last_seen': self.last_seen.isoformat(),
             'discovered_at': self.discovered_at.isoformat(),
         }
@@ -458,8 +452,8 @@ class Pod:
             'memory_limits': self.memory_limits,
             'owner_kind': self.owner_kind,
             'owner_name': self.owner_name,
-            'labels': self.labels,
-            'annotations': self.annotations,
+            'labels': json.dumps(self.labels) if self.labels else "{}",
+            'annotations': json.dumps(self.annotations) if self.annotations else "{}",
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'last_seen': self.last_seen.isoformat(),
@@ -503,6 +497,8 @@ class ManagedIdentity:
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j node properties"""
+        import json
+        
         return {
             'id': self.id,
             'name': self.name,
@@ -515,7 +511,7 @@ class ManagedIdentity:
             'subscription_id': self.subscription_id,
             'assigned_to_resource_id': self.assigned_to_resource_id,
             'assigned_to_resource_type': self.assigned_to_resource_type,
-            'tags': self.tags,
+            'tags': json.dumps(self.tags) if self.tags else "{}",
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_seen': self.last_seen.isoformat(),
             'discovered_at': self.discovered_at.isoformat(),
@@ -574,7 +570,7 @@ class ServicePrincipal:
             'app_roles': json.dumps(self.app_roles),
             'oauth2_permissions': json.dumps(self.oauth2_permissions),
             'enabled': self.enabled,
-            'tags': self.tags,
+            'tags': json.dumps(self.tags) if self.tags else "[]",
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_seen': self.last_seen.isoformat(),
             'discovered_at': self.discovered_at.isoformat(),
@@ -634,8 +630,8 @@ class AppRegistration:
             'tenant_id': self.tenant_id,
             'publisher_domain': self.publisher_domain,
             'sign_in_audience': self.sign_in_audience,
-            'identifier_uris': self.identifier_uris,
-            'redirect_uris': self.redirect_uris,
+            'identifier_uris': json.dumps(self.identifier_uris) if self.identifier_uris else "[]",
+            'redirect_uris': json.dumps(self.redirect_uris) if self.redirect_uris else "[]",
             'home_page_url': self.home_page_url,
             'logout_url': self.logout_url,
             'required_resource_access': json.dumps(self.required_resource_access),
@@ -643,7 +639,7 @@ class AppRegistration:
             'key_credentials_count': self.key_credentials_count,
             'app_roles': json.dumps(self.app_roles),
             'oauth2_permissions': json.dumps(self.oauth2_permissions),
-            'tags': self.tags,
+            'tags': json.dumps(self.tags) if self.tags else "[]",
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_seen': self.last_seen.isoformat(),
             'discovered_at': self.discovered_at.isoformat(),
