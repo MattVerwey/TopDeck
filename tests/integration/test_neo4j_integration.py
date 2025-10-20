@@ -10,6 +10,9 @@ These tests verify the end-to-end flow:
 
 Note: These tests require a running Neo4j instance.
 They can be skipped if Neo4j is not available.
+
+Note: Print statements are intentionally used in these tests
+to provide clear demonstration output for documentation purposes.
 """
 
 import json
@@ -114,8 +117,9 @@ class TestNeo4jIntegration:
         
         # Retrieve from Neo4j and deserialize
         # (would use self.neo4j.get_resource_by_id(resource.id))
-        topology_service = TopologyService(None)  # Would pass real neo4j client
-        deserialized_props = topology_service._deserialize_json_properties(stored_props)
+        # For testing, we use the static method directly without a client
+        from topdeck.analysis.topology import TopologyService
+        deserialized_props = TopologyService._deserialize_json_properties(stored_props)
         
         # Verify deserialization: tags and properties should be dicts again
         assert isinstance(deserialized_props["tags"], dict)

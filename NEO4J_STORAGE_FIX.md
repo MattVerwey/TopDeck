@@ -215,10 +215,98 @@ With these changes:
 
 ## Migration Notes
 
-If you have existing data in Neo4j from before this change:
-1. Old data with dict/list properties may need re-discovery
-2. Or run a migration script to convert existing properties to JSON strings
-3. The API will handle both formats (for backward compatibility with cached data)
+If you have existing data in Neo4j from before this change, you have three options:
+
+### Option 1: Re-run Discovery (Recommended)
+
+The simplest approach is to re-discover resources, which will store them with the new format:
+
+```bash
+# Clear old data
+python -c "
+from topdeck.storage.neo4j_client import Neo4jClient
+from topdeck.common.config import settings
+client = Neo4jClient(settings.neo4j_uri, settings.neo4j_username, settings.neo4j_password)
+client.connect()
+client.clear_all()
+client.close()
+"
+
+# Re-run discovery
+python examples/multi_cloud_discovery.py
+```
+
+### Option 2: Migration Script
+
+If you need to preserve existing data, use this migration script:
+
+```python
+#!/usr/bin/env python3
+"""
+Migrate existing Neo4j data to new JSON string format.
+Run this script once after deploying the updated code.
+"""
+
+import json
+from topdeck.storage.neo4j_client import Neo4jClient
+from topdeck.common.config import settings
+
+def migrate_resource_properties():
+    """Migrate resource tags and properties to JSON strings."""
+    client = Neo4jClient(settings.neo4j_uri, settings.neo4j_username, settings.neo4j_password)
+    client.connect()
+    
+    # Get all resources
+    with client.session() as session:
+        result = session.run("MATCH (r:Resource) RETURN r.id as id, r")
+        resources = [(record["id"], dict(record["r"])) for record in result]
+    
+    print(f"Found {len(resources)} resources to migrate")
+    
+    # Migrate each resource
+    migrated = 0
+    for resource_id, props in resources:
+        updated = False
+        
+        # Convert tags if it's a dict
+        if 'tags' in props and isinstance(props['tags'], dict):
+            props['tags'] = json.dumps(props['tags'])
+            updated = True
+        
+        # Convert properties if it's a dict
+        if 'properties' in props and isinstance(props['properties'], dict):
+            props['properties'] = json.dumps(props['properties'])
+            updated = True
+        
+        if updated:
+            # Update the resource
+            with client.session() as session:
+                session.run(
+                    "MATCH (r:Resource {id: $id}) SET r = $props",
+                    id=resource_id, props=props
+                )
+            migrated += 1
+    
+    print(f"✅ Migrated {migrated} resources")
+    client.close()
+
+if __name__ == "__main__":
+    migrate_resource_properties()
+```
+
+Save this as `scripts/migrate_neo4j_data.py` and run:
+
+```bash
+python scripts/migrate_neo4j_data.py
+```
+
+### Option 3: Hybrid Approach (Automatic Handling)
+
+The API deserialization code handles both formats automatically:
+- New data: JSON strings → deserialize to dicts
+- Old data: Already dicts → use as-is
+
+This means the API will work with both old and new data formats, allowing gradual migration.
 
 ## Future Considerations
 
