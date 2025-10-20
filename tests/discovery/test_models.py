@@ -47,6 +47,8 @@ class TestDiscoveredResource:
     
     def test_to_neo4j_properties(self):
         """Test converting resource to Neo4j properties"""
+        import json
+        
         resource = DiscoveredResource(
             id="test-id",
             name="test-resource",
@@ -63,7 +65,9 @@ class TestDiscoveredResource:
         assert props["resource_type"] == "test_type"
         assert props["cloud_provider"] == "azure"
         assert props["region"] == "eastus"
-        assert props["tags"] == {"env": "prod"}
+        # Tags should be serialized as JSON string
+        assert isinstance(props["tags"], str)
+        assert json.loads(props["tags"]) == {"env": "prod"}
         assert "discovered_at" in props
         assert "last_seen" in props
 
@@ -290,6 +294,8 @@ class TestNamespace:
     
     def test_to_neo4j_properties(self):
         """Test converting namespace to Neo4j properties"""
+        import json
+        
         namespace = Namespace(
             id="cluster-1:default",
             name="default",
@@ -303,8 +309,11 @@ class TestNamespace:
         assert props["id"] == "cluster-1:default"
         assert props["name"] == "default"
         assert props["cluster_id"] == "cluster-1"
-        assert props["labels"] == {"name": "default"}
-        assert props["annotations"] == {"test": "value"}
+        # Labels and annotations should be JSON strings
+        assert isinstance(props["labels"], str)
+        assert json.loads(props["labels"]) == {"name": "default"}
+        assert isinstance(props["annotations"], str)
+        assert json.loads(props["annotations"]) == {"test": "value"}
         assert "discovered_at" in props
 
 
@@ -329,6 +338,8 @@ class TestPod:
     
     def test_to_neo4j_properties(self):
         """Test converting pod to Neo4j properties"""
+        import json
+        
         pod = Pod(
             id="pod-1",
             name="nginx-pod",
@@ -349,7 +360,9 @@ class TestPod:
         assert props["phase"] == "Running"
         assert props["pod_ip"] == "10.0.0.1"
         assert props["node_name"] == "node-1"
-        assert props["labels"] == {"app": "nginx"}
+        # Labels should be JSON string
+        assert isinstance(props["labels"], str)
+        assert json.loads(props["labels"]) == {"app": "nginx"}
 
 
 class TestManagedIdentity:
@@ -447,6 +460,8 @@ class TestAppRegistration:
     
     def test_to_neo4j_properties(self):
         """Test converting app registration to Neo4j properties"""
+        import json
+        
         app_reg = AppRegistration(
             id="app-1",
             app_id="app-client-id-1",
@@ -461,8 +476,11 @@ class TestAppRegistration:
         assert props["id"] == "app-1"
         assert props["app_id"] == "app-client-id-1"
         assert props["display_name"] == "Web Application"
-        assert props["identifier_uris"] == ["api://myapp"]
-        assert props["redirect_uris"] == ["https://myapp.com/auth"]
+        # URIs should be JSON strings
+        assert isinstance(props["identifier_uris"], str)
+        assert json.loads(props["identifier_uris"]) == ["api://myapp"]
+        assert isinstance(props["redirect_uris"], str)
+        assert json.loads(props["redirect_uris"]) == ["https://myapp.com/auth"]
         assert props["password_credentials_count"] == 1
 
 
