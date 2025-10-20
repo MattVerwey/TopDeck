@@ -7,14 +7,12 @@ This directory contains historical development documentation that was moved from
 These files are primarily development progress reports, implementation summaries, and phase completion notes that were created during the development of TopDeck:
 
 ### Progress & Status Reports
-- `PROGRESS.md` - Historical progress tracking
 - `NEXT_STEPS.md` - Development next steps from a specific point in time
 - `REFOCUS_SUMMARY.md` - Project refocus documentation
 
 ### Deployment Documentation
 - `DEPLOYMENT_ANSWER.md` - Deployment readiness assessment
 - `DEPLOYMENT_STATUS_SUMMARY.md` - Deployment status overview
-- `DEPLOY_TO_TEST.md` - Test environment deployment guide
 
 ### Implementation Summaries
 - `IMPLEMENTATION_SUMMARY.md` - Frontend implementation summary
