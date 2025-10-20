@@ -12,7 +12,6 @@ Usage:
 import argparse
 import json
 import sys
-from typing import Dict, Any
 
 try:
     import httpx
@@ -21,198 +20,194 @@ except ImportError:
     sys.exit(1)
 
 
-BASE_URL = "http://localhost:8000"
-
-
-def print_header(title: str):
-    """Print a formatted section header."""
-    print("\n" + "=" * 80)
-    print(f" {title}")
-    print("=" * 80 + "\n")
-
-
-def print_json(data: Any):
-    """Pretty print JSON data."""
-    print(json.dumps(data, indent=2))
-
-
-def get_resource_attachments(client: httpx.Client, resource_id: str, direction: str = "both"):
-    """Get detailed attachment information for a resource."""
-    print_header(f"Resource Attachments ({direction})")
+class TopologyDemo:
+    """Demo class for enhanced topology and dependency analysis."""
     
-    try:
-        response = client.get(
-            f"{BASE_URL}/api/v1/topology/resources/{resource_id}/attachments",
-            params={"direction": direction}
-        )
-        response.raise_for_status()
-        attachments = response.json()
-        
-        if not attachments:
-            print(f"No attachments found in {direction} direction.")
-            return
-        
-        print(f"Found {len(attachments)} attachment(s):\n")
-        
-        for i, att in enumerate(attachments, 1):
-            print(f"{i}. {att['source_name']} ({att['source_type']})")
-            print(f"   → {att['target_name']} ({att['target_type']})")
-            print(f"   Relationship: {att['relationship_type']}")
-            print(f"   Category: {att['attachment_context'].get('relationship_category', 'N/A')}")
-            print(f"   Critical: {att['attachment_context'].get('is_critical', False)}")
-            
-            if att['relationship_properties']:
-                print(f"   Properties: {json.dumps(att['relationship_properties'], indent=6)}")
-            print()
-        
-    except httpx.HTTPStatusError as e:
-        print(f"Error: {e.response.status_code} - {e.response.text}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-
-def get_dependency_chains(client: httpx.Client, resource_id: str, direction: str = "downstream"):
-    """Get dependency chains for a resource."""
-    print_header(f"Dependency Chains ({direction})")
+    def __init__(self, base_url: str):
+        """Initialize with API base URL."""
+        self.base_url = base_url
     
-    try:
-        response = client.get(
-            f"{BASE_URL}/api/v1/topology/resources/{resource_id}/chains",
-            params={"direction": direction, "max_depth": 5}
-        )
-        response.raise_for_status()
-        chains = response.json()
-        
-        if not chains:
-            print(f"No dependency chains found in {direction} direction.")
-            return
-        
-        print(f"Found {len(chains)} chain(s):\n")
-        
-        for i, chain in enumerate(chains, 1):
-            print(f"Chain {i} (length: {chain['chain_length']}):")
-            
-            # Build the chain visualization
-            chain_str = ""
-            for j, name in enumerate(chain['resource_names']):
-                chain_str += f"{name} ({chain['resource_types'][j]})"
-                if j < len(chain['relationships']):
-                    chain_str += f"\n  → [{chain['relationships'][j]}] → "
-                    chain_str += "\n"
-            
-            print(f"  {chain_str}")
-            print()
-        
-    except httpx.HTTPStatusError as e:
-        print(f"Error: {e.response.status_code} - {e.response.text}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-
-def get_attachment_analysis(client: httpx.Client, resource_id: str):
-    """Get comprehensive attachment analysis."""
-    print_header("Comprehensive Attachment Analysis")
+    @staticmethod
+    def print_header(title: str):
+        """Print a formatted section header."""
+        print("\n" + "=" * 80)
+        print(f" {title}")
+        print("=" * 80 + "\n")
     
-    try:
-        response = client.get(
-            f"{BASE_URL}/api/v1/topology/resources/{resource_id}/analysis"
-        )
-        response.raise_for_status()
-        analysis = response.json()
+    def get_resource_attachments(self, client: httpx.Client, resource_id: str, direction: str = "both"):
+        """Get detailed attachment information for a resource."""
+        self.print_header(f"Resource Attachments ({direction})")
         
-        print(f"Resource: {analysis['resource_name']} ({analysis['resource_type']})")
-        print(f"Resource ID: {analysis['resource_id']}\n")
-        
-        print("📊 SUMMARY")
-        print(f"  Total Attachments: {analysis['total_attachments']}")
-        print(f"  Critical Attachments: {len(analysis['critical_attachments'])}")
-        print(f"  Impact Radius: {analysis['impact_radius']} resources")
-        print(f"  Unique Relationship Types: {analysis['metadata']['unique_relationship_types']}")
-        print(f"  Max Chain Length: {analysis['metadata']['max_chain_length']}\n")
-        
-        print("📈 ATTACHMENT BREAKDOWN BY TYPE")
-        for rel_type, count in analysis['attachment_by_type'].items():
-            strength = analysis['attachment_strength'].get(rel_type, 0.0)
-            print(f"  {rel_type:25} Count: {count:3}  Strength: {strength:.2f}")
-        print()
-        
-        if analysis['critical_attachments']:
-            print("⚠️  CRITICAL ATTACHMENTS")
-            for att in analysis['critical_attachments']:
-                print(f"  • {att['source_name']} → {att['target_name']}")
-                print(f"    Type: {att['relationship_type']}")
-                print(f"    Category: {att['attachment_context'].get('relationship_category', 'N/A')}")
-            print()
-        
-        if analysis['dependency_chains']:
-            print(f"🔗 DEPENDENCY CHAINS (showing first 3 of {len(analysis['dependency_chains'])})")
-            for i, chain in enumerate(analysis['dependency_chains'][:3], 1):
-                print(f"  {i}. {' → '.join(chain['resource_names'][:4])}")
-                if len(chain['resource_names']) > 4:
-                    print(f"     ... and {len(chain['resource_names']) - 4} more")
-            print()
-        
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            print(f"Error: Resource '{resource_id}' not found.")
-        else:
+        try:
+            response = client.get(
+                f"{self.base_url}/api/v1/topology/resources/{resource_id}/attachments",
+                params={"direction": direction}
+            )
+            response.raise_for_status()
+            attachments = response.json()
+            
+            if not attachments:
+                print(f"No attachments found in {direction} direction.")
+                return
+            
+            print(f"Found {len(attachments)} attachment(s):\n")
+            
+            for i, att in enumerate(attachments, 1):
+                print(f"{i}. {att['source_name']} ({att['source_type']})")
+                print(f"   → {att['target_name']} ({att['target_type']})")
+                print(f"   Relationship: {att['relationship_type']}")
+                print(f"   Category: {att['attachment_context'].get('relationship_category', 'N/A')}")
+                print(f"   Critical: {att['attachment_context'].get('is_critical', False)}")
+                
+                if att['relationship_properties']:
+                    print(f"   Properties: {json.dumps(att['relationship_properties'], indent=6)}")
+                print()
+            
+        except httpx.HTTPStatusError as e:
             print(f"Error: {e.response.status_code} - {e.response.text}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-
-def get_enhanced_dependencies(client: httpx.Client, resource_id: str):
-    """Get enhanced dependencies (existing endpoint with new data)."""
-    print_header("Enhanced Dependencies")
+        except Exception as e:
+            print(f"Error: {str(e)}")
     
-    try:
-        response = client.get(
-            f"{BASE_URL}/api/v1/topology/resources/{resource_id}/dependencies",
-            params={"depth": 3, "direction": "both"}
-        )
-        response.raise_for_status()
-        deps = response.json()
+    def get_dependency_chains(self, client: httpx.Client, resource_id: str, direction: str = "downstream"):
+        """Get dependency chains for a resource."""
+        self.print_header(f"Dependency Chains ({direction})")
         
-        print(f"Resource: {deps['resource_name']}")
-        print(f"Depth: {deps['depth']}\n")
+        try:
+            response = client.get(
+                f"{self.base_url}/api/v1/topology/resources/{resource_id}/chains",
+                params={"direction": direction, "max_depth": 5}
+            )
+            response.raise_for_status()
+            chains = response.json()
+            
+            if not chains:
+                print(f"No dependency chains found in {direction} direction.")
+                return
+            
+            print(f"Found {len(chains)} chain(s):\n")
+            
+            for i, chain in enumerate(chains, 1):
+                print(f"Chain {i} (length: {chain['chain_length']}):")
+                
+                # Build the chain visualization
+                parts = []
+                for j, name in enumerate(chain['resource_names']):
+                    parts.append(f"{name} ({chain['resource_types'][j]})")
+                    if j < len(chain['relationships']):
+                        parts.append(f"[{chain['relationships'][j]}]")
+                
+                chain_str = " → ".join(parts)
+                print(f"  {chain_str}")
+                print()
+            
+        except httpx.HTTPStatusError as e:
+            print(f"Error: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            print(f"Error: {str(e)}")
+    
+    def get_attachment_analysis(self, client: httpx.Client, resource_id: str):
+        """Get comprehensive attachment analysis."""
+        self.print_header("Comprehensive Attachment Analysis")
         
-        print(f"Upstream Dependencies: {len(deps['upstream'])}")
-        for res in deps['upstream'][:5]:
-            print(f"  • {res['name']} ({res['resource_type']})")
-        if len(deps['upstream']) > 5:
-            print(f"  ... and {len(deps['upstream']) - 5} more\n")
-        else:
+        try:
+            response = client.get(
+                f"{self.base_url}/api/v1/topology/resources/{resource_id}/analysis"
+            )
+            response.raise_for_status()
+            analysis = response.json()
+            
+            print(f"Resource: {analysis['resource_name']} ({analysis['resource_type']})")
+            print(f"Resource ID: {analysis['resource_id']}\n")
+            
+            print("📊 SUMMARY")
+            print(f"  Total Attachments: {analysis['total_attachments']}")
+            print(f"  Critical Attachments: {len(analysis['critical_attachments'])}")
+            print(f"  Impact Radius: {analysis['impact_radius']} resources")
+            print(f"  Unique Relationship Types: {analysis['metadata']['unique_relationship_types']}")
+            print(f"  Max Chain Length: {analysis['metadata']['max_chain_length']}\n")
+            
+            print("📈 ATTACHMENT BREAKDOWN BY TYPE")
+            for rel_type, count in analysis['attachment_by_type'].items():
+                strength = analysis['attachment_strength'].get(rel_type, 0.0)
+                print(f"  {rel_type:25} Count: {count:3}  Strength: {strength:.2f}")
             print()
+            
+            if analysis['critical_attachments']:
+                print("⚠️  CRITICAL ATTACHMENTS")
+                for att in analysis['critical_attachments']:
+                    print(f"  • {att['source_name']} → {att['target_name']}")
+                    print(f"    Type: {att['relationship_type']}")
+                    print(f"    Category: {att['attachment_context'].get('relationship_category', 'N/A')}")
+                print()
+            
+            if analysis['dependency_chains']:
+                print(f"🔗 DEPENDENCY CHAINS (showing first 3 of {len(analysis['dependency_chains'])})")
+                for i, chain in enumerate(analysis['dependency_chains'][:3], 1):
+                    print(f"  {i}. {' → '.join(chain['resource_names'][:4])}")
+                    if len(chain['resource_names']) > 4:
+                        print(f"     ... and {len(chain['resource_names']) - 4} more")
+                print()
+            
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                print(f"Error: Resource '{resource_id}' not found.")
+            else:
+                print(f"Error: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            print(f"Error: {str(e)}")
+    
+    def get_enhanced_dependencies(self, client: httpx.Client, resource_id: str):
+        """Get enhanced dependencies (existing endpoint with new data)."""
+        self.print_header("Enhanced Dependencies")
         
-        print(f"Downstream Dependencies: {len(deps['downstream'])}")
-        for res in deps['downstream'][:5]:
-            print(f"  • {res['name']} ({res['resource_type']})")
-        if len(deps['downstream']) > 5:
-            print(f"  ... and {len(deps['downstream']) - 5} more\n")
-        else:
-            print()
-        
-        # Show new attachment details
-        if deps.get('upstream_attachments'):
-            print(f"📎 Upstream Attachment Details ({len(deps['upstream_attachments'])} total)")
-            for att in deps['upstream_attachments'][:3]:
-                print(f"  • {att['relationship_type']}: {att['source_name']} → {att['target_name']}")
-            if len(deps['upstream_attachments']) > 3:
-                print(f"  ... and {len(deps['upstream_attachments']) - 3} more")
-            print()
-        
-        if deps.get('downstream_attachments'):
-            print(f"📎 Downstream Attachment Details ({len(deps['downstream_attachments'])} total)")
-            for att in deps['downstream_attachments'][:3]:
-                print(f"  • {att['relationship_type']}: {att['source_name']} → {att['target_name']}")
-            if len(deps['downstream_attachments']) > 3:
-                print(f"  ... and {len(deps['downstream_attachments']) - 3} more")
-            print()
-        
-    except httpx.HTTPStatusError as e:
-        print(f"Error: {e.response.status_code} - {e.response.text}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+        try:
+            response = client.get(
+                f"{self.base_url}/api/v1/topology/resources/{resource_id}/dependencies",
+                params={"depth": 3, "direction": "both"}
+            )
+            response.raise_for_status()
+            deps = response.json()
+            
+            print(f"Resource: {deps['resource_name']}")
+            print(f"Depth: {deps['depth']}\n")
+            
+            print(f"Upstream Dependencies: {len(deps['upstream'])}")
+            for res in deps['upstream'][:5]:
+                print(f"  • {res['name']} ({res['resource_type']})")
+            if len(deps['upstream']) > 5:
+                print(f"  ... and {len(deps['upstream']) - 5} more\n")
+            else:
+                print()
+            
+            print(f"Downstream Dependencies: {len(deps['downstream'])}")
+            for res in deps['downstream'][:5]:
+                print(f"  • {res['name']} ({res['resource_type']})")
+            if len(deps['downstream']) > 5:
+                print(f"  ... and {len(deps['downstream']) - 5} more\n")
+            else:
+                print()
+            
+            # Show new attachment details
+            if deps.get('upstream_attachments'):
+                print(f"📎 Upstream Attachment Details ({len(deps['upstream_attachments'])} total)")
+                for att in deps['upstream_attachments'][:3]:
+                    print(f"  • {att['relationship_type']}: {att['source_name']} → {att['target_name']}")
+                if len(deps['upstream_attachments']) > 3:
+                    print(f"  ... and {len(deps['upstream_attachments']) - 3} more")
+                print()
+            
+            if deps.get('downstream_attachments'):
+                print(f"📎 Downstream Attachment Details ({len(deps['downstream_attachments'])} total)")
+                for att in deps['downstream_attachments'][:3]:
+                    print(f"  • {att['relationship_type']}: {att['source_name']} → {att['target_name']}")
+                if len(deps['downstream_attachments']) > 3:
+                    print(f"  ... and {len(deps['downstream_attachments']) - 3} more")
+                print()
+            
+        except httpx.HTTPStatusError as e:
+            print(f"Error: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            print(f"Error: {str(e)}")
 
 
 def main():
@@ -239,22 +234,22 @@ def main():
     
     args = parser.parse_args()
     
-    global BASE_URL
-    BASE_URL = args.api_url
+    # Create demo instance
+    demo = TopologyDemo(args.api_url)
     
     print("\n" + "=" * 80)
     print(" Enhanced Topology and Dependency Analysis Demo")
     print("=" * 80)
     print(f"\nAnalyzing resource: {args.resource_id}")
-    print(f"API URL: {BASE_URL}")
+    print(f"API URL: {args.api_url}")
     
     with httpx.Client() as client:
         try:
             # Test API connectivity
-            response = client.get(f"{BASE_URL}/api/v1/topology")
+            response = client.get(f"{args.api_url}/api/v1/topology")
             response.raise_for_status()
         except Exception as e:
-            print(f"\n❌ Error: Cannot connect to TopDeck API at {BASE_URL}")
+            print(f"\n❌ Error: Cannot connect to TopDeck API at {args.api_url}")
             print(f"   {str(e)}")
             print("\nMake sure TopDeck is running:")
             print("  1. Start Neo4j: docker-compose up -d")
@@ -263,17 +258,17 @@ def main():
         
         # Run requested features
         if args.feature in ["all", "analysis"]:
-            get_attachment_analysis(client, args.resource_id)
+            demo.get_attachment_analysis(client, args.resource_id)
         
         if args.feature in ["all", "attachments"]:
-            get_resource_attachments(client, args.resource_id, direction="both")
+            demo.get_resource_attachments(client, args.resource_id, direction="both")
         
         if args.feature in ["all", "chains"]:
-            get_dependency_chains(client, args.resource_id, direction="downstream")
-            get_dependency_chains(client, args.resource_id, direction="upstream")
+            demo.get_dependency_chains(client, args.resource_id, direction="downstream")
+            demo.get_dependency_chains(client, args.resource_id, direction="upstream")
         
         if args.feature in ["all", "dependencies"]:
-            get_enhanced_dependencies(client, args.resource_id)
+            demo.get_enhanced_dependencies(client, args.resource_id)
     
     print("\n" + "=" * 80)
     print(" Demo Complete!")
