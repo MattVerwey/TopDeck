@@ -8,8 +8,8 @@ export interface Resource {
   name: string;
   cloud_provider: 'azure' | 'aws' | 'gcp';
   region?: string;
-  properties: Record<string, any>;
-  metadata: Record<string, any>;
+  properties: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 }
 
 export interface Relationship {
@@ -17,7 +17,7 @@ export interface Relationship {
   target_id: string;
   relationship_type: string;
   flow_type?: string;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
 }
 
 export interface TopologyGraph {
@@ -39,7 +39,7 @@ export interface ResourceDependencies {
   resource_name: string;
   upstream: Resource[];
   downstream: Resource[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface DataFlow {
@@ -49,18 +49,26 @@ export interface DataFlow {
   flow_type: string;
   nodes: Resource[];
   edges: Relationship[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface RiskAssessment {
   resource_id: string;
+  resource_name?: string;
+  resource_type?: string;
   risk_score: number;
+  risk_level?: string;
   criticality: 'low' | 'medium' | 'high' | 'critical';
+  criticality_score?: number;
   dependencies_count: number;
   dependents_count: number;
   blast_radius: number;
   single_point_of_failure: boolean;
+  deployment_failure_rate?: number;
+  time_since_last_change?: number;
   recommendations: string[];
+  factors?: Record<string, unknown>;
+  assessed_at?: string;
 }
 
 export interface ChangeImpact {
@@ -98,7 +106,7 @@ export interface FlowNode {
   duration_ms?: number;
   status: 'success' | 'error' | 'warning';
   log_count: number;
-  metrics: Record<string, any>;
+  metrics: Record<string, unknown>;
 }
 
 export interface FlowEdge {
@@ -120,7 +128,7 @@ export interface TransactionFlow {
   error_count: number;
   warning_count: number;
   source: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export type ViewMode = 'service' | 'cluster' | 'namespace' | 'network';

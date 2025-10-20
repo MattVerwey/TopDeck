@@ -102,23 +102,23 @@ export default function RiskBreakdown() {
             : 'Standard configuration with some risk factors',
         },
         affectedServices: [
-          ...blastRadius.directly_affected.map((r: any) => ({
+          ...blastRadius.directly_affected.map((r: { id: string; name: string; type?: string; resource_type?: string }) => ({
             id: r.id,
             name: r.name,
-            type: r.type || r.resource_type,
+            type: r.type || r.resource_type || 'unknown',
             impactLevel: 'critical' as const,
           })),
-          ...blastRadius.indirectly_affected.slice(0, 10).map((r: any) => ({
+          ...blastRadius.indirectly_affected.slice(0, 10).map((r: { id: string; name: string; type?: string; resource_type?: string }) => ({
             id: r.id,
             name: r.name,
-            type: r.type || r.resource_type,
+            type: r.type || r.resource_type || 'unknown',
             impactLevel: 'high' as const,
           })),
         ],
       };
 
       setBreakdownData(breakdown);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to analyze risk:', err);
       // Fallback to mock data if API fails
       setBreakdownData({
@@ -370,7 +370,7 @@ export default function RiskBreakdown() {
                           <Chip
                             label={service.impactLevel.toUpperCase()}
                             size="small"
-                            color={getImpactColor(service.impactLevel) as any}
+                            color={getImpactColor(service.impactLevel) as 'error' | 'warning' | 'info' | 'success'}
                           />
                         </Box>
                       </CardContent>
