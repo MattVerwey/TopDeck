@@ -404,7 +404,7 @@ After successful testing, you can:
 
 - **Full Guide**: [AZURE_TESTING_GUIDE.md](AZURE_TESTING_GUIDE.md)
 - **Quick Reference**: [AZURE_TRIAL_SETUP.md](AZURE_TRIAL_SETUP.md)
-- **Implementation Details**: [AZURE_TESTING_SUMMARY.md](../AZURE_TESTING_SUMMARY.md)
+- **Implementation Details**: [AZURE_TESTING_SUMMARY.md](archive/AZURE_TESTING_SUMMARY.md)
 - **Scripts Documentation**: [scripts/azure-testing/README.md](../scripts/azure-testing/README.md)
 
 ## Support
