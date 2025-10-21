@@ -5,7 +5,8 @@
  * This prevents the entire app from crashing when a component error occurs.
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { Box, Paper, Typography, Button } from '@mui/material';
 import { Error as ErrorIcon } from '@mui/icons-material';
 
@@ -92,7 +93,7 @@ class ErrorBoundary extends Component<Props, State> {
               {this.state.error?.message || 'An unexpected error occurred'}
             </Typography>
             
-            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+            {import.meta.env.DEV && this.state.errorInfo && (
               <Box
                 sx={{
                   mt: 3,

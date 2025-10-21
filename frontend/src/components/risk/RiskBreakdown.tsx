@@ -54,6 +54,7 @@ interface RiskBreakdownData {
     type: string;
     impactLevel: 'critical' | 'high' | 'medium' | 'low';
   }>;
+  recommendations?: string[];
 }
 
 const COLORS = {
@@ -115,6 +116,7 @@ export default function RiskBreakdown() {
             impactLevel: 'high' as const,
           })),
         ],
+        recommendations: riskAssessment.recommendations || [],
       };
 
       setBreakdownData(breakdown);
@@ -143,6 +145,11 @@ export default function RiskBreakdown() {
           { id: '3', name: 'Cache Service', type: 'cache', impactLevel: 'high' },
           { id: '4', name: 'Auth Service', type: 'service', impactLevel: 'high' },
           { id: '5', name: 'Storage Account', type: 'storage', impactLevel: 'medium' },
+        ],
+        recommendations: [
+          'Add redundancy or failover capability',
+          'Implement comprehensive monitoring and alerting',
+          'Prepare detailed rollback procedures',
         ],
       });
     } finally {
@@ -380,6 +387,27 @@ export default function RiskBreakdown() {
               </Paper>
             </Grid>
           </Grid>
+
+          {/* Recommendations Section */}
+          {breakdownData.recommendations && breakdownData.recommendations.length > 0 && (
+            <Paper sx={{ p: 3, mt: 3 }}>
+              <Typography variant="h6" gutterBottom fontWeight={600}>
+                Automated Remediation Recommendations
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Based on the risk analysis, here are suggested actions to mitigate the identified risks:
+              </Typography>
+              <Grid container spacing={1}>
+                {breakdownData.recommendations.map((rec, index) => (
+                  <Grid size={{ xs: 12 }} key={index}>
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      {rec}
+                    </Alert>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          )}
         </>
       )}
 

@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import type { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
+import type { AxiosInstance, AxiosError } from 'axios';
 import type {
   TopologyGraph,
   ResourceDependencies,
@@ -20,14 +20,21 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
  * Custom error class for API errors
  */
 export class ApiError extends Error {
+  statusCode?: number;
+  requestId?: string;
+  code?: string;
+
   constructor(
     message: string,
-    public statusCode?: number,
-    public requestId?: string,
-    public code?: string,
+    statusCode?: number,
+    requestId?: string,
+    code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.requestId = requestId;
+    this.code = code;
   }
 }
 
@@ -187,6 +194,72 @@ class ApiClient {
   }> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get(`/api/v1/risk/blast-radius/${resourceId}`);
+      return data;
+    });
+  }
+
+  async getComprehensiveRiskAnalysis(
+    resourceId: string,
+    projectPath?: string,
+    currentLoad: number = 0.7
+  ): Promise<{
+    resource_id: string;
+    combined_risk_score: number;
+    standard_assessment: RiskAssessment;
+    degraded_performance_scenario: {
+      resource_id: string;
+      resource_name: string;
+      failure_type: string;
+      outcomes: Array<{
+        outcome_type: string;
+        probability: number;
+        duration_seconds: number;
+        affected_percentage: number;
+        user_impact_description: string;
+        technical_details: string;
+      }>;
+      overall_impact: string;
+      mitigation_strategies: string[];
+      monitoring_recommendations: string[];
+    };
+    intermittent_failure_scenario: {
+      resource_id: string;
+      resource_name: string;
+      failure_type: string;
+      outcomes: Array<{
+        outcome_type: string;
+        probability: number;
+        duration_seconds: number;
+        affected_percentage: number;
+        user_impact_description: string;
+        technical_details: string;
+      }>;
+      overall_impact: string;
+      mitigation_strategies: string[];
+      monitoring_recommendations: string[];
+    };
+    dependency_vulnerabilities: Array<{
+      package_name: string;
+      current_version: string;
+      vulnerability_id: string;
+      severity: string;
+      description: string;
+      fixed_version?: string;
+      exploit_available: boolean;
+      affected_resources: string[];
+    }>;
+    vulnerability_risk_score: number;
+    all_recommendations: string[];
+  }> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, any> = { current_load: currentLoad };
+      if (projectPath) {
+        params.project_path = projectPath;
+      }
+      const { data } = await this.client.get(
+        `/api/v1/risk/resources/${resourceId}/comprehensive`,
+        { params }
+      );
       return data;
     });
   }

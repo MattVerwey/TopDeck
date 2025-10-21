@@ -53,6 +53,7 @@ interface TestReport {
   failed: number;
   warnings: number;
   results: TestResult[];
+  recommendations?: string[];
 }
 
 const TEST_SUITES = [
@@ -177,6 +178,7 @@ export default function ResourceTester() {
         failed,
         warnings,
         results,
+        recommendations: riskAssessment.recommendations || [],
       };
 
       setTestReport(report);
@@ -399,6 +401,45 @@ export default function ResourceTester() {
               ))}
             </List>
           </Paper>
+
+          {/* Recommendations Section */}
+          {testReport.recommendations && testReport.recommendations.length > 0 && (
+            <Paper sx={{ p: 3, mt: 3 }}>
+              <Typography variant="h6" gutterBottom fontWeight={600}>
+                Automated Remediation Recommendations
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Based on the test results and risk analysis:
+              </Typography>
+              <List>
+                {testReport.recommendations.map((rec, index) => (
+                  <ListItem
+                    key={index}
+                    sx={{
+                      mb: 1,
+                      background: '#132f4c',
+                      borderRadius: 1,
+                      border: '1px solid rgba(33, 150, 243, 0.3)',
+                    }}
+                  >
+                    <ListItemIcon>
+                      {rec.includes('🔴') || rec.includes('CRITICAL') ? (
+                        <ErrorIcon color="error" />
+                      ) : rec.includes('⚠️') ? (
+                        <WarningIcon color="warning" />
+                      ) : (
+                        <SuccessIcon color="info" />
+                      )}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={rec}
+                      primaryTypographyProps={{ variant: 'body1' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          )}
         </>
       )}
 
