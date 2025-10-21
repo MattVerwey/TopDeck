@@ -238,7 +238,7 @@ export default function RiskBreakdown() {
                 <TextField
                   {...params}
                   label="Search Resources"
-                  placeholder="Search by name, type, provider, or ID..."
+                  placeholder="Search by name, type, or provider..."
                   fullWidth
                   helperText={`${resources.length} resources available`}
                 />
