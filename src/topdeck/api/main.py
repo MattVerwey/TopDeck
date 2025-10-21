@@ -22,7 +22,7 @@ from topdeck.common.health import (
     HealthCheckResponse,
 )
 from topdeck.common.metrics import get_metrics_handler
-from topdeck.api.routes import topology, monitoring, risk, integrations
+from topdeck.api.routes import topology, monitoring, risk, integrations, prediction
 
 # Create FastAPI application
 app = FastAPI(
@@ -65,6 +65,7 @@ app.include_router(topology.router)
 app.include_router(monitoring.router)
 app.include_router(risk.router)
 app.include_router(integrations.router)
+app.include_router(prediction.router)
 
 
 @app.get("/")
