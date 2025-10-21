@@ -102,7 +102,6 @@ def test_validate_risk_score_out_of_range():
     """Test risk score validation with out of range value."""
     with pytest.raises(ValidationError):
         validate_risk_score(1.5)
-    
     with pytest.raises(ValidationError):
         validate_risk_score(-0.1)
 
