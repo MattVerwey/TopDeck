@@ -42,7 +42,11 @@ TopDeck provides that answer by:
 - **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
 
-### Risk Analysis (NEW!)
+### Topology & Dependencies (NEW!)
+- **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
+- **[Topology Analysis Quick Reference](docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+
+### Risk Analysis
 - **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
 - **[Risk Analysis Quick Reference](docs/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
@@ -290,17 +294,36 @@ python examples/github_integration.py
 # See which repo deployed to which resource
 ```
 
-**3. Query Topology**
+**3. Query Topology and Dependencies - NEW Enhanced Capabilities! 🎯**
 ```bash
 # Start the API server
 make run
 
-# Query dependencies
-curl http://localhost:8000/api/v1/topology/resources/{id}/dependencies
-
 # Get complete topology graph
 curl http://localhost:8000/api/v1/topology
+
+# Get detailed resource attachments (NEW!)
+curl http://localhost:8000/api/v1/topology/resources/{id}/attachments
+
+# Get dependency chains (NEW!)
+curl http://localhost:8000/api/v1/topology/resources/{id}/chains
+
+# Get comprehensive attachment analysis (NEW!)
+curl http://localhost:8000/api/v1/topology/resources/{id}/analysis
+
+# Enhanced dependencies with attachment details
+curl http://localhost:8000/api/v1/topology/resources/{id}/dependencies
 ```
+
+**New Topology & Dependency Features:**
+- ✅ **Resource Attachments**: See which resources are attached to which with detailed connection info
+- ✅ **Relationship Details**: View ports, protocols, connection strings, and endpoint details
+- ✅ **Dependency Chains**: Trace complete paths showing how dependencies cascade
+- ✅ **Attachment Analysis**: Get bigger picture with metrics, strength scores, and impact radius
+- ✅ **Critical Identification**: Automatically identify critical attachments and connections
+- ✅ **Relationship Categorization**: Organize by dependency, connectivity, deployment, security
+
+See **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** for complete documentation.
 
 **4. Explore with Web UI**
 ```bash

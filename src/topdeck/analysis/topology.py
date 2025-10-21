@@ -71,6 +71,21 @@ class DataFlow:
 
 
 @dataclass
+class ResourceAttachment:
+    """Detailed attachment information between two resources."""
+    
+    source_id: str
+    source_name: str
+    source_type: str
+    target_id: str
+    target_name: str
+    target_type: str
+    relationship_type: str
+    relationship_properties: Dict[str, Any] = field(default_factory=dict)
+    attachment_context: Dict[str, Any] = field(default_factory=dict)  # ports, protocols, etc.
+
+
+@dataclass
 class ResourceDependencies:
     """Dependencies for a specific resource."""
     
@@ -78,7 +93,39 @@ class ResourceDependencies:
     resource_name: str
     upstream: List[TopologyNode]  # Resources this depends on
     downstream: List[TopologyNode]  # Resources that depend on this
+    upstream_attachments: List[ResourceAttachment] = field(default_factory=list)  # Detailed upstream connections
+    downstream_attachments: List[ResourceAttachment] = field(default_factory=list)  # Detailed downstream connections
     depth: int = 1
+
+
+@dataclass
+class DependencyChain:
+    """Represents a complete dependency chain path."""
+    
+    chain_id: str
+    resource_ids: List[str]
+    resource_names: List[str]
+    resource_types: List[str]
+    relationships: List[str]
+    chain_length: int
+    total_risk_score: float = 0.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ResourceAttachmentAnalysis:
+    """In-depth analysis of resource attachments."""
+    
+    resource_id: str
+    resource_name: str
+    resource_type: str
+    total_attachments: int
+    attachment_by_type: Dict[str, int]  # Count of attachments by relationship type
+    critical_attachments: List[ResourceAttachment]  # High-impact attachments
+    attachment_strength: Dict[str, float]  # Strength score by relationship type
+    dependency_chains: List[DependencyChain]
+    impact_radius: int  # Number of resources affected within N hops
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class TopologyService:
@@ -319,11 +366,27 @@ class TopologyService:
                         properties=deserialized_props,
                     ))
         
+        # Get detailed attachment information
+        upstream_attachments = []
+        downstream_attachments = []
+        
+        if direction in ("upstream", "both"):
+            upstream_attachments = [
+                att for att in self.get_resource_attachments(resource_id, direction="upstream")
+            ]
+        
+        if direction in ("downstream", "both"):
+            downstream_attachments = [
+                att for att in self.get_resource_attachments(resource_id, direction="downstream")
+            ]
+        
         return ResourceDependencies(
             resource_id=resource_id,
             resource_name=resource_name,
             upstream=upstream,
             downstream=downstream,
+            upstream_attachments=upstream_attachments,
+            downstream_attachments=downstream_attachments,
             depth=depth,
         )
     
@@ -472,3 +535,286 @@ class TopologyService:
             return FlowType.HTTPS
         else:
             return FlowType.INTERNAL
+    
+    def get_resource_attachments(
+        self,
+        resource_id: str,
+        direction: str = "both"
+    ) -> List[ResourceAttachment]:
+        """
+        Get detailed attachment information for a resource.
+        
+        Shows all relationship types, properties, and connection context
+        for understanding how resources are connected.
+        
+        Args:
+            resource_id: Resource ID to analyze
+            direction: "upstream", "downstream", or "both"
+            
+        Returns:
+            List of ResourceAttachment objects with detailed connection info
+        """
+        attachments = []
+        
+        with self.neo4j_client.session() as session:
+            # Get upstream attachments (what this resource connects to)
+            if direction in ("upstream", "both"):
+                upstream_query = """
+                MATCH (source:Resource {id: $id})-[rel]->(target:Resource)
+                RETURN source.id as source_id,
+                       source.name as source_name,
+                       source.resource_type as source_type,
+                       target.id as target_id,
+                       target.name as target_name,
+                       target.resource_type as target_type,
+                       type(rel) as relationship_type,
+                       properties(rel) as rel_properties
+                """
+                
+                result = session.run(upstream_query, id=resource_id)
+                for record in result:
+                    attachments.append(ResourceAttachment(
+                        source_id=record["source_id"],
+                        source_name=record["source_name"],
+                        source_type=record["source_type"],
+                        target_id=record["target_id"],
+                        target_name=record["target_name"],
+                        target_type=record["target_type"],
+                        relationship_type=record["relationship_type"],
+                        relationship_properties=dict(record["rel_properties"]) if record["rel_properties"] else {},
+                        attachment_context=self._build_attachment_context(
+                            record["relationship_type"],
+                            dict(record["rel_properties"]) if record["rel_properties"] else {}
+                        ),
+                    ))
+            
+            # Get downstream attachments (what connects to this resource)
+            if direction in ("downstream", "both"):
+                downstream_query = """
+                MATCH (source:Resource)-[rel]->(target:Resource {id: $id})
+                RETURN source.id as source_id,
+                       source.name as source_name,
+                       source.resource_type as source_type,
+                       target.id as target_id,
+                       target.name as target_name,
+                       target.resource_type as target_type,
+                       type(rel) as relationship_type,
+                       properties(rel) as rel_properties
+                """
+                
+                result = session.run(downstream_query, id=resource_id)
+                for record in result:
+                    attachments.append(ResourceAttachment(
+                        source_id=record["source_id"],
+                        source_name=record["source_name"],
+                        source_type=record["source_type"],
+                        target_id=record["target_id"],
+                        target_name=record["target_name"],
+                        target_type=record["target_type"],
+                        relationship_type=record["relationship_type"],
+                        relationship_properties=dict(record["rel_properties"]) if record["rel_properties"] else {},
+                        attachment_context=self._build_attachment_context(
+                            record["relationship_type"],
+                            dict(record["rel_properties"]) if record["rel_properties"] else {}
+                        ),
+                    ))
+        
+        return attachments
+    
+    def _build_attachment_context(
+        self,
+        relationship_type: str,
+        properties: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Build contextual information about the attachment.
+        
+        Extracts meaningful connection details like ports, protocols, etc.
+        """
+        context = {}
+        
+        # Extract common connection properties
+        if "port" in properties:
+            context["port"] = properties["port"]
+        if "protocol" in properties:
+            context["protocol"] = properties["protocol"]
+        if "connection_string" in properties:
+            context["connection_string"] = properties["connection_string"]
+        if "endpoint" in properties:
+            context["endpoint"] = properties["endpoint"]
+        
+        # Add relationship-specific context
+        context["relationship_category"] = self._categorize_relationship(relationship_type)
+        context["is_critical"] = self._is_critical_attachment(relationship_type)
+        
+        return context
+    
+    def _categorize_relationship(self, relationship_type: str) -> str:
+        """Categorize relationship into high-level groups."""
+        rel_lower = relationship_type.lower()
+        
+        if any(x in rel_lower for x in ["depends", "uses"]):
+            return "dependency"
+        elif any(x in rel_lower for x in ["connects", "routes", "accesses"]):
+            return "connectivity"
+        elif any(x in rel_lower for x in ["deployed", "built", "contains"]):
+            return "deployment"
+        elif any(x in rel_lower for x in ["authenticates", "authorizes"]):
+            return "security"
+        else:
+            return "other"
+    
+    def _is_critical_attachment(self, relationship_type: str) -> bool:
+        """Determine if an attachment is critical."""
+        critical_types = [
+            "DEPENDS_ON",
+            "AUTHENTICATES_WITH",
+            "ROUTES_TO",
+            "CONNECTS_TO"
+        ]
+        return relationship_type.upper() in critical_types
+    
+    def get_dependency_chains(
+        self,
+        resource_id: str,
+        max_depth: int = 5,
+        direction: str = "downstream"
+    ) -> List[DependencyChain]:
+        """
+        Get all dependency chains starting from a resource.
+        
+        Identifies complete paths showing how failures propagate.
+        
+        Args:
+            resource_id: Resource ID to start from
+            max_depth: Maximum chain length
+            direction: "upstream" or "downstream"
+            
+        Returns:
+            List of DependencyChain objects
+        """
+        chains = []
+        
+        # Build the path pattern based on direction
+        if direction == "downstream":
+            path_pattern = f"(r:Resource {{id: $id}})<-[*1..{max_depth}]-(dependent:Resource)"
+        else:
+            path_pattern = f"(r:Resource {{id: $id}})-[*1..{max_depth}]->(dependency:Resource)"
+        
+        query = f"""
+        MATCH path = {path_pattern}
+        WITH path, [node IN nodes(path) | node.id] as ids,
+             [node IN nodes(path) | node.name] as names,
+             [node IN nodes(path) | node.resource_type] as types,
+             [rel IN relationships(path) | type(rel)] as rels
+        WHERE size(ids) > 1
+        RETURN DISTINCT ids, names, types, rels, length(path) as chain_length
+        ORDER BY chain_length DESC
+        LIMIT 50
+        """
+        
+        with self.neo4j_client.session() as session:
+            result = session.run(query, id=resource_id)
+            for idx, record in enumerate(result):
+                chains.append(DependencyChain(
+                    chain_id=f"chain_{idx}",
+                    resource_ids=record["ids"],
+                    resource_names=record["names"],
+                    resource_types=record["types"],
+                    relationships=record["rels"],
+                    chain_length=record["chain_length"],
+                    metadata={
+                        "direction": direction,
+                        "start_resource": resource_id
+                    }
+                ))
+        
+        return chains
+    
+    def get_attachment_analysis(
+        self,
+        resource_id: str
+    ) -> ResourceAttachmentAnalysis:
+        """
+        Get comprehensive in-depth analysis of resource attachments.
+        
+        Provides detailed metrics about how a resource connects to others,
+        including attachment types, strength, and impact analysis.
+        
+        Args:
+            resource_id: Resource ID to analyze
+            
+        Returns:
+            ResourceAttachmentAnalysis with comprehensive metrics
+        """
+        with self.neo4j_client.session() as session:
+            # Get basic resource info
+            resource_query = """
+            MATCH (r:Resource {id: $id})
+            RETURN r.name as name, r.resource_type as type
+            """
+            resource_result = session.run(resource_query, id=resource_id)
+            resource_record = resource_result.single()
+            
+            if not resource_record:
+                raise ValueError(f"Resource {resource_id} not found")
+            
+            resource_name = resource_record["name"]
+            resource_type = resource_record["type"]
+            
+            # Get all attachments
+            attachments = self.get_resource_attachments(resource_id, direction="both")
+            
+            # Count attachments by type
+            attachment_by_type: Dict[str, int] = {}
+            attachment_strength: Dict[str, float] = {}
+            critical_attachments = []
+            
+            for attachment in attachments:
+                rel_type = attachment.relationship_type
+                attachment_by_type[rel_type] = attachment_by_type.get(rel_type, 0) + 1
+                
+                # Calculate strength score (based on criticality and properties)
+                strength = 0.5  # Base strength
+                if attachment.attachment_context.get("is_critical", False):
+                    strength += 0.3
+                    critical_attachments.append(attachment)
+                if attachment.relationship_properties:
+                    strength += 0.2
+                
+                if rel_type not in attachment_strength:
+                    attachment_strength[rel_type] = strength
+                else:
+                    attachment_strength[rel_type] = max(attachment_strength[rel_type], strength)
+            
+            # Get dependency chains
+            downstream_chains = self.get_dependency_chains(resource_id, direction="downstream", max_depth=5)
+            upstream_chains = self.get_dependency_chains(resource_id, direction="upstream", max_depth=5)
+            all_chains = downstream_chains + upstream_chains
+            
+            # Calculate impact radius
+            impact_radius_query = """
+            MATCH (r:Resource {id: $id})-[*1..3]-(connected:Resource)
+            WITH DISTINCT connected
+            RETURN count(connected) as radius
+            """
+            radius_result = session.run(impact_radius_query, id=resource_id)
+            radius_record = radius_result.single()
+            impact_radius = radius_record["radius"] if radius_record else 0
+        
+        return ResourceAttachmentAnalysis(
+            resource_id=resource_id,
+            resource_name=resource_name,
+            resource_type=resource_type,
+            total_attachments=len(attachments),
+            attachment_by_type=attachment_by_type,
+            critical_attachments=critical_attachments,
+            attachment_strength=attachment_strength,
+            dependency_chains=all_chains,
+            impact_radius=impact_radius,
+            metadata={
+                "analysis_depth": 3,
+                "max_chain_length": max(chain.chain_length for chain in all_chains) if all_chains else 0,
+                "unique_relationship_types": len(attachment_by_type)
+            }
+        )
