@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import type {
   TopologyGraph,
   ResourceDependencies,
@@ -16,10 +16,48 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+/**
+ * Custom error class for API errors
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public requestId?: string,
+    public code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Retry configuration
+ */
+interface RetryConfig {
+  maxRetries: number;
+  retryDelay: number;
+  retryableStatuses: number[];
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  retryDelay: 1000, // 1 second
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
+};
+
+/**
+ * Sleep utility for retry delays
+ */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class ApiClient {
   private client: AxiosInstance;
+  private retryConfig: RetryConfig;
 
-  constructor() {
+  constructor(retryConfig: Partial<RetryConfig> = {}) {
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+    
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 30000,
@@ -27,6 +65,54 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
     });
+
+    // Add response interceptor for error handling
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        const requestId = error.response?.headers['x-request-id'];
+        const errorData = error.response?.data as any;
+        
+        throw new ApiError(
+          errorData?.error?.message || error.message || 'An error occurred',
+          error.response?.status,
+          requestId,
+          errorData?.error?.code,
+        );
+      }
+    );
+  }
+
+  /**
+   * Make a request with automatic retry logic
+   */
+  private async requestWithRetry<T>(
+    requestFn: () => Promise<T>,
+    retries = 0,
+  ): Promise<T> {
+    try {
+      return await requestFn();
+    } catch (error) {
+      if (error instanceof ApiError && retries < this.retryConfig.maxRetries) {
+        // Check if status is retryable
+        if (
+          error.statusCode &&
+          this.retryConfig.retryableStatuses.includes(error.statusCode)
+        ) {
+          // Calculate delay with exponential backoff
+          const delay = this.retryConfig.retryDelay * Math.pow(2, retries);
+          
+          console.warn(
+            `Request failed with ${error.statusCode}. Retrying in ${delay}ms... (attempt ${retries + 1}/${this.retryConfig.maxRetries})`
+          );
+          
+          await sleep(delay);
+          return this.requestWithRetry(requestFn, retries + 1);
+        }
+      }
+      
+      throw error;
+    }
   }
 
   // Topology API
@@ -35,33 +121,43 @@ class ApiClient {
     resource_type?: string;
     region?: string;
   }): Promise<TopologyGraph> {
-    const { data } = await this.client.get('/api/v1/topology', { params: filters });
-    return data;
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/topology', { params: filters });
+      return data;
+    });
   }
 
   async getResourceDependencies(resourceId: string): Promise<ResourceDependencies> {
-    const { data } = await this.client.get(`/api/v1/topology/resources/${resourceId}/dependencies`);
-    return data;
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/topology/resources/${resourceId}/dependencies`);
+      return data;
+    });
   }
 
   async getDataFlows(filters?: {
     flow_type?: string;
     start_resource_type?: string;
   }): Promise<DataFlow[]> {
-    const { data } = await this.client.get('/api/v1/topology/flows', { params: filters });
-    return data;
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/topology/flows', { params: filters });
+      return data;
+    });
   }
 
   // Risk Analysis API
   async getRiskAssessment(resourceId: string): Promise<RiskAssessment> {
-    const { data } = await this.client.get(`/api/v1/risk/resources/${resourceId}`);
-    return data;
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/risk/resources/${resourceId}`);
+      return data;
+    });
   }
 
   async getAllRisks(): Promise<RiskAssessment[]> {
     try {
-      const { data } = await this.client.get('/api/v1/risk/all');
-      return data;
+      return await this.requestWithRetry(async () => {
+        const { data } = await this.client.get('/api/v1/risk/all');
+        return data;
+      });
     } catch {
       // Fallback to empty array if endpoint doesn't exist
       return [];
@@ -69,11 +165,13 @@ class ApiClient {
   }
 
   async getChangeImpact(serviceId: string, changeType: string): Promise<ChangeImpact> {
-    const { data } = await this.client.post(`/api/v1/risk/impact`, {
-      service_id: serviceId,
-      change_type: changeType,
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post(`/api/v1/risk/impact`, {
+        service_id: serviceId,
+        change_type: changeType,
+      });
+      return data;
     });
-    return data;
   }
 
   async getBlastRadius(resourceId: string): Promise<{
@@ -87,8 +185,10 @@ class ApiClient {
     critical_path: string[];
     affected_services: Record<string, unknown>;
   }> {
-    const { data } = await this.client.get(`/api/v1/risk/blast-radius/${resourceId}`);
-    return data;
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/risk/blast-radius/${resourceId}`);
+      return data;
+    });
   }
 
   // Monitoring API

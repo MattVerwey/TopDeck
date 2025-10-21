@@ -52,13 +52,13 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
 # Add rate limiting middleware (configurable via environment)
-# Default: 60 requests per minute per client
-rate_limiter = RateLimiter(requests_per_minute=60)
-app.add_middleware(
-    RateLimitMiddleware,
-    rate_limiter=rate_limiter,
-    exempt_paths=["/health", "/health/detailed", "/metrics", "/", "/api/info"],
-)
+if settings.rate_limit_enabled:
+    rate_limiter = RateLimiter(requests_per_minute=settings.rate_limit_requests_per_minute)
+    app.add_middleware(
+        RateLimitMiddleware,
+        rate_limiter=rate_limiter,
+        exempt_paths=["/health", "/health/detailed", "/metrics", "/", "/api/info"],
+    )
 
 # Include routers
 app.include_router(topology.router)

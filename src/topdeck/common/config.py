@@ -106,6 +106,20 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["json", "text"] = "json"
 
+    # Request Configuration
+    request_timeout_seconds: int = Field(
+        default=30, description="Default request timeout in seconds"
+    )
+    max_request_size_mb: int = Field(
+        default=10, description="Maximum request size in MB"
+    )
+
+    # Rate Limiting Configuration
+    rate_limit_requests_per_minute: int = Field(
+        default=60, description="Rate limit: requests per minute per client"
+    )
+    rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
+
 
 # Global settings instance
 settings = Settings()
