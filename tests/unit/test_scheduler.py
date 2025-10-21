@@ -2,6 +2,7 @@
 Unit tests for the discovery scheduler.
 """
 
+from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -9,6 +10,29 @@ import pytest
 
 from topdeck.common.scheduler import DiscoveryScheduler, get_scheduler
 from topdeck.discovery.models import DiscoveryResult
+
+
+@contextmanager
+def mock_scheduler_running(scheduler, is_running: bool = True):
+    """
+    Context manager to mock the 'running' property of a scheduler.
+
+    This helper simplifies the complex nested patch pattern for mocking
+    the scheduler's running state.
+
+    Args:
+        scheduler: The scheduler instance
+        is_running: The value to return for the running property
+
+    Example:
+        >>> with mock_scheduler_running(scheduler, True):
+        ...     # scheduler.scheduler.running will return True
+        ...     pass
+    """
+    with patch.object(
+        type(scheduler.scheduler), "running", property(lambda self: is_running), create=True
+    ):
+        yield
 
 
 @pytest.fixture
@@ -125,9 +149,7 @@ def test_stop_scheduler(scheduler, mock_neo4j_client):
     """Test stopping the scheduler."""
     scheduler.neo4j_client = mock_neo4j_client
 
-    with patch.object(
-        type(scheduler.scheduler), "running", property(lambda self: True), create=True
-    ):
+    with mock_scheduler_running(scheduler, True):
         with patch.object(scheduler.scheduler, "shutdown") as mock_shutdown:
             scheduler.stop()
 
@@ -270,9 +292,7 @@ def test_get_status(scheduler):
     scheduler.discovery_in_progress = False
     scheduler.last_discovery_time = datetime(2025, 10, 21, 12, 0, 0)
 
-    with patch.object(
-        type(scheduler.scheduler), "running", property(lambda self: True), create=True
-    ):
+    with mock_scheduler_running(scheduler, True):
         with patch.object(scheduler, "_has_azure_credentials", return_value=True):
             with patch.object(scheduler, "_has_aws_credentials", return_value=False):
                 with patch.object(scheduler, "_has_gcp_credentials", return_value=False):
@@ -281,7 +301,7 @@ def test_get_status(scheduler):
                     assert status["scheduler_running"] is True
                     assert status["discovery_in_progress"] is False
                     assert status["last_discovery_time"] == "2025-10-21T12:00:00"
-                    assert status["interval_hours"] == 8
+                    assert status["interval_seconds"] == 28800
                     assert status["enabled_providers"]["azure"] is True
                     assert status["enabled_providers"]["aws"] is False
                     assert status["enabled_providers"]["gcp"] is False

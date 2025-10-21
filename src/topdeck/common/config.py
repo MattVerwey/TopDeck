@@ -88,7 +88,9 @@ class Settings(BaseSettings):
 
     # Discovery Configuration
     discovery_scan_interval: int = Field(
-        default=28800, description="Discovery scan interval in seconds (default: 8 hours)"
+        default=28800,
+        description="Discovery scan interval in seconds (default: 8 hours)",
+        ge=60,  # Minimum 1 minute
     )
     discovery_parallel_workers: int = Field(
         default=5, description="Number of parallel discovery workers"

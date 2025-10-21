@@ -46,12 +46,11 @@ class DiscoveryScheduler:
                 self.neo4j_client.connect()
                 logger.info("Connected to Neo4j for scheduled discovery")
 
-            # Add discovery job with 8-hour interval
-            # Using hours instead of seconds for the interval
-            interval_hours = settings.discovery_scan_interval // 3600
+            # Add discovery job with configurable interval
+            # Use seconds parameter to support sub-hour intervals
             self.scheduler.add_job(
                 self._run_discovery,
-                trigger=IntervalTrigger(hours=interval_hours),
+                trigger=IntervalTrigger(seconds=settings.discovery_scan_interval),
                 id="resource_discovery",
                 name="Automated Resource Discovery",
                 replace_existing=True,
@@ -59,7 +58,12 @@ class DiscoveryScheduler:
             )
 
             self.scheduler.start()
-            logger.info(f"Discovery scheduler started with {interval_hours}-hour interval")
+            interval_display = (
+                f"{settings.discovery_scan_interval // 3600} hours"
+                if settings.discovery_scan_interval >= 3600
+                else f"{settings.discovery_scan_interval} seconds"
+            )
+            logger.info(f"Discovery scheduler started with {interval_display} interval")
 
             # Run initial discovery immediately if configured
             if self._should_run_discovery():
@@ -176,9 +180,14 @@ class DiscoveryScheduler:
             elapsed = (self.last_discovery_time - start_time).total_seconds()
 
             logger.info("=" * 60)
+            next_run_display = (
+                f"{settings.discovery_scan_interval // 3600} hours"
+                if settings.discovery_scan_interval >= 3600
+                else f"{settings.discovery_scan_interval} seconds"
+            )
             logger.info(
                 f"Automated discovery completed in {elapsed:.2f}s. "
-                f"Next run in {settings.discovery_scan_interval // 3600} hours."
+                f"Next run in {next_run_display}."
             )
             logger.info("=" * 60)
 
@@ -329,7 +338,7 @@ class DiscoveryScheduler:
             "last_discovery_time": (
                 self.last_discovery_time.isoformat() if self.last_discovery_time else None
             ),
-            "interval_hours": settings.discovery_scan_interval // 3600,
+            "interval_seconds": settings.discovery_scan_interval,
             "enabled_providers": {
                 "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
                 "aws": settings.enable_aws_discovery and self._has_aws_credentials(),
