@@ -233,12 +233,57 @@ export default function ResourceTester() {
           <Grid size={{ xs: 12, md: 5 }}>
             <Autocomplete
               options={resources}
-              getOptionLabel={(option) => `${option.name} (${option.resource_type})`}
+              getOptionLabel={(option) => option.name}
               value={resources.find((r) => r.id === selectedResource) || null}
               onChange={(_, value) => setSelectedResource(value?.id || '')}
-              renderInput={(params) => (
-                <TextField {...params} label="Select Resource" fullWidth />
+              filterOptions={(options, state) => {
+                const inputValue = state.inputValue.toLowerCase();
+                if (!inputValue) return options;
+                
+                return options.filter((option) =>
+                  option.name.toLowerCase().includes(inputValue) ||
+                  option.resource_type.toLowerCase().includes(inputValue) ||
+                  option.cloud_provider.toLowerCase().includes(inputValue) ||
+                  option.id.toLowerCase().includes(inputValue)
+                );
+              }}
+              groupBy={(option) => option.resource_type.toUpperCase()}
+              renderOption={(props, option) => (
+                <Box component="li" {...props} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
+                  <Typography variant="body1" fontWeight={600}>
+                    {option.name}
+                  </Typography>
+                  <Box display="flex" gap={1} mt={0.5}>
+                    <Chip
+                      label={option.resource_type}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      sx={{ height: 20, fontSize: '0.7rem' }}
+                    />
+                    <Chip
+                      label={option.cloud_provider.toUpperCase()}
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                      sx={{ height: 20, fontSize: '0.7rem' }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: '20px' }}>
+                      ID: {option.id.substring(0, 8)}...
+                    </Typography>
+                  </Box>
+                </Box>
               )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Search Resources"
+                  placeholder="Search by name, type, provider..."
+                  fullWidth
+                  helperText={`${resources.length} resources available`}
+                />
+              )}
+              noOptionsText="No resources found - try a different search term"
             />
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
