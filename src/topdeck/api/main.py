@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +23,28 @@ from topdeck.common.health import (
     HealthCheckResponse,
 )
 from topdeck.common.metrics import get_metrics_handler
-from topdeck.api.routes import topology, monitoring, risk, integrations, prediction
+from topdeck.common.scheduler import start_scheduler, stop_scheduler, get_scheduler
+from topdeck.api.routes import topology, monitoring, risk, integrations, prediction, discovery
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI.
+    
+    Handles startup and shutdown events.
+    """
+    # Startup
+    try:
+        start_scheduler()
+    except Exception as e:
+        print(f"Warning: Failed to start scheduler: {e}")
+    
+    yield
+    
+    # Shutdown
+    stop_scheduler()
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -32,6 +54,7 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 
 # Register exception handlers
@@ -66,6 +89,7 @@ app.include_router(monitoring.router)
 app.include_router(risk.router)
 app.include_router(integrations.router)
 app.include_router(prediction.router)
+app.include_router(discovery.router)
 
 
 @app.get("/")

@@ -161,6 +161,9 @@ class TrainingMetrics:
     trained_at: datetime
     training_duration_seconds: float
     
+    # Training data
+    training_samples: int
+    
     # Performance metrics
     accuracy: Optional[float] = None
     precision: Optional[float] = None
@@ -169,13 +172,12 @@ class TrainingMetrics:
     mae: Optional[float] = None  # Mean Absolute Error
     rmse: Optional[float] = None  # Root Mean Squared Error
     
-    # Training data
-    training_samples: int
-    features_used: List[str] = None
+    # Features
+    features_used: Optional[List[str]] = None
     
     # Model info
     algorithm: str = ""
-    hyperparameters: Dict[str, any] = None
+    hyperparameters: Optional[Dict[str, any]] = None
 
 
 @dataclass
