@@ -41,6 +41,7 @@ TopDeck provides that answer by:
 - **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute test deployment guide
 - **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
+- **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - ✨ NEW! Automatic 8-hour resource discovery
 
 ### Topology & Dependencies (NEW!)
 - **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
