@@ -1,10 +1,27 @@
 """FastAPI application entry point."""
 
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from topdeck import __version__
 from topdeck.common.config import settings
+from topdeck.common.middleware import RequestLoggingMiddleware, RequestIDMiddleware
+from topdeck.common.rate_limiter import RateLimitMiddleware, RateLimiter
+from topdeck.common.errors import (
+    TopDeckException,
+    topdeck_exception_handler,
+    generic_exception_handler,
+)
+from topdeck.common.health import (
+    check_neo4j_health,
+    check_redis_health,
+    check_rabbitmq_health,
+    determine_overall_status,
+    HealthCheckResponse,
+)
+from topdeck.common.metrics import get_metrics_handler
 from topdeck.api.routes import topology, monitoring, risk, integrations
 
 # Create FastAPI application
@@ -17,6 +34,10 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# Register exception handlers
+app.add_exception_handler(TopDeckException, topdeck_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +46,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add custom middleware
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+# Add rate limiting middleware (configurable via environment)
+if settings.rate_limit_enabled:
+    rate_limiter = RateLimiter(requests_per_minute=settings.rate_limit_requests_per_minute)
+    app.add_middleware(
+        RateLimitMiddleware,
+        rate_limiter=rate_limiter,
+        exempt_paths=["/health", "/health/detailed", "/metrics", "/", "/api/info"],
+    )
 
 # Include routers
 app.include_router(topology.router)
@@ -45,8 +79,43 @@ async def root() -> dict[str, str]:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    """Health check endpoint."""
+    """Basic health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/health/detailed", response_model=HealthCheckResponse)
+async def detailed_health() -> HealthCheckResponse:
+    """
+    Detailed health check endpoint.
+    
+    Checks the health of all service dependencies:
+    - Neo4j database
+    - Redis cache
+    - RabbitMQ message queue
+    """
+    components = {
+        "neo4j": await check_neo4j_health(),
+        "redis": await check_redis_health(),
+        "rabbitmq": await check_rabbitmq_health(),
+    }
+    
+    overall_status = determine_overall_status(components)
+    
+    return HealthCheckResponse(
+        status=overall_status,
+        components=components,
+        timestamp=datetime.utcnow().isoformat(),
+    )
+
+
+@app.get("/metrics")
+async def metrics():
+    """
+    Prometheus metrics endpoint.
+    
+    Exposes application metrics in Prometheus format for scraping.
+    """
+    return get_metrics_handler()
 
 
 @app.get("/api/info")

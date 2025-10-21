@@ -11,7 +11,6 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import {
   Cloud as CloudIcon,
@@ -21,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
 import apiClient from '../services/api';
+import ErrorDisplay from '../components/common/ErrorDisplay';
 
 interface DashboardMetric {
   label: string;
@@ -78,7 +78,7 @@ export default function Dashboard() {
         },
       ]);
     } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard data');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -93,11 +93,7 @@ export default function Dashboard() {
   }
 
   if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
+    return <ErrorDisplay error={error} onRetry={loadDashboardData} title="Failed to load dashboard" />;
   }
 
   return (
