@@ -17,6 +17,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,6 +28,7 @@ import {
   Extension as IntegrationsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getCurrentTheme } from '../../utils/themeDetector';
 
 const DRAWER_WIDTH = 240;
 
@@ -46,6 +48,7 @@ export default function Layout({ children }: LayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const currentTheme = getCurrentTheme();
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -73,6 +76,16 @@ export default function Layout({ children }: LayoutProps) {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             TopDeck
           </Typography>
+          <Chip 
+            label={`${currentTheme.emoji} ${currentTheme.displayName}`}
+            size="small"
+            sx={{ 
+              mr: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              color: 'white',
+              fontWeight: 500
+            }}
+          />
           <Typography variant="body2" sx={{ opacity: 0.7 }}>
             Multi-Cloud Platform
           </Typography>
