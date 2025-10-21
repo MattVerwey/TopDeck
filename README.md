@@ -382,11 +382,47 @@ curl "http://localhost:8000/api/v1/risk/spof"
 
 See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** for complete documentation.
 
+**6. ML-Based Predictions** ✨ **NEW**
+```bash
+# Predict resource failure probability
+curl "http://localhost:8000/api/v1/prediction/resources/{resource-id}/failure-risk"
+
+# Forecast performance degradation
+curl "http://localhost:8000/api/v1/prediction/resources/{resource-id}/performance?metric_name=latency_p95&horizon_hours=24"
+
+# Detect anomalies in resource behavior
+curl "http://localhost:8000/api/v1/prediction/resources/{resource-id}/anomalies"
+
+# Check prediction service health
+curl "http://localhost:8000/api/v1/prediction/health"
+```
+
+**ML Prediction Features:**
+- ✅ **Failure Prediction**: Predict resource failures 24-72 hours in advance using ML
+- ✅ **Performance Forecasting**: Forecast latency, throughput, and error rates using time-series models
+- ✅ **Anomaly Detection**: Detect unusual patterns using unsupervised learning
+- ✅ **Contributing Factors**: Identify what's causing predicted issues
+- ✅ **Actionable Recommendations**: Get specific steps to prevent failures
+- ✅ **Traditional ML**: Uses scikit-learn, Prophet, statsmodels (no LLM needed)
+- ✅ **Fast Inference**: <100ms prediction time
+- ✅ **Privacy-First**: All predictions run locally, no external APIs
+
+**Why Not LLM?** We use traditional ML libraries (scikit-learn, Prophet) instead of LLMs because:
+- **Purpose-built** for time-series and numerical prediction
+- **10-100x faster** inference (10-50ms vs 1-5 seconds)
+- **No API costs** - runs locally
+- **More accurate** for numerical/time-series data
+- **Explainable** - can show why predictions were made
+
+See **[ML Prediction Research](docs/ML_PREDICTION_RESEARCH.md)** for technical analysis and **[ML Prediction Guide](docs/ML_PREDICTION_GUIDE.md)** for usage examples.
+
 ### What's Next 🚀
+
+Recent additions:
+- **ML-Based Predictions** ✨ NEW: Predict failures, performance degradation, and detect anomalies using traditional ML (scikit-learn, Prophet)
 
 Areas for future enhancement:
 - **Multi-Cloud Support**: Complete AWS/GCP discovery (Azure is fully implemented)
-- **ML-Based Predictions**: Use historical data for failure prediction
 - **Cost Impact Analysis**: Estimate financial impact of failures
 - **Automated Remediation**: Suggest and apply infrastructure changes
 
