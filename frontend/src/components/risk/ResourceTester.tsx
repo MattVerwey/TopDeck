@@ -269,7 +269,9 @@ export default function ResourceTester() {
                       sx={{ height: 20, fontSize: '0.7rem' }}
                     />
                     <Typography variant="caption" color="text.secondary" sx={{ lineHeight: '20px' }}>
-                      ID: {option.id.substring(0, 8)}...
+                      ID: {typeof option.id === 'string'
+                        ? option.id.slice(0, 8) + (option.id.length > 8 ? '...' : '')
+                        : 'N/A'}
                     </Typography>
                   </Box>
                 </Box>
