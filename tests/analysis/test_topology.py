@@ -1,13 +1,14 @@
 """Tests for topology service."""
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from topdeck.analysis.topology import (
-    TopologyService,
-    TopologyNode,
-    TopologyEdge,
     FlowType,
+    TopologyEdge,
+    TopologyNode,
+    TopologyService,
 )
 
 
@@ -96,7 +97,7 @@ def test_topology_node_creation():
         cloud_provider="azure",
         region="eastus",
     )
-    
+
     assert node.id == "test-resource-1"
     assert node.resource_type == "pod"
     assert node.name == "test-pod"
@@ -112,7 +113,7 @@ def test_topology_edge_creation():
         relationship_type="DEPENDS_ON",
         flow_type=FlowType.HTTP,
     )
-    
+
     assert edge.source_id == "resource-1"
     assert edge.target_id == "resource-2"
     assert edge.relationship_type == "DEPENDS_ON"

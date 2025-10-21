@@ -7,21 +7,21 @@ This module contains discovery engines for different cloud providers:
 """
 
 from .models import (
-    DiscoveredResource,
-    ResourceDependency,
-    DiscoveryResult,
     Application,
-    Repository,
-    Deployment,
-    Namespace,
-    Pod,
-    ManagedIdentity,
-    ServicePrincipal,
     AppRegistration,
     CloudProvider,
-    ResourceStatus,
     DependencyCategory,
     DependencyType,
+    Deployment,
+    DiscoveredResource,
+    DiscoveryResult,
+    ManagedIdentity,
+    Namespace,
+    Pod,
+    Repository,
+    ResourceDependency,
+    ResourceStatus,
+    ServicePrincipal,
 )
 
 __all__ = [

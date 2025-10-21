@@ -6,6 +6,7 @@ These tests verify that all frontend API calls map to existing backend endpoints
 
 import pytest
 from fastapi.testclient import TestClient
+
 from topdeck.api.main import app
 
 
@@ -38,10 +39,7 @@ def test_integrations_list_endpoint(client):
 
 def test_integrations_update_endpoint(client):
     """Test that the integrations update endpoint exists."""
-    response = client.put(
-        "/api/v1/integrations/github",
-        json={"enabled": True, "config": {}}
-    )
+    response = client.put("/api/v1/integrations/github", json={"enabled": True, "config": {}})
     # Should not return 404
     assert response.status_code != 404
 
@@ -84,8 +82,7 @@ def test_risk_all_endpoint_exists(client):
 def test_risk_impact_endpoint_exists(client):
     """Test that the change impact endpoint is registered."""
     response = client.post(
-        "/api/v1/risk/impact",
-        json={"service_id": "test", "change_type": "deployment"}
+        "/api/v1/risk/impact", json={"service_id": "test", "change_type": "deployment"}
     )
     # Should not return 404 (may return 500 without Neo4j)
     assert response.status_code != 404
@@ -95,7 +92,7 @@ def test_monitoring_metrics_endpoint(client):
     """Test that the monitoring metrics endpoint exists and works."""
     response = client.get(
         "/api/v1/monitoring/resources/test/metrics",
-        params={"resource_type": "pod", "duration_hours": 1}
+        params={"resource_type": "pod", "duration_hours": 1},
     )
     assert response.status_code == 200
     data = response.json()
@@ -107,8 +104,7 @@ def test_monitoring_bottlenecks_endpoint_exists(client):
     """Test that the bottlenecks endpoint has correct path."""
     # Frontend calls /api/v1/monitoring/flows/bottlenecks with flow_path param
     response = client.get(
-        "/api/v1/monitoring/flows/bottlenecks",
-        params={"flow_path": ["resource1", "resource2"]}
+        "/api/v1/monitoring/flows/bottlenecks", params={"flow_path": ["resource1", "resource2"]}
     )
     # Should not return 404
     assert response.status_code != 404
@@ -117,7 +113,7 @@ def test_monitoring_bottlenecks_endpoint_exists(client):
 def test_all_frontend_endpoints_registered(client):
     """
     Comprehensive test that all frontend API endpoints are registered.
-    
+
     This test verifies the complete mapping between frontend API client
     and backend routes.
     """
@@ -134,7 +130,7 @@ def test_all_frontend_endpoints_registered(client):
         ("GET", "/api/v1/integrations"),
         ("PUT", "/api/v1/integrations/github"),
     ]
-    
+
     for method, endpoint in endpoints:
         if method == "GET":
             response = client.get(endpoint)
@@ -142,6 +138,8 @@ def test_all_frontend_endpoints_registered(client):
             response = client.post(endpoint, json={})
         elif method == "PUT":
             response = client.put(endpoint, json={})
-        
+
         # None should return 404 (not found)
-        assert response.status_code != 404, f"{method} {endpoint} returned 404 - endpoint not registered"
+        assert (
+            response.status_code != 404
+        ), f"{method} {endpoint} returned 404 - endpoint not registered"

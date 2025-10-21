@@ -4,10 +4,10 @@ GCP Resource Mapper.
 Maps GCP SDK resource objects to TopDeck's normalized DiscoveredResource model.
 """
 
-from typing import Any, Dict, Optional
 import re
+from typing import Any
 
-from ..models import DiscoveredResource, CloudProvider, ResourceStatus
+from ..models import CloudProvider, DiscoveredResource, ResourceStatus
 
 
 class GCPResourceMapper:
@@ -57,7 +57,7 @@ class GCPResourceMapper:
         return GCPResourceMapper.RESOURCE_TYPE_MAP.get(gcp_type, "unknown")
 
     @staticmethod
-    def extract_project_id(resource_name: str) -> Optional[str]:
+    def extract_project_id(resource_name: str) -> str | None:
         """
         Extract project ID from GCP resource name.
 
@@ -72,7 +72,7 @@ class GCPResourceMapper:
         return match.group(1) if match else None
 
     @staticmethod
-    def extract_zone_or_region(resource_name: str) -> Optional[str]:
+    def extract_zone_or_region(resource_name: str) -> str | None:
         """
         Extract zone or region from GCP resource name.
 
@@ -103,7 +103,7 @@ class GCPResourceMapper:
         return None
 
     @staticmethod
-    def map_state_to_status(state: Optional[str]) -> ResourceStatus:
+    def map_state_to_status(state: str | None) -> ResourceStatus:
         """
         Map GCP resource state to TopDeck resource status.
 
@@ -130,7 +130,7 @@ class GCPResourceMapper:
             return ResourceStatus.UNKNOWN
 
     @staticmethod
-    def extract_environment_from_labels(labels: Optional[Dict[str, str]]) -> Optional[str]:
+    def extract_environment_from_labels(labels: dict[str, str] | None) -> str | None:
         """
         Extract environment from GCP resource labels.
 
@@ -154,7 +154,7 @@ class GCPResourceMapper:
         return None
 
     @staticmethod
-    def normalize_labels(labels: Optional[Dict[str, str]]) -> Dict[str, str]:
+    def normalize_labels(labels: dict[str, str] | None) -> dict[str, str]:
         """
         Normalize GCP labels to a simple dict format for Neo4j.
 
@@ -180,10 +180,10 @@ class GCPResourceMapper:
         resource_name: str,
         display_name: str,
         resource_type: str,
-        region: Optional[str] = None,
-        labels: Optional[Dict[str, str]] = None,
-        properties: Optional[Dict[str, Any]] = None,
-        state: Optional[str] = None,
+        region: str | None = None,
+        labels: dict[str, str] | None = None,
+        properties: dict[str, Any] | None = None,
+        state: str | None = None,
     ) -> DiscoveredResource:
         """
         Map a GCP resource to a DiscoveredResource.

@@ -5,10 +5,11 @@ Provides a versioning strategy for the API to support backward compatibility
 and gradual deprecation of old versions.
 """
 
-from typing import Callable
-from fastapi import Request, HTTPException, status
-from starlette.middleware.base import BaseHTTPMiddleware
+from collections.abc import Callable
+
 import structlog
+from fastapi import HTTPException, Request, status
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger(__name__)
 

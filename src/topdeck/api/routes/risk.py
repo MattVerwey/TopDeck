@@ -5,30 +5,20 @@ Provides API endpoints for risk assessment, blast radius calculation,
 failure simulation, and single point of failure detection.
 """
 
-from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from topdeck.analysis.risk import (
     RiskAnalyzer,
-    RiskAssessment,
-    BlastRadius,
-    FailureSimulation,
-    SinglePointOfFailure,
-    RiskLevel,
-    ImpactLevel,
-    PartialFailureScenario,
-    FailureOutcome,
-    DependencyVulnerability,
 )
-from topdeck.storage.neo4j_client import Neo4jClient
 from topdeck.common.config import settings
+from topdeck.storage.neo4j_client import Neo4jClient
 
 
 # Pydantic models for API responses
 class RiskAssessmentResponse(BaseModel):
     """Response model for risk assessment."""
-    
+
     resource_id: str
     resource_name: str
     resource_type: str
@@ -40,54 +30,54 @@ class RiskAssessmentResponse(BaseModel):
     blast_radius: int
     single_point_of_failure: bool
     deployment_failure_rate: float
-    time_since_last_change: Optional[float]
-    recommendations: List[str]
+    time_since_last_change: float | None
+    recommendations: list[str]
     factors: dict
     assessed_at: str
 
 
 class BlastRadiusResponse(BaseModel):
     """Response model for blast radius."""
-    
+
     resource_id: str
     resource_name: str
-    directly_affected: List[dict]
-    indirectly_affected: List[dict]
+    directly_affected: list[dict]
+    indirectly_affected: list[dict]
     total_affected: int
     user_impact: str
     estimated_downtime_seconds: int
-    critical_path: List[str]
+    critical_path: list[str]
     affected_services: dict
 
 
 class FailureSimulationResponse(BaseModel):
     """Response model for failure simulation."""
-    
+
     resource_id: str
     resource_name: str
     scenario: str
     blast_radius: BlastRadiusResponse
     cascade_depth: int
-    recovery_steps: List[str]
-    mitigation_strategies: List[str]
-    similar_past_incidents: List[dict]
+    recovery_steps: list[str]
+    mitigation_strategies: list[str]
+    similar_past_incidents: list[dict]
 
 
 class SinglePointOfFailureResponse(BaseModel):
     """Response model for single point of failure."""
-    
+
     resource_id: str
     resource_name: str
     resource_type: str
     dependents_count: int
     blast_radius: int
     risk_score: float
-    recommendations: List[str]
+    recommendations: list[str]
 
 
 class FailureOutcomeResponse(BaseModel):
     """Response model for failure outcome."""
-    
+
     outcome_type: str
     probability: float
     duration_seconds: int
@@ -98,40 +88,40 @@ class FailureOutcomeResponse(BaseModel):
 
 class PartialFailureScenarioResponse(BaseModel):
     """Response model for partial failure scenario."""
-    
+
     resource_id: str
     resource_name: str
     failure_type: str
-    outcomes: List[FailureOutcomeResponse]
+    outcomes: list[FailureOutcomeResponse]
     overall_impact: str
-    mitigation_strategies: List[str]
-    monitoring_recommendations: List[str]
+    mitigation_strategies: list[str]
+    monitoring_recommendations: list[str]
 
 
 class DependencyVulnerabilityResponse(BaseModel):
     """Response model for dependency vulnerability."""
-    
+
     package_name: str
     current_version: str
     vulnerability_id: str
     severity: str
     description: str
-    fixed_version: Optional[str] = None
+    fixed_version: str | None = None
     exploit_available: bool = False
-    affected_resources: List[str]
+    affected_resources: list[str]
 
 
 class ComprehensiveRiskAnalysisResponse(BaseModel):
     """Response model for comprehensive risk analysis."""
-    
+
     resource_id: str
     combined_risk_score: float
     standard_assessment: RiskAssessmentResponse
     degraded_performance_scenario: PartialFailureScenarioResponse
     intermittent_failure_scenario: PartialFailureScenarioResponse
-    dependency_vulnerabilities: List[DependencyVulnerabilityResponse]
+    dependency_vulnerabilities: list[DependencyVulnerabilityResponse]
     vulnerability_risk_score: float
-    all_recommendations: List[str]
+    all_recommendations: list[str]
 
 
 # Create router
@@ -153,14 +143,14 @@ def get_risk_analyzer() -> RiskAnalyzer:
 async def get_risk_assessment(resource_id: str) -> RiskAssessmentResponse:
     """
     Get complete risk assessment for a resource.
-    
+
     Analyzes dependencies, calculates risk score, identifies single points
     of failure, and provides recommendations.
     """
     try:
         analyzer = get_risk_analyzer()
         assessment = analyzer.analyze_resource(resource_id)
-        
+
         return RiskAssessmentResponse(
             resource_id=assessment.resource_id,
             resource_name=assessment.resource_name,
@@ -179,26 +169,23 @@ async def get_risk_assessment(resource_id: str) -> RiskAssessmentResponse:
             assessed_at=assessment.assessed_at.isoformat(),
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to analyze resource: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to analyze resource: {str(e)}") from e
 
 
 @router.get("/blast-radius/{resource_id}", response_model=BlastRadiusResponse)
 async def get_blast_radius(resource_id: str) -> BlastRadiusResponse:
     """
     Calculate blast radius for a resource failure.
-    
+
     Shows what would be affected if this resource fails, including
     direct and cascading impacts.
     """
     try:
         analyzer = get_risk_analyzer()
         blast_radius = analyzer.calculate_blast_radius(resource_id)
-        
+
         return BlastRadiusResponse(
             resource_id=blast_radius.resource_id,
             resource_name=blast_radius.resource_name,
@@ -211,32 +198,28 @@ async def get_blast_radius(resource_id: str) -> BlastRadiusResponse:
             affected_services=blast_radius.affected_services,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to calculate blast radius: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to calculate blast radius: {str(e)}"
+        ) from e
 
 
 @router.post("/simulate", response_model=FailureSimulationResponse)
 async def simulate_failure(
     resource_id: str = Query(..., description="Resource ID to simulate failure for"),
-    scenario: str = Query(
-        "Complete service outage",
-        description="Failure scenario description"
-    )
+    scenario: str = Query("Complete service outage", description="Failure scenario description"),
 ) -> FailureSimulationResponse:
     """
     Simulate a failure scenario.
-    
+
     Predicts the impact of a resource failure, provides recovery steps,
     and suggests mitigation strategies.
     """
     try:
         analyzer = get_risk_analyzer()
         simulation = analyzer.simulate_failure(resource_id, scenario)
-        
+
         return FailureSimulationResponse(
             resource_id=simulation.resource_id,
             resource_name=simulation.resource_name,
@@ -258,26 +241,23 @@ async def simulate_failure(
             similar_past_incidents=simulation.similar_past_incidents,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to simulate failure: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to simulate failure: {str(e)}") from e
 
 
-@router.get("/spof", response_model=List[SinglePointOfFailureResponse])
-async def get_single_points_of_failure() -> List[SinglePointOfFailureResponse]:
+@router.get("/spof", response_model=list[SinglePointOfFailureResponse])
+async def get_single_points_of_failure() -> list[SinglePointOfFailureResponse]:
     """
     Identify all single points of failure.
-    
+
     Returns resources that have dependents but no redundancy,
     making them critical risks.
     """
     try:
         analyzer = get_risk_analyzer()
         spofs = analyzer.identify_single_points_of_failure()
-        
+
         return [
             SinglePointOfFailureResponse(
                 resource_id=spof.resource_id,
@@ -291,17 +271,14 @@ async def get_single_points_of_failure() -> List[SinglePointOfFailureResponse]:
             for spof in spofs
         ]
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to identify SPOFs: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to identify SPOFs: {str(e)}") from e
 
 
 @router.get("/resources/{resource_id}/score", response_model=dict)
 async def get_change_risk_score(resource_id: str) -> dict:
     """
     Get risk score for deploying changes to a resource.
-    
+
     Returns a simple risk score (0-100) without full assessment.
     Useful for quick checks in CI/CD pipelines.
     """
@@ -309,43 +286,42 @@ async def get_change_risk_score(resource_id: str) -> dict:
         analyzer = get_risk_analyzer()
         score = analyzer.get_change_risk_score(resource_id)
         risk_level = analyzer.risk_scorer.get_risk_level(score)
-        
+
         return {
             "resource_id": resource_id,
             "risk_score": score,
             "risk_level": risk_level.value,
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get risk score: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get risk score: {str(e)}") from e
 
 
-@router.get("/resources/{resource_id}/degraded-performance", response_model=PartialFailureScenarioResponse)
+@router.get(
+    "/resources/{resource_id}/degraded-performance", response_model=PartialFailureScenarioResponse
+)
 async def analyze_degraded_performance(
     resource_id: str,
-    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)")
+    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)"),
 ) -> PartialFailureScenarioResponse:
     """
     Analyze degraded performance scenario for a resource.
-    
+
     This provides realistic analysis of what happens when a resource is under
     stress but not completely failed. More common in production than total outages.
-    
+
     Args:
         resource_id: Resource to analyze
         current_load: Current load percentage (0-1, default 0.7)
-        
+
     Returns:
         Partial failure scenario with multiple possible outcomes
     """
     try:
         analyzer = get_risk_analyzer()
         scenario = analyzer.analyze_degraded_performance(resource_id, current_load)
-        
+
         return PartialFailureScenarioResponse(
             resource_id=scenario.resource_id,
             resource_name=scenario.resource_name,
@@ -366,36 +342,39 @@ async def analyze_degraded_performance(
             monitoring_recommendations=scenario.monitoring_recommendations,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to analyze degraded performance: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to analyze degraded performance: {str(e)}"
+        ) from e
 
 
-@router.get("/resources/{resource_id}/intermittent-failure", response_model=PartialFailureScenarioResponse)
+@router.get(
+    "/resources/{resource_id}/intermittent-failure", response_model=PartialFailureScenarioResponse
+)
 async def analyze_intermittent_failure(
     resource_id: str,
-    failure_frequency: float = Query(0.05, ge=0.0, le=1.0, description="Percentage of requests that fail (0-1)")
+    failure_frequency: float = Query(
+        0.05, ge=0.0, le=1.0, description="Percentage of requests that fail (0-1)"
+    ),
 ) -> PartialFailureScenarioResponse:
     """
     Analyze intermittent failure scenario (service blips).
-    
+
     Analyzes what happens when a service has occasional errors rather than
     complete failure. Common in distributed systems.
-    
+
     Args:
         resource_id: Resource to analyze
         failure_frequency: Percentage of requests that fail (0-1, default 0.05)
-        
+
     Returns:
         Partial failure scenario with blip/error rate outcomes
     """
     try:
         analyzer = get_risk_analyzer()
         scenario = analyzer.analyze_intermittent_failure(resource_id, failure_frequency)
-        
+
         return PartialFailureScenarioResponse(
             resource_id=scenario.resource_id,
             resource_name=scenario.resource_name,
@@ -416,37 +395,38 @@ async def analyze_intermittent_failure(
             monitoring_recommendations=scenario.monitoring_recommendations,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to analyze intermittent failure: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to analyze intermittent failure: {str(e)}"
+        ) from e
 
 
-@router.get("/resources/{resource_id}/partial-outage", response_model=PartialFailureScenarioResponse)
+@router.get(
+    "/resources/{resource_id}/partial-outage", response_model=PartialFailureScenarioResponse
+)
 async def analyze_partial_outage(
     resource_id: str,
-    affected_zones: Optional[str] = Query(None, description="Comma-separated list of affected zones")
+    affected_zones: str | None = Query(None, description="Comma-separated list of affected zones"),
 ) -> PartialFailureScenarioResponse:
     """
     Analyze partial outage scenario (some instances/zones down).
-    
+
     Analyzes impact when only some availability zones or instances fail,
     rather than complete service outage.
-    
+
     Args:
         resource_id: Resource to analyze
         affected_zones: Comma-separated list of affected zones (e.g., "zone-a,zone-b")
-        
+
     Returns:
         Partial failure scenario with zone-specific outcomes
     """
     try:
         analyzer = get_risk_analyzer()
-        zones_list = affected_zones.split(',') if affected_zones else None
+        zones_list = affected_zones.split(",") if affected_zones else None
         scenario = analyzer.analyze_partial_outage(resource_id, zones_list)
-        
+
         return PartialFailureScenarioResponse(
             resource_id=scenario.resource_id,
             resource_name=scenario.resource_name,
@@ -467,45 +447,42 @@ async def analyze_partial_outage(
             monitoring_recommendations=scenario.monitoring_recommendations,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to analyze partial outage: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to analyze partial outage: {str(e)}"
+        ) from e
 
 
-@router.get("/resources/{resource_id}/comprehensive", response_model=ComprehensiveRiskAnalysisResponse)
+@router.get(
+    "/resources/{resource_id}/comprehensive", response_model=ComprehensiveRiskAnalysisResponse
+)
 async def get_comprehensive_risk_analysis(
     resource_id: str,
-    project_path: Optional[str] = Query(None, description="Path to project for dependency scanning"),
-    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)")
+    project_path: str | None = Query(None, description="Path to project for dependency scanning"),
+    current_load: float = Query(0.7, ge=0.0, le=1.0, description="Current load factor (0-1)"),
 ) -> ComprehensiveRiskAnalysisResponse:
     """
     Get comprehensive risk analysis including all failure scenarios.
-    
+
     This is the most in-depth analysis available, covering:
     - Standard risk assessment (SPOF, blast radius, etc.)
     - Degraded performance scenario
     - Intermittent failure scenario
     - Dependency vulnerabilities (if project_path provided)
-    
+
     Args:
         resource_id: Resource to analyze
         project_path: Optional path to project directory for dependency scanning
         current_load: Current load factor (0-1)
-        
+
     Returns:
         Comprehensive risk analysis with all scenarios and combined risk score
     """
     try:
         analyzer = get_risk_analyzer()
-        analysis = analyzer.get_comprehensive_risk_analysis(
-            resource_id,
-            project_path,
-            current_load
-        )
-        
+        analysis = analyzer.get_comprehensive_risk_analysis(resource_id, project_path, current_load)
+
         return ComprehensiveRiskAnalysisResponse(
             resource_id=analysis["resource_id"],
             combined_risk_score=analysis["combined_risk_score"],
@@ -542,8 +519,12 @@ async def get_comprehensive_risk_analysis(
                     for o in analysis["degraded_performance_scenario"].outcomes
                 ],
                 overall_impact=analysis["degraded_performance_scenario"].overall_impact.value,
-                mitigation_strategies=analysis["degraded_performance_scenario"].mitigation_strategies,
-                monitoring_recommendations=analysis["degraded_performance_scenario"].monitoring_recommendations,
+                mitigation_strategies=analysis[
+                    "degraded_performance_scenario"
+                ].mitigation_strategies,
+                monitoring_recommendations=analysis[
+                    "degraded_performance_scenario"
+                ].monitoring_recommendations,
             ),
             intermittent_failure_scenario=PartialFailureScenarioResponse(
                 resource_id=analysis["intermittent_failure_scenario"].resource_id,
@@ -561,8 +542,12 @@ async def get_comprehensive_risk_analysis(
                     for o in analysis["intermittent_failure_scenario"].outcomes
                 ],
                 overall_impact=analysis["intermittent_failure_scenario"].overall_impact.value,
-                mitigation_strategies=analysis["intermittent_failure_scenario"].mitigation_strategies,
-                monitoring_recommendations=analysis["intermittent_failure_scenario"].monitoring_recommendations,
+                mitigation_strategies=analysis[
+                    "intermittent_failure_scenario"
+                ].mitigation_strategies,
+                monitoring_recommendations=analysis[
+                    "intermittent_failure_scenario"
+                ].monitoring_recommendations,
             ),
             dependency_vulnerabilities=[
                 DependencyVulnerabilityResponse(
@@ -581,9 +566,8 @@ async def get_comprehensive_risk_analysis(
             all_recommendations=analysis["all_recommendations"],
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get comprehensive risk analysis: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to get comprehensive risk analysis: {str(e)}"
+        ) from e

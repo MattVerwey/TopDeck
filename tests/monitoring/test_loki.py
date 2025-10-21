@@ -1,12 +1,9 @@
 """Tests for Loki collector."""
 
 import pytest
-from datetime import datetime
-from unittest.mock import Mock
 
 from topdeck.monitoring.collectors.loki import (
     LokiCollector,
-    LogEntry,
 )
 
 

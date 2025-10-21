@@ -2,7 +2,6 @@
 Tests for GCP Resource Mapper.
 """
 
-import pytest
 from topdeck.discovery.gcp.mapper import GCPResourceMapper
 from topdeck.discovery.models import CloudProvider, ResourceStatus
 
@@ -12,10 +11,20 @@ class TestGCPResourceMapper:
 
     def test_map_resource_type_known(self):
         """Test mapping known GCP resource types"""
-        assert GCPResourceMapper.map_resource_type("compute.googleapis.com/Instance") == "compute_instance"
-        assert GCPResourceMapper.map_resource_type("container.googleapis.com/Cluster") == "gke_cluster"
-        assert GCPResourceMapper.map_resource_type("sqladmin.googleapis.com/Instance") == "cloud_sql_instance"
-        assert GCPResourceMapper.map_resource_type("storage.googleapis.com/Bucket") == "storage_bucket"
+        assert (
+            GCPResourceMapper.map_resource_type("compute.googleapis.com/Instance")
+            == "compute_instance"
+        )
+        assert (
+            GCPResourceMapper.map_resource_type("container.googleapis.com/Cluster") == "gke_cluster"
+        )
+        assert (
+            GCPResourceMapper.map_resource_type("sqladmin.googleapis.com/Instance")
+            == "cloud_sql_instance"
+        )
+        assert (
+            GCPResourceMapper.map_resource_type("storage.googleapis.com/Bucket") == "storage_bucket"
+        )
 
     def test_map_resource_type_unknown(self):
         """Test mapping unknown GCP resource type"""
@@ -81,10 +90,7 @@ class TestGCPResourceMapper:
 
     def test_extract_environment_from_labels(self):
         """Test extracting environment from GCP labels"""
-        labels = {
-            "environment": "production",
-            "application": "web"
-        }
+        labels = {"environment": "production", "application": "web"}
         assert GCPResourceMapper.extract_environment_from_labels(labels) == "production"
 
     def test_extract_environment_from_labels_uppercase(self):
@@ -121,11 +127,8 @@ class TestGCPResourceMapper:
     def test_map_gcp_resource_complete(self):
         """Test mapping a complete GCP resource"""
         resource_name = "projects/my-project-123/zones/us-central1-a/instances/web-server-01"
-        labels = {
-            "environment": "production",
-            "application": "web"
-        }
-        
+        labels = {"environment": "production", "application": "web"}
+
         resource = GCPResourceMapper.map_gcp_resource(
             resource_name=resource_name,
             display_name="web-server-01",
@@ -133,9 +136,9 @@ class TestGCPResourceMapper:
             region="us-central1",
             labels=labels,
             properties={"machineType": "n1-standard-2"},
-            state="RUNNING"
+            state="RUNNING",
         )
-        
+
         assert resource.id == resource_name
         assert resource.name == "web-server-01"
         assert resource.resource_type == "compute_instance"
@@ -150,13 +153,13 @@ class TestGCPResourceMapper:
     def test_map_gcp_resource_minimal(self):
         """Test mapping GCP resource with minimal data"""
         resource_name = "projects/my-project/global/buckets/my-bucket"
-        
+
         resource = GCPResourceMapper.map_gcp_resource(
             resource_name=resource_name,
             display_name="my-bucket",
-            resource_type="storage.googleapis.com/Bucket"
+            resource_type="storage.googleapis.com/Bucket",
         )
-        
+
         assert resource.id == resource_name
         assert resource.name == "my-bucket"
         assert resource.resource_type == "storage_bucket"
@@ -170,14 +173,14 @@ class TestGCPResourceMapper:
     def test_map_gcp_resource_auto_extract_region(self):
         """Test auto-extracting region from resource name"""
         resource_name = "projects/my-project/zones/europe-west1-b/instances/my-vm"
-        
+
         resource = GCPResourceMapper.map_gcp_resource(
             resource_name=resource_name,
             display_name="my-vm",
             resource_type="compute.googleapis.com/Instance",
-            state="RUNNING"
+            state="RUNNING",
         )
-        
+
         # Region should be auto-extracted from zone
         assert resource.region == "europe-west1"
 
@@ -185,40 +188,40 @@ class TestGCPResourceMapper:
         """Test Neo4j formatting of mapped GCP resource"""
         resource_name = "projects/my-project/zones/us-west1-a/instances/db-server"
         labels = {"env": "dev", "team": "backend"}
-        
+
         resource = GCPResourceMapper.map_gcp_resource(
             resource_name=resource_name,
             display_name="db-server",
             resource_type="sqladmin.googleapis.com/Instance",
             labels=labels,
             properties={"databaseVersion": "POSTGRES_15"},
-            state="RUNNING"
+            state="RUNNING",
         )
-        
+
         neo4j_props = resource.to_neo4j_properties()
-        
-        assert neo4j_props['id'] == resource_name
-        assert neo4j_props['name'] == "db-server"
-        assert neo4j_props['resource_type'] == "cloud_sql_instance"
-        assert neo4j_props['cloud_provider'] == "gcp"
-        assert neo4j_props['region'] == "us-west1"
-        assert neo4j_props['subscription_id'] == "my-project"
-        assert neo4j_props['status'] == "running"
-        assert neo4j_props['environment'] == "dev"
-        assert neo4j_props['tags'] == labels
-        assert '"databaseVersion": "POSTGRES_15"' in neo4j_props['properties']
-        assert 'discovered_at' in neo4j_props
-        assert 'last_seen' in neo4j_props
+
+        assert neo4j_props["id"] == resource_name
+        assert neo4j_props["name"] == "db-server"
+        assert neo4j_props["resource_type"] == "cloud_sql_instance"
+        assert neo4j_props["cloud_provider"] == "gcp"
+        assert neo4j_props["region"] == "us-west1"
+        assert neo4j_props["subscription_id"] == "my-project"
+        assert neo4j_props["status"] == "running"
+        assert neo4j_props["environment"] == "dev"
+        assert neo4j_props["tags"] == labels
+        assert '"databaseVersion": "POSTGRES_15"' in neo4j_props["properties"]
+        assert "discovered_at" in neo4j_props
+        assert "last_seen" in neo4j_props
 
     def test_map_gcp_resource_global_resource(self):
         """Test mapping a global GCP resource"""
         resource_name = "projects/my-project/global/networks/my-vpc"
-        
+
         resource = GCPResourceMapper.map_gcp_resource(
             resource_name=resource_name,
             display_name="my-vpc",
             resource_type="compute.googleapis.com/Network",
-            region="global"
+            region="global",
         )
-        
+
         assert resource.region == "global"

@@ -2,7 +2,6 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
 
 from topdeck.api.main import app
 
@@ -28,7 +27,7 @@ def test_get_topology_with_filters(client):
             "cloud_provider": "azure",
             "resource_type": "pod",
             "region": "eastus",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -48,7 +47,7 @@ def test_get_resource_dependencies_with_params(client):
         params={
             "depth": 3,
             "direction": "both",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -60,7 +59,7 @@ def test_get_resource_dependencies_invalid_direction(client):
         "/api/v1/topology/resources/test-resource/dependencies",
         params={
             "direction": "invalid",
-        }
+        },
     )
     # Should return validation error
     assert response.status_code == 422
@@ -80,7 +79,7 @@ def test_get_data_flows_with_filters(client):
         params={
             "flow_type": "https",
             "start_resource_type": "load_balancer",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -92,7 +91,7 @@ def test_get_data_flows_invalid_flow_type(client):
         "/api/v1/topology/flows",
         params={
             "flow_type": "invalid_type",
-        }
+        },
     )
     # Should return either 400 (invalid) or 500 (Neo4j error)
     assert response.status_code in (400, 500)
@@ -111,7 +110,7 @@ def test_get_resource_attachments_with_params(client):
         "/api/v1/topology/resources/test-resource/attachments",
         params={
             "direction": "both",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -123,7 +122,7 @@ def test_get_resource_attachments_invalid_direction(client):
         "/api/v1/topology/resources/test-resource/attachments",
         params={
             "direction": "invalid",
-        }
+        },
     )
     # Should return validation error
     assert response.status_code == 422
@@ -135,7 +134,7 @@ def test_get_resource_attachments_upstream_only(client):
         "/api/v1/topology/resources/test-resource/attachments",
         params={
             "direction": "upstream",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -147,7 +146,7 @@ def test_get_resource_attachments_downstream_only(client):
         "/api/v1/topology/resources/test-resource/attachments",
         params={
             "direction": "downstream",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -167,7 +166,7 @@ def test_get_dependency_chains_with_params(client):
         params={
             "max_depth": 5,
             "direction": "downstream",
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -179,7 +178,7 @@ def test_get_dependency_chains_invalid_direction(client):
         "/api/v1/topology/resources/test-resource/chains",
         params={
             "direction": "both",  # Only upstream or downstream allowed
-        }
+        },
     )
     # Should return validation error
     assert response.status_code == 422
@@ -192,7 +191,7 @@ def test_get_dependency_chains_upstream(client):
         params={
             "direction": "upstream",
             "max_depth": 3,
-        }
+        },
     )
     # May fail due to Neo4j connection, but endpoint should exist
     assert response.status_code in (200, 500)
@@ -217,7 +216,7 @@ def test_get_attachment_analysis_response_structure(client):
     # This test would pass if we have Neo4j running with data
     # For now we just verify the endpoint exists and doesn't crash
     response = client.get("/api/v1/topology/resources/test-resource/analysis")
-    
+
     # If successful, should have these fields
     if response.status_code == 200:
         data = response.json()

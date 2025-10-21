@@ -68,7 +68,10 @@ class AzureLogAnalyticsCollector:
 
     async def _get_access_token(self) -> str:
         """Get Azure access token for Log Analytics API."""
-        if self._access_token is None or self._access_token.expires_on < datetime.utcnow().timestamp():
+        if (
+            self._access_token is None
+            or self._access_token.expires_on < datetime.utcnow().timestamp()
+        ):
             # Get token synchronously (azure-identity doesn't support async yet)
             self._access_token = self.credential.get_token("https://api.loganalytics.io/.default")
         return self._access_token.token
@@ -144,11 +147,11 @@ class AzureLogAnalyticsCollector:
             AppDependencies,
             AppExceptions,
             ContainerLog
-        | where CorrelationId == '{correlation_id}' 
+        | where CorrelationId == '{correlation_id}'
             or Properties['correlation_id'] == '{correlation_id}'
             or Properties['transaction_id'] == '{correlation_id}'
             or Message contains '{correlation_id}'
-        | project 
+        | project
             TimeGenerated,
             Message,
             Properties,
@@ -253,7 +256,7 @@ class AzureLogAnalyticsCollector:
             ContainerLog
         | where ResourceId == '{resource_id}' or _ResourceId == '{resource_id}'
         {level_filter}
-        | project 
+        | project
             TimeGenerated,
             Message,
             Properties,
@@ -308,12 +311,12 @@ class AzureLogAnalyticsCollector:
             AppDependencies,
             ContainerLog
         | where ResourceId == '{resource_id}' or _ResourceId == '{resource_id}'
-        | where isnotempty(CorrelationId) 
+        | where isnotempty(CorrelationId)
             or isnotempty(Properties['correlation_id'])
             or isnotempty(Properties['transaction_id'])
         | project CorrelationId = coalesce(
-            CorrelationId, 
-            Properties['correlation_id'], 
+            CorrelationId,
+            Properties['correlation_id'],
             Properties['transaction_id']
         )
         | where isnotempty(CorrelationId)
