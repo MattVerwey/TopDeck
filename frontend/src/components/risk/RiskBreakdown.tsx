@@ -5,7 +5,7 @@
  * with a visual diagram showing affected services
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -73,10 +73,14 @@ export default function RiskBreakdown() {
   const resources = topology?.nodes || [];
   
   // Pre-compute lowercase values for efficient searching
-  const resourcesWithLowercase = resources.map(resource => ({
-    ...resource,
-    _searchText: `${resource.name} ${resource.resource_type} ${resource.cloud_provider} ${resource.id}`.toLowerCase()
-  }));
+  const resourcesWithLowercase = useMemo(
+    () =>
+      resources.map(resource => ({
+        ...resource,
+        _searchText: `${resource.name} ${resource.resource_type} ${resource.cloud_provider} ${resource.id}`.toLowerCase()
+      })),
+    [resources]
+  );
 
   const analyzeRisk = async () => {
     if (!selectedResource) return;
