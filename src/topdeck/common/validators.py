@@ -5,14 +5,16 @@ Provides reusable validators and error responses for common input patterns.
 """
 
 import re
-from typing import Optional
+
 from fastapi import HTTPException, status
 
 
 class ValidationError(HTTPException):
     """Custom validation error with consistent format."""
 
-    def __init__(self, field: str, message: str, status_code: int = status.HTTP_422_UNPROCESSABLE_ENTITY):
+    def __init__(
+        self, field: str, message: str, status_code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
+    ):
         """
         Initialize validation error.
 
@@ -94,7 +96,7 @@ def validate_resource_type(resource_type: str) -> str:
         raise ValidationError("resource_type", "Resource type too long (max 100 characters)")
 
     # Resource type should be alphanumeric with underscores, hyphens, or dots
-    if not re.match(r'^[a-zA-Z0-9._-]+$', resource_type):
+    if not re.match(r"^[a-zA-Z0-9._-]+$", resource_type):
         raise ValidationError(
             "resource_type",
             "Resource type must contain only alphanumeric characters, dots, hyphens, or underscores",
@@ -120,7 +122,7 @@ def validate_subscription_id(subscription_id: str) -> str:
         raise ValidationError("subscription_id", "Subscription ID cannot be empty")
 
     # Azure subscription IDs are GUIDs
-    guid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    guid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     if not re.match(guid_pattern, subscription_id.lower()):
         raise ValidationError(
             "subscription_id",
@@ -130,7 +132,9 @@ def validate_subscription_id(subscription_id: str) -> str:
     return subscription_id.strip()
 
 
-def validate_pagination(page: int = 1, per_page: int = 50, max_per_page: int = 100) -> tuple[int, int]:
+def validate_pagination(
+    page: int = 1, per_page: int = 50, max_per_page: int = 100
+) -> tuple[int, int]:
     """
     Validate pagination parameters.
 
@@ -176,7 +180,9 @@ def validate_risk_score(score: float) -> float:
     return score
 
 
-def validate_time_range(start_time: Optional[str], end_time: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+def validate_time_range(
+    start_time: str | None, end_time: str | None
+) -> tuple[str | None, str | None]:
     """
     Validate time range parameters.
 
@@ -194,15 +200,15 @@ def validate_time_range(start_time: Optional[str], end_time: Optional[str]) -> t
 
     if start_time:
         try:
-            start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-        except ValueError:
-            raise ValidationError("start_time", "Invalid ISO format for start_time")
+            start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValidationError("start_time", "Invalid ISO format for start_time") from e
 
         if end_time:
             try:
-                end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-            except ValueError:
-                raise ValidationError("end_time", "Invalid ISO format for end_time")
+                end_dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+            except ValueError as e:
+                raise ValidationError("end_time", "Invalid ISO format for end_time") from e
 
             if start_dt >= end_dt:
                 raise ValidationError("time_range", "start_time must be before end_time")
@@ -235,6 +241,6 @@ def sanitize_string(value: str, max_length: int = 1000) -> str:
         raise ValidationError("value", f"String too long (max {max_length} characters)")
 
     # Remove null bytes
-    sanitized = sanitized.replace('\x00', '')
+    sanitized = sanitized.replace("\x00", "")
 
     return sanitized

@@ -4,10 +4,9 @@ GCP Resource Discoverer.
 Main orchestrator for discovering GCP resources across projects and regions.
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from ..models import DiscoveryResult, DiscoveredResource
+from ..models import DiscoveredResource, DiscoveryResult
 from .mapper import GCPResourceMapper
 
 
@@ -26,7 +25,7 @@ class GCPDiscoverer:
     def __init__(
         self,
         project_id: str,
-        credentials_path: Optional[str] = None,
+        credentials_path: str | None = None,
     ):
         """
         Initialize GCP discoverer.
@@ -41,8 +40,8 @@ class GCPDiscoverer:
 
     async def discover_all_resources(
         self,
-        regions: Optional[List[str]] = None,
-        resource_types: Optional[List[str]] = None,
+        regions: list[str] | None = None,
+        resource_types: list[str] | None = None,
     ) -> DiscoveryResult:
         """
         Discover all GCP resources across specified regions.
@@ -55,7 +54,7 @@ class GCPDiscoverer:
             DiscoveryResult containing all discovered resources
         """
         # Placeholder implementation - to be filled with google-cloud-sdk logic
-        resources: List[DiscoveredResource] = []
+        resources: list[DiscoveredResource] = []
 
         return DiscoveryResult(
             resources=resources,
@@ -67,7 +66,7 @@ class GCPDiscoverer:
             cloud_provider="gcp",
         )
 
-    def get_project_number(self) -> Optional[str]:
+    def get_project_number(self) -> str | None:
         """
         Get the GCP project number for the current project.
 

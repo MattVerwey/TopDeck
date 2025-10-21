@@ -12,9 +12,9 @@ rather than LLMs for efficient, accurate time-series prediction.
 """
 
 from .models import (
+    AnomalyDetection,
     FailurePrediction,
     PerformancePrediction,
-    AnomalyDetection,
     PredictionConfidence,
 )
 from .predictor import Predictor

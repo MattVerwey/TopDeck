@@ -225,7 +225,7 @@ class TransactionFlowService:
             nodes = []
             resource_ids_seen = {}
 
-            for i, entry in enumerate(trace.entries):
+            for _i, entry in enumerate(trace.entries):
                 if entry.resource_id not in resource_ids_seen:
                     node = FlowNode(
                         resource_id=entry.resource_id,
@@ -385,7 +385,7 @@ class TransactionFlowService:
                     """
                     MATCH (r:Resource)
                     WHERE r.id = $resource_id OR r.name = $resource_id
-                    RETURN r.name as name, r.resource_type as type, 
+                    RETURN r.name as name, r.resource_type as type,
                            r.cloud_provider as provider
                     LIMIT 1
                     """,

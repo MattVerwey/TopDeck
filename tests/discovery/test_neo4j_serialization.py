@@ -6,20 +6,17 @@ are properly serialized to JSON strings for Neo4j compatibility.
 """
 
 import json
-import pytest
-from datetime import datetime
 
 from topdeck.discovery.models import (
-    DiscoveredResource,
+    AppRegistration,
     CloudProvider,
-    ResourceStatus,
+    Deployment,
+    DiscoveredResource,
+    ManagedIdentity,
     Namespace,
     Pod,
-    ManagedIdentity,
-    ServicePrincipal,
-    AppRegistration,
     Repository,
-    Deployment,
+    ServicePrincipal,
 )
 
 

@@ -4,13 +4,13 @@ Enhanced error handling and response utilities.
 Provides consistent error responses with correlation IDs and detailed error information.
 """
 
-from typing import Any, Optional
 from datetime import datetime
+from typing import Any
 
+import structlog
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -20,8 +20,8 @@ class ErrorDetail(BaseModel):
 
     code: str
     message: str
-    field: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    field: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class ErrorResponse(BaseModel):
@@ -41,8 +41,8 @@ class TopDeckException(Exception):
         code: str,
         message: str,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-        field: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        field: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         """
         Initialize TopDeck exception.

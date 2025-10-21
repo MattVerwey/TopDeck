@@ -4,10 +4,9 @@ AWS Resource Discoverer.
 Main orchestrator for discovering AWS resources across accounts and regions.
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from ..models import DiscoveryResult, DiscoveredResource
+from ..models import DiscoveredResource, DiscoveryResult
 from .mapper import AWSResourceMapper
 
 
@@ -25,10 +24,10 @@ class AWSDiscoverer:
 
     def __init__(
         self,
-        access_key_id: Optional[str] = None,
-        secret_access_key: Optional[str] = None,
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
         region: str = "us-east-1",
-        session_token: Optional[str] = None,
+        session_token: str | None = None,
     ):
         """
         Initialize AWS discoverer.
@@ -47,8 +46,8 @@ class AWSDiscoverer:
 
     async def discover_all_resources(
         self,
-        regions: Optional[List[str]] = None,
-        resource_types: Optional[List[str]] = None,
+        regions: list[str] | None = None,
+        resource_types: list[str] | None = None,
     ) -> DiscoveryResult:
         """
         Discover all AWS resources across specified regions.
@@ -61,7 +60,7 @@ class AWSDiscoverer:
             DiscoveryResult containing all discovered resources
         """
         # Placeholder implementation - to be filled with boto3 logic
-        resources: List[DiscoveredResource] = []
+        resources: list[DiscoveredResource] = []
 
         return DiscoveryResult(
             resources=resources,
@@ -73,7 +72,7 @@ class AWSDiscoverer:
             cloud_provider="aws",
         )
 
-    def get_account_id(self) -> Optional[str]:
+    def get_account_id(self) -> str | None:
         """
         Get the AWS account ID for the current credentials.
 

@@ -4,10 +4,10 @@ AWS Resource Mapper.
 Maps AWS SDK resource objects to TopDeck's normalized DiscoveredResource model.
 """
 
-from typing import Any, Dict, Optional
 import re
+from typing import Any
 
-from ..models import DiscoveredResource, CloudProvider, ResourceStatus
+from ..models import CloudProvider, DiscoveredResource, ResourceStatus
 
 
 class AWSResourceMapper:
@@ -56,7 +56,7 @@ class AWSResourceMapper:
         return AWSResourceMapper.RESOURCE_TYPE_MAP.get(aws_type, "unknown")
 
     @staticmethod
-    def extract_account_id(arn: str) -> Optional[str]:
+    def extract_account_id(arn: str) -> str | None:
         """
         Extract account ID from AWS ARN.
 
@@ -71,7 +71,7 @@ class AWSResourceMapper:
         return match.group(1) if match else None
 
     @staticmethod
-    def extract_region(arn: str) -> Optional[str]:
+    def extract_region(arn: str) -> str | None:
         """
         Extract region from AWS ARN.
 
@@ -86,7 +86,7 @@ class AWSResourceMapper:
         return match.group(1) if match else None
 
     @staticmethod
-    def map_state_to_status(state: Optional[str]) -> ResourceStatus:
+    def map_state_to_status(state: str | None) -> ResourceStatus:
         """
         Map AWS resource state to TopDeck resource status.
 
@@ -113,7 +113,7 @@ class AWSResourceMapper:
             return ResourceStatus.UNKNOWN
 
     @staticmethod
-    def extract_environment_from_tags(tags: Optional[list]) -> Optional[str]:
+    def extract_environment_from_tags(tags: list | None) -> str | None:
         """
         Extract environment from AWS resource tags.
 
@@ -146,7 +146,7 @@ class AWSResourceMapper:
         return None
 
     @staticmethod
-    def normalize_tags(tags: Optional[list]) -> Dict[str, str]:
+    def normalize_tags(tags: list | None) -> dict[str, str]:
         """
         Normalize AWS tags to a simple dict format for Neo4j.
 
@@ -175,9 +175,9 @@ class AWSResourceMapper:
         resource_name: str,
         resource_type: str,
         region: str,
-        tags: Optional[list] = None,
-        properties: Optional[Dict[str, Any]] = None,
-        state: Optional[str] = None,
+        tags: list | None = None,
+        properties: dict[str, Any] | None = None,
+        state: str | None = None,
     ) -> DiscoveredResource:
         """
         Map an AWS resource to a DiscoveredResource.

@@ -4,9 +4,9 @@ Prometheus metrics for TopDeck API.
 Provides custom metrics for monitoring API performance and resource usage.
 """
 
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
-from fastapi import Response
 import structlog
+from fastapi import Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 logger = structlog.get_logger(__name__)
 
@@ -109,6 +109,7 @@ def get_metrics_handler() -> Response:
 
 # Context managers for timing operations
 
+
 class MetricsTimer:
     """Context manager for timing operations and recording metrics."""
 
@@ -137,6 +138,7 @@ class MetricsTimer:
 
 
 # Helper functions
+
 
 def record_http_request(method: str, endpoint: str, status_code: int, duration: float) -> None:
     """
@@ -174,7 +176,9 @@ def record_resources_found(cloud_provider: str, resource_type: str, count: int) 
         resource_type: Type of resource
         count: Number of resources found
     """
-    discovery_resources_found.labels(cloud_provider=cloud_provider, resource_type=resource_type).set(count)
+    discovery_resources_found.labels(
+        cloud_provider=cloud_provider, resource_type=resource_type
+    ).set(count)
 
 
 def record_risk_assessment(resource_type: str, risk_score: float) -> None:

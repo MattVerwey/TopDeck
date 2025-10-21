@@ -1,10 +1,10 @@
 """Tests for main risk analyzer module."""
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 
 from topdeck.analysis.risk.analyzer import RiskAnalyzer
-from topdeck.analysis.risk.models import RiskLevel
 
 
 @pytest.fixture
@@ -36,10 +36,10 @@ def test_analyze_resource_not_found(risk_analyzer, mock_neo4j_client):
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.single.return_value = None
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     with pytest.raises(ValueError, match="not found"):
         risk_analyzer.analyze_resource("nonexistent-resource")
 
@@ -56,12 +56,12 @@ def test_get_resource_details_success(risk_analyzer, mock_neo4j_client):
         "cloud_provider": "azure",
         "region": "eastus",
     }
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     resource = risk_analyzer._get_resource_details("resource-1")
-    
+
     assert resource is not None
     assert resource["id"] == "resource-1"
     assert resource["name"] == "Test Resource"
@@ -74,12 +74,12 @@ def test_get_resource_details_not_found(risk_analyzer, mock_neo4j_client):
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.single.return_value = None
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     resource = risk_analyzer._get_resource_details("nonexistent")
-    
+
     assert resource is None
 
 
@@ -89,12 +89,12 @@ def test_check_redundancy_true(risk_analyzer, mock_neo4j_client):
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.single.return_value = {"redundant_count": 2}
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     has_redundancy = risk_analyzer._check_redundancy("resource-1")
-    
+
     assert has_redundancy is True
 
 
@@ -104,12 +104,12 @@ def test_check_redundancy_false(risk_analyzer, mock_neo4j_client):
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.single.return_value = {"redundant_count": 0}
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     has_redundancy = risk_analyzer._check_redundancy("resource-1")
-    
+
     assert has_redundancy is False
 
 
@@ -117,7 +117,7 @@ def test_get_change_risk_score(risk_analyzer, mock_neo4j_client):
     """Test getting change risk score."""
     # Mock all required data
     mock_session = MagicMock()
-    
+
     # Resource details
     mock_result_resource = MagicMock()
     mock_result_resource.single.return_value = {
@@ -127,48 +127,48 @@ def test_get_change_risk_score(risk_analyzer, mock_neo4j_client):
         "cloud_provider": "azure",
         "region": "eastus",
     }
-    
+
     # Dependencies
     mock_result_deps = MagicMock()
     mock_result_deps.single.return_value = {"count": 5}
-    
+
     # SPOF check
     mock_result_spof = MagicMock()
     mock_result_spof.single.return_value = {"is_spof": False}
-    
+
     # Redundancy check
     mock_result_redundancy = MagicMock()
     mock_result_redundancy.single.return_value = {"redundant_count": 1}
-    
+
     # Affected resources for blast radius
     mock_result_direct = MagicMock()
     mock_result_direct.__iter__.return_value = [
         {"id": "r1", "name": "R1", "type": "api", "cloud_provider": "azure"}
     ]
-    
+
     mock_result_indirect = MagicMock()
     mock_result_indirect.__iter__.return_value = []
-    
+
     # Critical path
     mock_result_path = MagicMock()
     mock_result_path.single.return_value = {"path_ids": ["resource-1", "r1"]}
-    
+
     # Setup session to return appropriate results for each query
     mock_session.run.side_effect = [
         mock_result_resource,  # get resource details
-        mock_result_deps,       # upstream dependencies
-        mock_result_deps,       # downstream dependents
-        mock_result_spof,       # is SPOF check
-        mock_result_direct,     # directly affected
-        mock_result_indirect,   # indirectly affected
-        mock_result_path,       # critical path
-        mock_result_redundancy, # redundancy check
+        mock_result_deps,  # upstream dependencies
+        mock_result_deps,  # downstream dependents
+        mock_result_spof,  # is SPOF check
+        mock_result_direct,  # directly affected
+        mock_result_indirect,  # indirectly affected
+        mock_result_path,  # critical path
+        mock_result_redundancy,  # redundancy check
     ]
-    
+
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     score = risk_analyzer.get_change_risk_score("resource-1")
-    
+
     assert isinstance(score, float)
     assert 0 <= score <= 100
 
@@ -192,17 +192,17 @@ def test_identify_single_points_of_failure(risk_analyzer, mock_neo4j_client):
             "dependents_count": 8,
         },
     ]
-    
+
     # Mock blast radius queries for each SPOF
     mock_result_direct = MagicMock()
     mock_result_direct.__iter__.return_value = []
-    
+
     mock_result_indirect = MagicMock()
     mock_result_indirect.__iter__.return_value = []
-    
+
     mock_result_path = MagicMock()
     mock_result_path.single.return_value = {"path_ids": ["resource-1"]}
-    
+
     mock_session.run.side_effect = [
         mock_result,  # Main SPOF query
         # First SPOF blast radius
@@ -214,11 +214,11 @@ def test_identify_single_points_of_failure(risk_analyzer, mock_neo4j_client):
         mock_result_indirect,
         mock_result_path,
     ]
-    
+
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     spofs = risk_analyzer.identify_single_points_of_failure()
-    
+
     assert len(spofs) == 2
     assert spofs[0].resource_id == "resource-1"
     assert spofs[0].dependents_count == 10
@@ -234,10 +234,10 @@ def test_identify_single_points_of_failure_none_found(risk_analyzer, mock_neo4j_
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.__iter__.return_value = []
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     spofs = risk_analyzer.identify_single_points_of_failure()
-    
+
     assert len(spofs) == 0

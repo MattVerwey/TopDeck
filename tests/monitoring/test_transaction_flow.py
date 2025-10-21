@@ -1,13 +1,14 @@
 """Tests for transaction flow service."""
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, patch
+
+import pytest
 
 from topdeck.monitoring.transaction_flow import (
-    TransactionFlowService,
-    FlowNode,
     FlowEdge,
+    FlowNode,
+    TransactionFlowService,
     TransactionFlowVisualization,
 )
 
@@ -66,7 +67,9 @@ def test_infer_resource_type(transaction_flow_service):
     assert resource_type == "app_service"
 
     # Load Balancer
-    resource_id = "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/lb-1"
+    resource_id = (
+        "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/lb-1"
+    )
     resource_type = transaction_flow_service._infer_resource_type(resource_id)
     assert resource_type == "load_balancer"
 
@@ -173,9 +176,10 @@ def test_merge_flows_multiple(transaction_flow_service):
 @pytest.mark.asyncio
 async def test_find_correlation_ids_for_pod_empty(transaction_flow_service):
     """Test finding correlation IDs with no results."""
-    with patch.object(
-        transaction_flow_service, "azure_workspace_id", None
-    ), patch.object(transaction_flow_service, "loki_url", None):
+    with (
+        patch.object(transaction_flow_service, "azure_workspace_id", None),
+        patch.object(transaction_flow_service, "loki_url", None),
+    ):
         result = await transaction_flow_service.find_correlation_ids_for_pod(
             "pod-123", timedelta(hours=1), 50
         )

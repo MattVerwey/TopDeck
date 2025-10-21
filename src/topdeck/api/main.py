@@ -1,37 +1,37 @@
 """FastAPI application entry point."""
 
-from datetime import datetime
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from topdeck import __version__
+from topdeck.api.routes import discovery, integrations, monitoring, prediction, risk, topology
 from topdeck.common.config import settings
-from topdeck.common.middleware import RequestLoggingMiddleware, RequestIDMiddleware
-from topdeck.common.rate_limiter import RateLimitMiddleware, RateLimiter
 from topdeck.common.errors import (
     TopDeckException,
-    topdeck_exception_handler,
     generic_exception_handler,
+    topdeck_exception_handler,
 )
 from topdeck.common.health import (
-    check_neo4j_health,
-    check_redis_health,
-    check_rabbitmq_health,
-    determine_overall_status,
     HealthCheckResponse,
+    check_neo4j_health,
+    check_rabbitmq_health,
+    check_redis_health,
+    determine_overall_status,
 )
 from topdeck.common.metrics import get_metrics_handler
-from topdeck.common.scheduler import start_scheduler, stop_scheduler, get_scheduler
-from topdeck.api.routes import topology, monitoring, risk, integrations, prediction, discovery
+from topdeck.common.middleware import RequestIDMiddleware, RequestLoggingMiddleware
+from topdeck.common.rate_limiter import RateLimiter, RateLimitMiddleware
+from topdeck.common.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for FastAPI.
-    
+
     Handles startup and shutdown events.
     """
     # Startup
@@ -39,9 +39,9 @@ async def lifespan(app: FastAPI):
         start_scheduler()
     except Exception as e:
         print(f"Warning: Failed to start scheduler: {e}")
-    
+
     yield
-    
+
     # Shutdown
     stop_scheduler()
 
@@ -112,7 +112,7 @@ async def health() -> dict[str, str]:
 async def detailed_health() -> HealthCheckResponse:
     """
     Detailed health check endpoint.
-    
+
     Checks the health of all service dependencies:
     - Neo4j database
     - Redis cache
@@ -123,9 +123,9 @@ async def detailed_health() -> HealthCheckResponse:
         "redis": await check_redis_health(),
         "rabbitmq": await check_rabbitmq_health(),
     }
-    
+
     overall_status = determine_overall_status(components)
-    
+
     return HealthCheckResponse(
         status=overall_status,
         components=components,
@@ -137,7 +137,7 @@ async def detailed_health() -> HealthCheckResponse:
 async def metrics():
     """
     Prometheus metrics endpoint.
-    
+
     Exposes application metrics in Prometheus format for scraping.
     """
     return get_metrics_handler()

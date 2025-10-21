@@ -4,8 +4,9 @@ Integration test for the discovery scheduler.
 This test verifies that the scheduler integrates correctly with the FastAPI application.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 
@@ -39,13 +40,13 @@ def test_app_starts_with_scheduler(mock_neo4j, mock_apscheduler):
     """Test that the FastAPI app starts correctly with the scheduler."""
     # Import app after mocks are in place
     from topdeck.api.main import app
-    
+
     # Create test client (this triggers lifespan events)
     with TestClient(app) as client:
         # Verify app is accessible
         response = client.get("/")
         assert response.status_code == 200
-        
+
         # Verify the app object exists and has routes
         assert app is not None
         assert len(app.routes) > 0
@@ -54,24 +55,26 @@ def test_app_starts_with_scheduler(mock_neo4j, mock_apscheduler):
 def test_discovery_endpoints_available(mock_neo4j, mock_apscheduler):
     """Test that discovery endpoints are available."""
     from topdeck.api.main import app
-    
+
     with TestClient(app) as client:
         # Test status endpoint
         with patch("topdeck.api.routes.discovery.get_scheduler") as mock_get_scheduler:
             mock_scheduler = Mock()
-            mock_scheduler.get_status = Mock(return_value={
-                "scheduler_running": True,
-                "discovery_in_progress": False,
-                "last_discovery_time": None,
-                "interval_hours": 8,
-                "enabled_providers": {
-                    "azure": False,
-                    "aws": False,
-                    "gcp": False,
-                },
-            })
+            mock_scheduler.get_status = Mock(
+                return_value={
+                    "scheduler_running": True,
+                    "discovery_in_progress": False,
+                    "last_discovery_time": None,
+                    "interval_hours": 8,
+                    "enabled_providers": {
+                        "azure": False,
+                        "aws": False,
+                        "gcp": False,
+                    },
+                }
+            )
             mock_get_scheduler.return_value = mock_scheduler
-            
+
             response = client.get("/api/v1/discovery/status")
             assert response.status_code == 200
             data = response.json()
@@ -91,11 +94,11 @@ def test_scheduler_handles_no_credentials(mock_neo4j, mock_apscheduler):
         mock_settings.enable_azure_discovery = False
         mock_settings.enable_aws_discovery = False
         mock_settings.enable_gcp_discovery = False
-        
+
         from topdeck.common.scheduler import DiscoveryScheduler
-        
+
         scheduler = DiscoveryScheduler()
-        
+
         # Should not run discovery without credentials
         assert scheduler._should_run_discovery() is False
 
@@ -103,7 +106,7 @@ def test_scheduler_handles_no_credentials(mock_neo4j, mock_apscheduler):
 def test_health_check_still_works(mock_neo4j, mock_apscheduler):
     """Test that health check endpoints still work with scheduler."""
     from topdeck.api.main import app
-    
+
     with TestClient(app) as client:
         # Basic health check
         response = client.get("/health")
@@ -114,12 +117,12 @@ def test_health_check_still_works(mock_neo4j, mock_apscheduler):
 def test_api_info_includes_features(mock_neo4j, mock_apscheduler):
     """Test that API info endpoint returns feature flags."""
     from topdeck.api.main import app
-    
+
     with TestClient(app) as client:
         response = client.get("/api/info")
         assert response.status_code == 200
         data = response.json()
-        
+
         assert "features" in data
         assert "azure_discovery" in data["features"]
         assert "aws_discovery" in data["features"]

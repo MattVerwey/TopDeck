@@ -3,15 +3,16 @@ Tests for input validators.
 """
 
 import pytest
+
 from topdeck.common.validators import (
-    validate_resource_id,
-    validate_cloud_provider,
-    validate_resource_type,
-    validate_subscription_id,
-    validate_pagination,
-    validate_risk_score,
-    sanitize_string,
     ValidationError,
+    sanitize_string,
+    validate_cloud_provider,
+    validate_pagination,
+    validate_resource_id,
+    validate_resource_type,
+    validate_risk_score,
+    validate_subscription_id,
 )
 
 

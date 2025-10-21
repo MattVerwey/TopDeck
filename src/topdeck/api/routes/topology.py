@@ -5,60 +5,51 @@ Provides API endpoints for retrieving topology data, resource dependencies,
 and data flows for network visualization and drill-down.
 """
 
-from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from topdeck.analysis.topology import (
-    TopologyService,
-    TopologyGraph,
-    TopologyNode,
-    TopologyEdge,
-    ResourceDependencies,
-    DataFlow,
     FlowType,
-    ResourceAttachment,
-    DependencyChain,
-    ResourceAttachmentAnalysis,
+    TopologyService,
 )
-from topdeck.storage.neo4j_client import Neo4jClient
 from topdeck.common.config import settings
+from topdeck.storage.neo4j_client import Neo4jClient
 
 
 # Pydantic models for API responses
 class TopologyNodeResponse(BaseModel):
     """Response model for topology node."""
-    
+
     id: str
     resource_type: str
     name: str
     cloud_provider: str
-    region: Optional[str] = None
+    region: str | None = None
     properties: dict = Field(default_factory=dict)
     metadata: dict = Field(default_factory=dict)
 
 
 class TopologyEdgeResponse(BaseModel):
     """Response model for topology edge."""
-    
+
     source_id: str
     target_id: str
     relationship_type: str
-    flow_type: Optional[str] = None
+    flow_type: str | None = None
     properties: dict = Field(default_factory=dict)
 
 
 class TopologyGraphResponse(BaseModel):
     """Response model for topology graph."""
-    
-    nodes: List[TopologyNodeResponse]
-    edges: List[TopologyEdgeResponse]
+
+    nodes: list[TopologyNodeResponse]
+    edges: list[TopologyEdgeResponse]
     metadata: dict = Field(default_factory=dict)
 
 
 class ResourceAttachmentResponse(BaseModel):
     """Response model for resource attachment."""
-    
+
     source_id: str
     source_name: str
     source_type: str
@@ -72,36 +63,36 @@ class ResourceAttachmentResponse(BaseModel):
 
 class ResourceDependenciesResponse(BaseModel):
     """Response model for resource dependencies."""
-    
+
     resource_id: str
     resource_name: str
-    upstream: List[TopologyNodeResponse]
-    downstream: List[TopologyNodeResponse]
-    upstream_attachments: List[ResourceAttachmentResponse] = Field(default_factory=list)
-    downstream_attachments: List[ResourceAttachmentResponse] = Field(default_factory=list)
+    upstream: list[TopologyNodeResponse]
+    downstream: list[TopologyNodeResponse]
+    upstream_attachments: list[ResourceAttachmentResponse] = Field(default_factory=list)
+    downstream_attachments: list[ResourceAttachmentResponse] = Field(default_factory=list)
     depth: int
 
 
 class DataFlowResponse(BaseModel):
     """Response model for data flow."""
-    
+
     id: str
     name: str
-    path: List[str]
+    path: list[str]
     flow_type: str
-    nodes: List[TopologyNodeResponse]
-    edges: List[TopologyEdgeResponse]
+    nodes: list[TopologyNodeResponse]
+    edges: list[TopologyEdgeResponse]
     metadata: dict = Field(default_factory=dict)
 
 
 class DependencyChainResponse(BaseModel):
     """Response model for dependency chain."""
-    
+
     chain_id: str
-    resource_ids: List[str]
-    resource_names: List[str]
-    resource_types: List[str]
-    relationships: List[str]
+    resource_ids: list[str]
+    resource_names: list[str]
+    resource_types: list[str]
+    relationships: list[str]
     chain_length: int
     total_risk_score: float = 0.0
     metadata: dict = Field(default_factory=dict)
@@ -109,15 +100,15 @@ class DependencyChainResponse(BaseModel):
 
 class ResourceAttachmentAnalysisResponse(BaseModel):
     """Response model for in-depth resource attachment analysis."""
-    
+
     resource_id: str
     resource_name: str
     resource_type: str
     total_attachments: int
     attachment_by_type: dict = Field(default_factory=dict)
-    critical_attachments: List[ResourceAttachmentResponse] = Field(default_factory=list)
+    critical_attachments: list[ResourceAttachmentResponse] = Field(default_factory=list)
     attachment_strength: dict = Field(default_factory=dict)
-    dependency_chains: List[DependencyChainResponse] = Field(default_factory=list)
+    dependency_chains: list[DependencyChainResponse] = Field(default_factory=list)
     impact_radius: int
     metadata: dict = Field(default_factory=dict)
 
@@ -139,22 +130,15 @@ def get_topology_service() -> TopologyService:
 
 @router.get("", response_model=TopologyGraphResponse)
 async def get_topology(
-    cloud_provider: Optional[str] = Query(
-        None,
-        description="Filter by cloud provider (azure, aws, gcp)"
+    cloud_provider: str | None = Query(
+        None, description="Filter by cloud provider (azure, aws, gcp)"
     ),
-    resource_type: Optional[str] = Query(
-        None,
-        description="Filter by resource type"
-    ),
-    region: Optional[str] = Query(
-        None,
-        description="Filter by region"
-    ),
+    resource_type: str | None = Query(None, description="Filter by resource type"),
+    region: str | None = Query(None, description="Filter by region"),
 ) -> TopologyGraphResponse:
     """
     Get complete topology graph with optional filtering.
-    
+
     Returns nodes (resources) and edges (relationships) that form the
     network topology. Supports filtering by cloud provider, resource type,
     and region.
@@ -166,7 +150,7 @@ async def get_topology(
             resource_type=resource_type,
             region=region,
         )
-        
+
         return TopologyGraphResponse(
             nodes=[
                 TopologyNodeResponse(
@@ -193,7 +177,7 @@ async def get_topology(
             metadata=topology.metadata,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get topology: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get topology: {str(e)}") from e
 
 
 @router.get("/resources/{resource_id}/dependencies", response_model=ResourceDependenciesResponse)
@@ -203,12 +187,12 @@ async def get_resource_dependencies(
     direction: str = Query(
         "both",
         regex="^(upstream|downstream|both)$",
-        description="Direction to traverse (upstream, downstream, or both)"
+        description="Direction to traverse (upstream, downstream, or both)",
     ),
 ) -> ResourceDependenciesResponse:
     """
     Get dependencies for a specific resource.
-    
+
     Returns upstream dependencies (what this resource depends on) and
     downstream dependencies (what depends on this resource).
     """
@@ -219,7 +203,7 @@ async def get_resource_dependencies(
             depth=depth,
             direction=direction,
         )
-        
+
         return ResourceDependenciesResponse(
             resource_id=dependencies.resource_id,
             resource_name=dependencies.resource_name,
@@ -278,49 +262,43 @@ async def get_resource_dependencies(
             depth=dependencies.depth,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get dependencies: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get dependencies: {str(e)}") from e
 
 
-@router.get("/flows", response_model=List[DataFlowResponse])
+@router.get("/flows", response_model=list[DataFlowResponse])
 async def get_data_flows(
-    flow_type: Optional[str] = Query(
-        None,
-        description="Filter by flow type (http, https, database, storage, cache, etc.)"
+    flow_type: str | None = Query(
+        None, description="Filter by flow type (http, https, database, storage, cache, etc.)"
     ),
-    start_resource_type: Optional[str] = Query(
-        None,
-        description="Filter by starting resource type (e.g., load_balancer, pod)"
+    start_resource_type: str | None = Query(
+        None, description="Filter by starting resource type (e.g., load_balancer, pod)"
     ),
-) -> List[DataFlowResponse]:
+) -> list[DataFlowResponse]:
     """
     Get data flow paths through the system.
-    
+
     Returns detected data flows showing how data moves through resources.
     Useful for visualizing request paths, database connections, and
     service dependencies.
     """
     try:
         service = get_topology_service()
-        
+
         # Convert flow_type string to FlowType enum if provided
         flow_type_enum = None
         if flow_type:
             try:
                 flow_type_enum = FlowType(flow_type.lower())
-            except ValueError:
+            except ValueError as e:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid flow_type: {flow_type}"
-                )
-        
+                    status_code=400, detail=f"Invalid flow_type: {flow_type}"
+                ) from e
+
         flows = service.get_data_flows(
             flow_type=flow_type_enum,
             start_resource_type=start_resource_type,
         )
-        
+
         return [
             DataFlowResponse(
                 id=flow.id,
@@ -356,24 +334,21 @@ async def get_data_flows(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get data flows: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get data flows: {str(e)}") from e
 
 
-@router.get("/resources/{resource_id}/attachments", response_model=List[ResourceAttachmentResponse])
+@router.get("/resources/{resource_id}/attachments", response_model=list[ResourceAttachmentResponse])
 async def get_resource_attachments(
     resource_id: str,
     direction: str = Query(
         "both",
         regex="^(upstream|downstream|both)$",
-        description="Direction to get attachments (upstream, downstream, or both)"
+        description="Direction to get attachments (upstream, downstream, or both)",
     ),
-) -> List[ResourceAttachmentResponse]:
+) -> list[ResourceAttachmentResponse]:
     """
     Get detailed attachment information for a resource.
-    
+
     Shows all relationship types, properties, and connection context
     to understand how resources are connected. This provides the detailed
     "which resources are attached to which" view.
@@ -384,7 +359,7 @@ async def get_resource_attachments(
             resource_id=resource_id,
             direction=direction,
         )
-        
+
         return [
             ResourceAttachmentResponse(
                 source_id=att.source_id,
@@ -401,24 +376,23 @@ async def get_resource_attachments(
         ]
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get resource attachments: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to get resource attachments: {str(e)}"
+        ) from e
 
 
-@router.get("/resources/{resource_id}/chains", response_model=List[DependencyChainResponse])
+@router.get("/resources/{resource_id}/chains", response_model=list[DependencyChainResponse])
 async def get_dependency_chains(
     resource_id: str,
     max_depth: int = Query(5, ge=1, le=10, description="Maximum chain depth"),
     direction: str = Query(
         "downstream",
         regex="^(upstream|downstream)$",
-        description="Direction to trace chains (upstream or downstream)"
+        description="Direction to trace chains (upstream or downstream)",
     ),
-) -> List[DependencyChainResponse]:
+) -> list[DependencyChainResponse]:
     """
     Get all dependency chains starting from a resource.
-    
+
     Identifies complete paths showing how dependencies and failures propagate
     through the system. Useful for understanding cascading impacts.
     """
@@ -429,7 +403,7 @@ async def get_dependency_chains(
             max_depth=max_depth,
             direction=direction,
         )
-        
+
         return [
             DependencyChainResponse(
                 chain_id=chain.chain_id,
@@ -445,9 +419,8 @@ async def get_dependency_chains(
         ]
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get dependency chains: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to get dependency chains: {str(e)}"
+        ) from e
 
 
 @router.get("/resources/{resource_id}/analysis", response_model=ResourceAttachmentAnalysisResponse)
@@ -456,20 +429,20 @@ async def get_attachment_analysis(
 ) -> ResourceAttachmentAnalysisResponse:
     """
     Get comprehensive in-depth analysis of resource attachments.
-    
+
     Provides detailed metrics about how a resource connects to others, including:
     - Attachment types and distribution
     - Attachment strength scores
     - Critical attachments
     - Dependency chains
     - Impact radius
-    
+
     This endpoint provides the "bigger picture" and "in-depth analysis" requested.
     """
     try:
         service = get_topology_service()
         analysis = service.get_attachment_analysis(resource_id=resource_id)
-        
+
         return ResourceAttachmentAnalysisResponse(
             resource_id=analysis.resource_id,
             resource_name=analysis.resource_name,
@@ -508,9 +481,8 @@ async def get_attachment_analysis(
             metadata=analysis.metadata,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get attachment analysis: {str(e)}"
-        )
+            status_code=500, detail=f"Failed to get attachment analysis: {str(e)}"
+        ) from e

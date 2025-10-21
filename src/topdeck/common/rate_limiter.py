@@ -6,11 +6,11 @@ Provides a simple in-memory rate limiter to prevent API abuse.
 
 import time
 from collections import defaultdict
-from typing import Callable, Optional
+from collections.abc import Callable
 
+import structlog
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -44,9 +44,7 @@ class RateLimiter:
 
         # Remove expired timestamps
         self.requests[client_id] = [
-            timestamp
-            for timestamp in self.requests[client_id]
-            if timestamp > window_start
+            timestamp for timestamp in self.requests[client_id] if timestamp > window_start
         ]
 
         # Check if under the limit
@@ -82,7 +80,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Middleware to apply rate limiting to API requests."""
 
     def __init__(
-        self, app, rate_limiter: Optional[RateLimiter] = None, exempt_paths: Optional[list[str]] = None
+        self, app, rate_limiter: RateLimiter | None = None, exempt_paths: list[str] | None = None
     ) -> None:
         """
         Initialize the middleware.

@@ -2,8 +2,8 @@
 
 import pytest
 
-from topdeck.analysis.risk.scoring import RiskScorer
 from topdeck.analysis.risk.models import RiskLevel
+from topdeck.analysis.risk.scoring import RiskScorer
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_calculate_risk_score_spof(risk_scorer):
         is_single_point_of_failure=True,
         has_redundancy=False,
     )
-    
+
     score_redundant = risk_scorer.calculate_risk_score(
         dependency_count=0,
         dependents_count=10,
@@ -77,7 +77,7 @@ def test_calculate_risk_score_spof(risk_scorer):
         is_single_point_of_failure=False,
         has_redundancy=True,
     )
-    
+
     # SPOF should have higher risk
     assert score_spof > score_redundant
 
@@ -91,7 +91,7 @@ def test_calculate_risk_score_time_factor(risk_scorer):
         is_single_point_of_failure=False,
         time_since_last_change_hours=1.0,
     )
-    
+
     score_old = risk_scorer.calculate_risk_score(
         dependency_count=5,
         dependents_count=5,
@@ -99,7 +99,7 @@ def test_calculate_risk_score_time_factor(risk_scorer):
         is_single_point_of_failure=False,
         time_since_last_change_hours=1000.0,
     )
-    
+
     # Recent changes should have higher risk
     assert score_recent > score_old
 
@@ -107,9 +107,7 @@ def test_calculate_risk_score_time_factor(risk_scorer):
 def test_calculate_criticality_database(risk_scorer):
     """Test criticality calculation for database."""
     criticality = risk_scorer._calculate_criticality(
-        resource_type="database",
-        is_spof=False,
-        dependents_count=5
+        resource_type="database", is_spof=False, dependents_count=5
     )
     assert criticality > 30  # Databases are critical
 
@@ -117,9 +115,7 @@ def test_calculate_criticality_database(risk_scorer):
 def test_calculate_criticality_key_vault(risk_scorer):
     """Test criticality calculation for key vault."""
     criticality = risk_scorer._calculate_criticality(
-        resource_type="key_vault",
-        is_spof=False,
-        dependents_count=5
+        resource_type="key_vault", is_spof=False, dependents_count=5
     )
     assert criticality > 40  # Key vaults are very critical
 
@@ -127,34 +123,26 @@ def test_calculate_criticality_key_vault(risk_scorer):
 def test_calculate_criticality_with_spof_boost(risk_scorer):
     """Test criticality boost for SPOF."""
     criticality_normal = risk_scorer._calculate_criticality(
-        resource_type="web_app",
-        is_spof=False,
-        dependents_count=5
+        resource_type="web_app", is_spof=False, dependents_count=5
     )
-    
+
     criticality_spof = risk_scorer._calculate_criticality(
-        resource_type="web_app",
-        is_spof=True,
-        dependents_count=5
+        resource_type="web_app", is_spof=True, dependents_count=5
     )
-    
+
     assert criticality_spof > criticality_normal
 
 
 def test_calculate_criticality_with_many_dependents(risk_scorer):
     """Test criticality increases with dependents."""
     criticality_few = risk_scorer._calculate_criticality(
-        resource_type="web_app",
-        is_spof=False,
-        dependents_count=2
+        resource_type="web_app", is_spof=False, dependents_count=2
     )
-    
+
     criticality_many = risk_scorer._calculate_criticality(
-        resource_type="web_app",
-        is_spof=False,
-        dependents_count=15
+        resource_type="web_app", is_spof=False, dependents_count=15
     )
-    
+
     assert criticality_many > criticality_few
 
 
@@ -189,7 +177,7 @@ def test_generate_recommendations_critical_risk(risk_scorer):
         is_spof=False,
         has_redundancy=True,
         dependents_count=5,
-        deployment_failure_rate=0.1
+        deployment_failure_rate=0.1,
     )
     assert len(recommendations) > 0
     assert any("CRITICAL RISK" in r for r in recommendations)
@@ -202,7 +190,7 @@ def test_generate_recommendations_spof(risk_scorer):
         is_spof=True,
         has_redundancy=False,
         dependents_count=5,
-        deployment_failure_rate=0.1
+        deployment_failure_rate=0.1,
     )
     assert len(recommendations) > 0
     assert any("Single Point of Failure" in r for r in recommendations)
@@ -216,7 +204,7 @@ def test_generate_recommendations_high_dependency(risk_scorer):
         is_spof=False,
         has_redundancy=True,
         dependents_count=15,
-        deployment_failure_rate=0.1
+        deployment_failure_rate=0.1,
     )
     assert len(recommendations) > 0
     assert any("dependency count" in r.lower() for r in recommendations)
@@ -229,7 +217,7 @@ def test_generate_recommendations_high_failure_rate(risk_scorer):
         is_spof=False,
         has_redundancy=True,
         dependents_count=5,
-        deployment_failure_rate=0.3
+        deployment_failure_rate=0.3,
     )
     assert len(recommendations) > 0
     assert any("failure rate" in r.lower() for r in recommendations)
@@ -242,7 +230,7 @@ def test_generate_recommendations_always_returns_something(risk_scorer):
         is_spof=False,
         has_redundancy=True,
         dependents_count=3,
-        deployment_failure_rate=0.05
+        deployment_failure_rate=0.05,
     )
     assert len(recommendations) > 0
 
@@ -260,7 +248,7 @@ def test_risk_score_bounds(risk_scorer):
         has_redundancy=False,
     )
     assert 0 <= score_max <= 100
-    
+
     score_min = risk_scorer.calculate_risk_score(
         dependency_count=0,
         dependents_count=0,

@@ -5,10 +5,10 @@ Provides detailed health information about Neo4j, Redis, and RabbitMQ.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field
 import structlog
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -26,7 +26,7 @@ class ComponentHealth(BaseModel):
 
     status: HealthStatus
     message: str = ""
-    response_time_ms: Optional[float] = None
+    response_time_ms: float | None = None
     details: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -46,6 +46,7 @@ async def check_neo4j_health() -> ComponentHealth:
         ComponentHealth with status and details
     """
     import time
+
     from topdeck.storage.neo4j_client import Neo4jClient
 
     start_time = time.time()
@@ -53,7 +54,7 @@ async def check_neo4j_health() -> ComponentHealth:
         # Try to create a client and run a simple query
         client = Neo4jClient()
         # Simple query to check connectivity
-        result = client.driver.verify_connectivity()
+        client.driver.verify_connectivity()
         response_time = (time.time() - start_time) * 1000
 
         return ComponentHealth(
@@ -81,7 +82,9 @@ async def check_redis_health() -> ComponentHealth:
         ComponentHealth with status and details
     """
     import time
+
     import redis
+
     from topdeck.common.config import settings
 
     start_time = time.time()
@@ -99,7 +102,7 @@ async def check_redis_health() -> ComponentHealth:
 
         # Get some basic info
         info = client.info("server")
-        
+
         return ComponentHealth(
             status=HealthStatus.HEALTHY,
             message="Redis is connected and responsive",
@@ -128,15 +131,15 @@ async def check_rabbitmq_health() -> ComponentHealth:
         ComponentHealth with status and details
     """
     import time
+
     import pika
+
     from topdeck.common.config import settings
 
     start_time = time.time()
     try:
         # Create connection parameters
-        credentials = pika.PlainCredentials(
-            settings.rabbitmq_username, settings.rabbitmq_password
-        )
+        credentials = pika.PlainCredentials(settings.rabbitmq_username, settings.rabbitmq_password)
         parameters = pika.ConnectionParameters(
             host=settings.rabbitmq_host,
             port=settings.rabbitmq_port,

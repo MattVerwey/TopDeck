@@ -5,12 +5,12 @@ Data models for risk analysis.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class RiskLevel(str, Enum):
     """Risk level classification."""
-    
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -19,7 +19,7 @@ class RiskLevel(str, Enum):
 
 class ImpactLevel(str, Enum):
     """Impact level classification."""
-    
+
     MINIMAL = "minimal"
     LOW = "low"
     MEDIUM = "medium"
@@ -29,7 +29,7 @@ class ImpactLevel(str, Enum):
 
 class FailureType(str, Enum):
     """Type of failure scenario."""
-    
+
     COMPLETE_OUTAGE = "complete_outage"
     DEGRADED_PERFORMANCE = "degraded_performance"
     INTERMITTENT_FAILURE = "intermittent_failure"
@@ -38,7 +38,7 @@ class FailureType(str, Enum):
 
 class OutcomeType(str, Enum):
     """Type of service outcome impact."""
-    
+
     DOWNTIME = "downtime"  # Complete service unavailability
     DEGRADED = "degraded"  # Reduced performance/capacity
     BLIP = "blip"  # Brief intermittent issues
@@ -51,7 +51,7 @@ class OutcomeType(str, Enum):
 class RiskAssessment:
     """
     Complete risk assessment for a resource.
-    
+
     Attributes:
         resource_id: Unique identifier of the resource
         resource_name: Human-readable name
@@ -69,7 +69,7 @@ class RiskAssessment:
         factors: Detailed breakdown of risk factors
         assessed_at: When this assessment was performed
     """
-    
+
     resource_id: str
     resource_name: str
     resource_type: str
@@ -81,9 +81,9 @@ class RiskAssessment:
     blast_radius: int
     single_point_of_failure: bool
     deployment_failure_rate: float = 0.0
-    time_since_last_change: Optional[float] = None
-    recommendations: List[str] = field(default_factory=list)
-    factors: Dict[str, Any] = field(default_factory=dict)
+    time_since_last_change: float | None = None
+    recommendations: list[str] = field(default_factory=list)
+    factors: dict[str, Any] = field(default_factory=dict)
     assessed_at: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -91,7 +91,7 @@ class RiskAssessment:
 class BlastRadius:
     """
     Analysis of what would be affected if a resource fails.
-    
+
     Attributes:
         resource_id: ID of the failing resource
         resource_name: Name of the failing resource
@@ -103,23 +103,23 @@ class BlastRadius:
         critical_path: Most critical dependency path
         affected_services: Breakdown by service type
     """
-    
+
     resource_id: str
     resource_name: str
-    directly_affected: List[Dict[str, Any]]
-    indirectly_affected: List[Dict[str, Any]]
+    directly_affected: list[dict[str, Any]]
+    indirectly_affected: list[dict[str, Any]]
     total_affected: int
     user_impact: ImpactLevel
     estimated_downtime_seconds: int
-    critical_path: List[str] = field(default_factory=list)
-    affected_services: Dict[str, int] = field(default_factory=dict)
+    critical_path: list[str] = field(default_factory=list)
+    affected_services: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
 class FailureSimulation:
     """
     Results of a failure simulation.
-    
+
     Attributes:
         resource_id: ID of the simulated failure
         resource_name: Name of the resource
@@ -130,22 +130,22 @@ class FailureSimulation:
         mitigation_strategies: Ways to reduce impact
         similar_past_incidents: Historical similar incidents
     """
-    
+
     resource_id: str
     resource_name: str
     scenario: str
     blast_radius: BlastRadius
     cascade_depth: int
-    recovery_steps: List[str] = field(default_factory=list)
-    mitigation_strategies: List[str] = field(default_factory=list)
-    similar_past_incidents: List[Dict[str, Any]] = field(default_factory=list)
+    recovery_steps: list[str] = field(default_factory=list)
+    mitigation_strategies: list[str] = field(default_factory=list)
+    similar_past_incidents: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
 class SinglePointOfFailure:
     """
     Represents a single point of failure in the infrastructure.
-    
+
     Attributes:
         resource_id: ID of the SPOF
         resource_name: Name of the SPOF
@@ -155,21 +155,21 @@ class SinglePointOfFailure:
         risk_score: Risk score for this SPOF
         recommendations: How to eliminate this SPOF
     """
-    
+
     resource_id: str
     resource_name: str
     resource_type: str
     dependents_count: int
     blast_radius: int
     risk_score: float
-    recommendations: List[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass
 class FailureOutcome:
     """
     Detailed outcome analysis for a specific failure type.
-    
+
     Attributes:
         outcome_type: Type of outcome (downtime, degraded, blip, etc.)
         probability: Likelihood of this outcome (0-1)
@@ -178,7 +178,7 @@ class FailureOutcome:
         user_impact_description: Human-readable impact description
         technical_details: Technical details of the impact
     """
-    
+
     outcome_type: OutcomeType
     probability: float
     duration_seconds: int
@@ -191,7 +191,7 @@ class FailureOutcome:
 class PartialFailureScenario:
     """
     Analysis of partial/degraded failure scenarios.
-    
+
     Attributes:
         resource_id: ID of the resource
         resource_name: Name of the resource
@@ -201,21 +201,21 @@ class PartialFailureScenario:
         mitigation_strategies: Strategies to prevent/reduce impact
         monitoring_recommendations: What to monitor
     """
-    
+
     resource_id: str
     resource_name: str
     failure_type: FailureType
-    outcomes: List[FailureOutcome] = field(default_factory=list)
+    outcomes: list[FailureOutcome] = field(default_factory=list)
     overall_impact: ImpactLevel = ImpactLevel.MEDIUM
-    mitigation_strategies: List[str] = field(default_factory=list)
-    monitoring_recommendations: List[str] = field(default_factory=list)
+    mitigation_strategies: list[str] = field(default_factory=list)
+    monitoring_recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass
 class DependencyVulnerability:
     """
     Vulnerability found in a package dependency.
-    
+
     Attributes:
         package_name: Name of the vulnerable package
         current_version: Currently installed version
@@ -226,12 +226,12 @@ class DependencyVulnerability:
         exploit_available: Whether a public exploit exists
         affected_resources: Resources using this dependency
     """
-    
+
     package_name: str
     current_version: str
     vulnerability_id: str
     severity: str
     description: str
-    fixed_version: Optional[str] = None
+    fixed_version: str | None = None
     exploit_available: bool = False
-    affected_resources: List[str] = field(default_factory=list)
+    affected_resources: list[str] = field(default_factory=list)

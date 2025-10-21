@@ -6,12 +6,11 @@ Provides logging, error handling, and request tracking middleware.
 
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
+import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
-import structlog
 
 logger = structlog.get_logger(__name__)
 

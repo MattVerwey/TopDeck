@@ -2,7 +2,6 @@
 Tests for AWS Resource Mapper.
 """
 
-import pytest
 from topdeck.discovery.aws.mapper import AWSResourceMapper
 from topdeck.discovery.models import CloudProvider, ResourceStatus
 
@@ -76,7 +75,7 @@ class TestAWSResourceMapper:
         """Test extracting environment from AWS tags (list format)"""
         tags = [
             {"Key": "Environment", "Value": "production"},
-            {"Key": "Application", "Value": "web"}
+            {"Key": "Application", "Value": "web"},
         ]
         assert AWSResourceMapper.extract_environment_from_tags(tags) == "production"
 
@@ -99,13 +98,10 @@ class TestAWSResourceMapper:
         """Test normalizing AWS tags from list format"""
         tags = [
             {"Key": "Environment", "Value": "production"},
-            {"Key": "Application", "Value": "web"}
+            {"Key": "Application", "Value": "web"},
         ]
         result = AWSResourceMapper.normalize_tags(tags)
-        assert result == {
-            "Environment": "production",
-            "Application": "web"
-        }
+        assert result == {"Environment": "production", "Application": "web"}
 
     def test_normalize_tags_dict(self):
         """Test normalizing AWS tags from dict format"""
@@ -123,9 +119,9 @@ class TestAWSResourceMapper:
         arn = "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"
         tags = [
             {"Key": "Environment", "Value": "production"},
-            {"Key": "Application", "Value": "web"}
+            {"Key": "Application", "Value": "web"},
         ]
-        
+
         resource = AWSResourceMapper.map_aws_resource(
             arn=arn,
             resource_name="web-server-01",
@@ -133,9 +129,9 @@ class TestAWSResourceMapper:
             region="us-east-1",
             tags=tags,
             properties={"InstanceType": "t3.large"},
-            state="running"
+            state="running",
         )
-        
+
         assert resource.id == arn
         assert resource.name == "web-server-01"
         assert resource.resource_type == "ec2_instance"
@@ -150,14 +146,11 @@ class TestAWSResourceMapper:
     def test_map_aws_resource_minimal(self):
         """Test mapping AWS resource with minimal data"""
         arn = "arn:aws:s3:::my-bucket"
-        
+
         resource = AWSResourceMapper.map_aws_resource(
-            arn=arn,
-            resource_name="my-bucket",
-            resource_type="AWS::S3::Bucket",
-            region="us-east-1"
+            arn=arn, resource_name="my-bucket", resource_type="AWS::S3::Bucket", region="us-east-1"
         )
-        
+
         assert resource.id == arn
         assert resource.name == "my-bucket"
         assert resource.resource_type == "s3_bucket"
@@ -171,7 +164,7 @@ class TestAWSResourceMapper:
         """Test Neo4j formatting of mapped AWS resource"""
         arn = "arn:aws:rds:us-west-2:123456789012:db:mydb"
         tags = [{"Key": "env", "Value": "dev"}]
-        
+
         resource = AWSResourceMapper.map_aws_resource(
             arn=arn,
             resource_name="mydb",
@@ -179,20 +172,20 @@ class TestAWSResourceMapper:
             region="us-west-2",
             tags=tags,
             properties={"Engine": "postgres"},
-            state="available"
+            state="available",
         )
-        
+
         neo4j_props = resource.to_neo4j_properties()
-        
-        assert neo4j_props['id'] == arn
-        assert neo4j_props['name'] == "mydb"
-        assert neo4j_props['resource_type'] == "rds_instance"
-        assert neo4j_props['cloud_provider'] == "aws"
-        assert neo4j_props['region'] == "us-west-2"
-        assert neo4j_props['subscription_id'] == "123456789012"
-        assert neo4j_props['status'] == "running"
-        assert neo4j_props['environment'] == "dev"
-        assert neo4j_props['tags'] == {"env": "dev"}
-        assert '"Engine": "postgres"' in neo4j_props['properties']
-        assert 'discovered_at' in neo4j_props
-        assert 'last_seen' in neo4j_props
+
+        assert neo4j_props["id"] == arn
+        assert neo4j_props["name"] == "mydb"
+        assert neo4j_props["resource_type"] == "rds_instance"
+        assert neo4j_props["cloud_provider"] == "aws"
+        assert neo4j_props["region"] == "us-west-2"
+        assert neo4j_props["subscription_id"] == "123456789012"
+        assert neo4j_props["status"] == "running"
+        assert neo4j_props["environment"] == "dev"
+        assert neo4j_props["tags"] == {"env": "dev"}
+        assert '"Engine": "postgres"' in neo4j_props["properties"]
+        assert "discovered_at" in neo4j_props
+        assert "last_seen" in neo4j_props

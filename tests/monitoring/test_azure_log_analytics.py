@@ -1,8 +1,9 @@
 """Tests for Azure Log Analytics collector."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
+
+import pytest
 
 from topdeck.monitoring.collectors.azure_log_analytics import (
     AzureLogAnalyticsCollector,
@@ -34,10 +35,7 @@ def test_initialization(collector):
     """Test Azure Log Analytics collector initialization."""
     assert collector.workspace_id == "test-workspace-id"
     assert collector.timeout == 30
-    assert (
-        collector.base_url
-        == "https://api.loganalytics.io/v1/workspaces/test-workspace-id/query"
-    )
+    assert collector.base_url == "https://api.loganalytics.io/v1/workspaces/test-workspace-id/query"
 
 
 @pytest.mark.asyncio
@@ -163,9 +161,7 @@ async def test_get_access_token(collector, mock_credential):
     """Test getting access token."""
     token = await collector._get_access_token()
     assert token == "mock-token"
-    mock_credential.get_token.assert_called_once_with(
-        "https://api.loganalytics.io/.default"
-    )
+    mock_credential.get_token.assert_called_once_with("https://api.loganalytics.io/.default")
 
 
 @pytest.mark.asyncio
