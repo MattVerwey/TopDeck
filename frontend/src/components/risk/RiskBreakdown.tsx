@@ -71,6 +71,12 @@ export default function RiskBreakdown() {
   const [breakdownData, setBreakdownData] = useState<RiskBreakdownData | null>(null);
 
   const resources = topology?.nodes || [];
+  
+  // Pre-compute lowercase values for efficient searching
+  const resourcesWithLowercase = resources.map(resource => ({
+    ...resource,
+    _searchText: `${resource.name} ${resource.resource_type} ${resource.cloud_provider} ${resource.id}`.toLowerCase()
+  }));
 
   const analyzeRisk = async () => {
     if (!selectedResource) return;
@@ -192,20 +198,16 @@ export default function RiskBreakdown() {
         <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 9 }}>
             <Autocomplete
-              options={resources}
+              options={resourcesWithLowercase}
               getOptionLabel={(option) => option.name}
-              value={resources.find((r) => r.id === selectedResource) || null}
+              value={resourcesWithLowercase.find((r) => r.id === selectedResource) || null}
               onChange={(_, value) => setSelectedResource(value?.id || '')}
               filterOptions={(options, state) => {
                 const inputValue = state.inputValue.toLowerCase();
                 if (!inputValue) return options;
                 
-                return options.filter((option) =>
-                  option.name.toLowerCase().includes(inputValue) ||
-                  option.resource_type.toLowerCase().includes(inputValue) ||
-                  option.cloud_provider.toLowerCase().includes(inputValue) ||
-                  option.id.toLowerCase().includes(inputValue)
-                );
+                // Use pre-computed lowercase search text for better performance
+                return options.filter((option) => option._searchText.includes(inputValue));
               }}
               groupBy={(option) => option.resource_type.toUpperCase()}
               renderOption={(props, option) => (

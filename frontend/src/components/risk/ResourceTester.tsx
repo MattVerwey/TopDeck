@@ -4,7 +4,7 @@
  * Allows users to run health checks and validation tests on resources
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -71,8 +71,24 @@ export default function ResourceTester() {
   const [error, setError] = useState<string | null>(null);
   const [testReport, setTestReport] = useState<TestReport | null>(null);
   const [testProgress, setTestProgress] = useState<number>(0);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resources = topology?.nodes || [];
+
+  // Pre-compute lowercase values for efficient searching
+  const resourcesWithLowercase = resources.map(resource => ({
+    ...resource,
+    _searchText: `${resource.name} ${resource.resource_type} ${resource.cloud_provider} ${resource.id}`.toLowerCase()
+  }));
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   const runTests = async () => {
     if (!selectedResource) return;
@@ -88,7 +104,7 @@ export default function ResourceTester() {
       }
 
       // Simulate test progress
-      const progressInterval = setInterval(() => {
+      progressIntervalRef.current = setInterval(() => {
         setTestProgress((prev) => Math.min(prev + 10, 90));
       }, 200);
 
@@ -97,7 +113,10 @@ export default function ResourceTester() {
       const riskAssessment = await apiClient.getRiskAssessment(selectedResource);
       const blastRadius = await apiClient.getBlastRadius(selectedResource);
 
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setTestProgress(100);
 
       // Generate test results based on risk data
@@ -186,6 +205,11 @@ export default function ResourceTester() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to run tests';
       console.error('Test execution failed:', errorMessage);
       setError(errorMessage);
+      // Clear interval on error
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
     } finally {
       setLoading(false);
       setTestProgress(0);
@@ -232,20 +256,16 @@ export default function ResourceTester() {
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 5 }}>
             <Autocomplete
-              options={resources}
+              options={resourcesWithLowercase}
               getOptionLabel={(option) => option.name}
-              value={resources.find((r) => r.id === selectedResource) || null}
+              value={resourcesWithLowercase.find((r) => r.id === selectedResource) || null}
               onChange={(_, value) => setSelectedResource(value?.id || '')}
               filterOptions={(options, state) => {
                 const inputValue = state.inputValue.toLowerCase();
                 if (!inputValue) return options;
                 
-                return options.filter((option) =>
-                  option.name.toLowerCase().includes(inputValue) ||
-                  option.resource_type.toLowerCase().includes(inputValue) ||
-                  option.cloud_provider.toLowerCase().includes(inputValue) ||
-                  option.id.toLowerCase().includes(inputValue)
-                );
+                // Use pre-computed lowercase search text for better performance
+                return options.filter((option) => option._searchText.includes(inputValue));
               }}
               groupBy={(option) => option.resource_type.toUpperCase()}
               renderOption={(props, option) => (

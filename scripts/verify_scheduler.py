@@ -79,8 +79,11 @@ def check_scheduler_config():
     print("SCHEDULER CONFIGURATION")
     print("=" * 60)
     
-    interval_hours = settings.discovery_scan_interval // 3600
-    print(f"\nScan Interval: {interval_hours} hours ({settings.discovery_scan_interval} seconds)")
+    if settings.discovery_scan_interval >= 3600:
+        interval_display = f"{settings.discovery_scan_interval // 3600} hours ({settings.discovery_scan_interval} seconds)"
+    else:
+        interval_display = f"{settings.discovery_scan_interval} seconds"
+    print(f"\nScan Interval: {interval_display}")
     print(f"Parallel Workers: {settings.discovery_parallel_workers}")
     print(f"Timeout: {settings.discovery_timeout} seconds")
 
@@ -150,7 +153,12 @@ def main():
     if success and providers_configured:
         print(f"\n✓ Scheduler is ready!")
         print(f"✓ Discovery enabled for: {', '.join(providers_configured).upper()}")
-        print(f"✓ Scans will run every {settings.discovery_scan_interval // 3600} hours")
+        interval_display = (
+            f"{settings.discovery_scan_interval // 3600} hours"
+            if settings.discovery_scan_interval >= 3600
+            else f"{settings.discovery_scan_interval} seconds"
+        )
+        print(f"✓ Scans will run every {interval_display}")
         print("\nTo start the API server with automated discovery:")
         print("  make run")
         print("\nOr:")

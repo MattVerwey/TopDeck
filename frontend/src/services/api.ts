@@ -17,6 +17,16 @@ import type {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
+ * Error response structure from the API
+ */
+interface ErrorResponse {
+  error?: {
+    message?: string;
+    code?: string;
+  };
+}
+
+/**
  * Custom error class for API errors
  */
 export class ApiError extends Error {
@@ -76,9 +86,9 @@ class ApiClient {
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
+      (error: AxiosError<ErrorResponse>) => {
         const requestId = error.response?.headers['x-request-id'];
-        const errorData = error.response?.data as any;
+        const errorData = error.response?.data;
         
         throw new ApiError(
           errorData?.error?.message || error.message || 'An error occurred',
@@ -252,7 +262,7 @@ class ApiClient {
     all_recommendations: string[];
   }> {
     return this.requestWithRetry(async () => {
-      const params: Record<string, any> = { current_load: currentLoad };
+      const params: Record<string, string | number | boolean> = { current_load: currentLoad };
       if (projectPath) {
         params.project_path = projectPath;
       }
