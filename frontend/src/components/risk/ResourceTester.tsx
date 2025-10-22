@@ -4,7 +4,7 @@
  * Allows users to run health checks and validation tests on resources
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
