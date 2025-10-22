@@ -120,6 +120,28 @@ class Settings(BaseSettings):
     )
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
 
+    # Security Configuration
+    secret_key: str = Field(
+        default="change-this-secret-key-in-production",
+        description="Secret key for JWT tokens and encryption",
+    )
+    access_token_expire_minutes: int = Field(
+        default=60,
+        description="JWT access token expiration time in minutes",
+    )
+    enable_rbac: bool = Field(
+        default=True,
+        description="Enable Role-Based Access Control",
+    )
+    enable_audit_logging: bool = Field(
+        default=True,
+        description="Enable audit logging for security events",
+    )
+    audit_log_file: str = Field(
+        default="/var/log/topdeck/audit.log",
+        description="Path to audit log file",
+    )
+
 
 # Global settings instance
 settings = Settings()
