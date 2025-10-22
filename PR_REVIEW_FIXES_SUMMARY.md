@@ -17,11 +17,11 @@ This document summarizes the fixes applied to address issues raised from pull re
 - `frontend/src/components/risk/RiskBreakdown.tsx`
 
 ### Issue #59: Missing useMemo Import in ResourceTester
-**Problem**: `ResourceTester.tsx` was using `useMemo` but didn't import it from React.
+**Problem**: The `useMemo` import was missing from `ResourceTester.tsx`. While `useMemo` was not yet used in the file, the import was added for consistency and potential future use.
 
 **Solution**:
 - Added `useMemo` to the React imports: `import { useState, useRef, useEffect, useMemo } from 'react'`
-- Component now compiles correctly
+- Ensures the file is ready for future optimizations and maintains consistency with other components
 
 **Files Modified**:
 - `frontend/src/components/risk/ResourceTester.tsx`
