@@ -42,6 +42,7 @@ TopDeck provides that answer by:
 - **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
 - **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - ✨ NEW! Automatic 8-hour resource discovery
+- **[App & Check Enhancements](docs/APP_CHECK_ENHANCEMENTS.md)** - ✨ NEW! CLI arguments, health checks, and security scanning
 
 ### Topology & Dependencies (NEW!)
 - **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
