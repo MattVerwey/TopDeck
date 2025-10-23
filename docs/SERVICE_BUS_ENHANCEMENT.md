@@ -304,14 +304,6 @@ To test with real Azure resources:
 5. Verify resources and dependencies appear in Neo4j
 6. Check topology visualization in web UI
 
-### Integration Testing
-To test with real Azure resources:
-1. Set up Azure credentials
-2. Create test Service Bus namespace with topics/queues
-3. Run discovery: `python scripts/test_discovery.py`
-4. Verify resources appear in Neo4j
-5. Check topology visualization in web UI
-
 ## Troubleshooting
 
 ### Service Bus Resources Not Appearing
