@@ -7,7 +7,8 @@ Maps GCP SDK resource objects to TopDeck's normalized DiscoveredResource model.
 import re
 from typing import Any
 
-from ..models import CloudProvider, DiscoveredResource, ResourceStatus
+from ..connection_parser import ConnectionStringParser
+from ..models import CloudProvider, DiscoveredResource, ResourceDependency, ResourceStatus
 
 
 class GCPResourceMapper:
@@ -219,3 +220,90 @@ class GCPResourceMapper:
             tags=normalized_labels,
             properties=properties or {},
         )
+
+    @staticmethod
+    def extract_connection_strings_from_properties(
+        resource_name: str,
+        resource_type: str,
+        properties: dict[str, Any]
+    ) -> list[ResourceDependency]:
+        """
+        Extract connection string-based dependencies from resource properties.
+
+        Args:
+            resource_name: Source resource name
+            resource_type: GCP resource type
+            properties: Resource properties
+
+        Returns:
+            List of ResourceDependency objects discovered from connection strings
+        """
+        dependencies = []
+        parser = ConnectionStringParser()
+
+        # Handle different resource types
+        if resource_type == "cloudfunctions.googleapis.com/CloudFunction":
+            # Cloud Function - check environment variables
+            env_vars = properties.get("environmentVariables", {})
+            for var_name, var_value in env_vars.items():
+                if isinstance(var_value, str) and any(
+                    key in var_name.upper()
+                    for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL", "REDIS", "CACHE"]
+                ):
+                    conn_info = parser.parse_connection_string(var_value)
+                    if conn_info and conn_info.host:
+                        target_id = parser.extract_host_from_connection_info(conn_info)
+                        if target_id:
+                            dep = parser.create_dependency_from_connection(
+                                source_id=resource_name,
+                                target_id=target_id,
+                                conn_info=conn_info,
+                                description=f"Cloud Function environment: {var_name}"
+                            )
+                            dependencies.append(dep)
+
+        elif resource_type == "run.googleapis.com/Service":
+            # Cloud Run - check environment variables
+            template = properties.get("template", {})
+            containers = template.get("containers", [])
+            for container in containers:
+                env_vars = container.get("env", [])
+                for env_var in env_vars:
+                    var_name = env_var.get("name", "")
+                    var_value = env_var.get("value", "")
+                    if any(key in var_name.upper()
+                           for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]):
+                        conn_info = parser.parse_connection_string(var_value)
+                        if conn_info and conn_info.host:
+                            target_id = parser.extract_host_from_connection_info(conn_info)
+                            if target_id:
+                                dep = parser.create_dependency_from_connection(
+                                    source_id=resource_name,
+                                    target_id=target_id,
+                                    conn_info=conn_info,
+                                    description=f"Cloud Run environment: {var_name}"
+                                )
+                                dependencies.append(dep)
+
+        elif resource_type == "compute.googleapis.com/Instance":
+            # Compute Instance - check metadata
+            metadata = properties.get("metadata", {})
+            items = metadata.get("items", [])
+            for item in items:
+                key = item.get("key", "")
+                value = item.get("value", "")
+                if any(pattern in key.lower()
+                       for pattern in ["connection", "database", "endpoint"]):
+                    conn_info = parser.parse_connection_string(value)
+                    if conn_info and conn_info.host:
+                        target_id = parser.extract_host_from_connection_info(conn_info)
+                        if target_id:
+                            dep = parser.create_dependency_from_connection(
+                                source_id=resource_name,
+                                target_id=target_id,
+                                conn_info=conn_info,
+                                description=f"Instance metadata: {key}"
+                            )
+                            dependencies.append(dep)
+
+        return dependencies

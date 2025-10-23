@@ -7,7 +7,8 @@ Maps AWS SDK resource objects to TopDeck's normalized DiscoveredResource model.
 import re
 from typing import Any
 
-from ..models import CloudProvider, DiscoveredResource, ResourceStatus
+from ..connection_parser import ConnectionStringParser
+from ..models import CloudProvider, DiscoveredResource, ResourceDependency, ResourceStatus
 
 
 class AWSResourceMapper:
@@ -209,3 +210,87 @@ class AWSResourceMapper:
             tags=normalized_tags,
             properties=properties or {},
         )
+
+    @staticmethod
+    def extract_connection_strings_from_properties(
+        arn: str,
+        resource_type: str,
+        properties: dict[str, Any]
+    ) -> list[ResourceDependency]:
+        """
+        Extract connection string-based dependencies from resource properties.
+
+        Args:
+            arn: Source resource ARN
+            resource_type: AWS resource type
+            properties: Resource properties
+
+        Returns:
+            List of ResourceDependency objects discovered from connection strings
+        """
+        dependencies = []
+        parser = ConnectionStringParser()
+
+        # Handle different resource types
+        if resource_type == "AWS::Lambda::Function":
+            # Lambda - check environment variables
+            environment = properties.get("Environment", {})
+            variables = environment.get("Variables", {})
+            for var_name, var_value in variables.items():
+                if isinstance(var_value, str) and any(
+                    key in var_name.upper()
+                    for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL", "REDIS", "CACHE"]
+                ):
+                    conn_info = parser.parse_connection_string(var_value)
+                    if conn_info and conn_info.host:
+                        target_id = parser.extract_host_from_connection_info(conn_info)
+                        if target_id:
+                            dep = parser.create_dependency_from_connection(
+                                source_id=arn,
+                                target_id=target_id,
+                                conn_info=conn_info,
+                                description=f"Lambda environment variable: {var_name}"
+                            )
+                            dependencies.append(dep)
+
+        elif resource_type == "AWS::ECS::Service":
+            # ECS Service - check task definition environment
+            task_definition = properties.get("TaskDefinition", {})
+            container_definitions = task_definition.get("ContainerDefinitions", [])
+            for container in container_definitions:
+                env_vars = container.get("Environment", [])
+                for env_var in env_vars:
+                    var_name = env_var.get("Name", "")
+                    var_value = env_var.get("Value", "")
+                    if any(key in var_name.upper()
+                           for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]):
+                        conn_info = parser.parse_connection_string(var_value)
+                        if conn_info and conn_info.host:
+                            target_id = parser.extract_host_from_connection_info(conn_info)
+                            if target_id:
+                                dep = parser.create_dependency_from_connection(
+                                    source_id=arn,
+                                    target_id=target_id,
+                                    conn_info=conn_info,
+                                    description=f"ECS container environment: {var_name}"
+                                )
+                                dependencies.append(dep)
+
+        elif resource_type == "AWS::EC2::Instance":
+            # EC2 - check user data and tags
+            user_data = properties.get("UserData", "")
+            if user_data:
+                # Parse user data for connection strings
+                conn_info = parser.parse_connection_string(user_data)
+                if conn_info and conn_info.host:
+                    target_id = parser.extract_host_from_connection_info(conn_info)
+                    if target_id:
+                        dep = parser.create_dependency_from_connection(
+                            source_id=arn,
+                            target_id=target_id,
+                            conn_info=conn_info,
+                            description="EC2 user data connection"
+                        )
+                        dependencies.append(dep)
+
+        return dependencies
