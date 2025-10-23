@@ -259,22 +259,22 @@ For configuration parsing, additional permissions are required:
 
 ## Future Enhancements
 
-### Phase 1: Enhanced Dependency Detection
+### Phase 2: Enhanced Dependency Detection
 - Parse application code to find Service Bus client usage
 - Extract connection strings from app configurations
 - Detect actual publisher/subscriber relationships
 
-### Phase 2: Message Flow Analysis
+### Phase 3: Message Flow Analysis
 - Track message volumes and throughput
 - Identify message processing delays
 - Detect dead letter queue issues
 
-### Phase 3: Performance Metrics
+### Phase 4: Performance Metrics
 - Integrate with Azure Monitor
 - Show message rates and latencies
 - Alert on subscription backlogs
 
-### Phase 4: Advanced Risk Scenarios
+### Phase 5: Advanced Risk Scenarios
 - Model message queue overflow scenarios
 - Assess impact of subscription failures
 - Simulate namespace outages
