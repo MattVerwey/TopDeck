@@ -32,6 +32,11 @@ class RiskScorer:
         # Authentication/Security
         "key_vault": 40,
         "authentication": 40,
+        # Messaging (high criticality - async communication backbone)
+        "servicebus_namespace": 28,
+        "servicebus_topic": 26,
+        "servicebus_queue": 26,
+        "servicebus_subscription": 18,
         # Medium-high criticality
         "load_balancer": 20,
         "api_gateway": 20,

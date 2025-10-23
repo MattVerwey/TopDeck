@@ -192,6 +192,65 @@ export const mockTopologyData: TopologyGraph = {
         importance: 1,
       },
     },
+
+    // Messaging Layer (Service Bus)
+    {
+      id: 'servicebus-ns-1',
+      resource_type: 'servicebus_namespace',
+      name: 'SB-Prod-Namespace',
+      cloud_provider: 'azure',
+      region: 'eastus',
+      properties: {
+        health_status: 'healthy',
+        sku: 'Standard',
+      },
+      metadata: {
+        importance: 3,
+      },
+    },
+    {
+      id: 'servicebus-topic-1',
+      resource_type: 'servicebus_topic',
+      name: 'orders-topic',
+      cloud_provider: 'azure',
+      region: 'eastus',
+      properties: {
+        health_status: 'healthy',
+        namespace: 'SB-Prod-Namespace',
+      },
+      metadata: {
+        importance: 2,
+      },
+    },
+    {
+      id: 'servicebus-topic-2',
+      resource_type: 'servicebus_topic',
+      name: 'events-topic',
+      cloud_provider: 'azure',
+      region: 'eastus',
+      properties: {
+        health_status: 'healthy',
+        namespace: 'SB-Prod-Namespace',
+      },
+      metadata: {
+        importance: 2,
+      },
+    },
+    {
+      id: 'servicebus-sub-1',
+      resource_type: 'servicebus_subscription',
+      name: 'order-processing-sub',
+      cloud_provider: 'azure',
+      region: 'eastus',
+      properties: {
+        health_status: 'healthy',
+        namespace: 'SB-Prod-Namespace',
+        topic: 'orders-topic',
+      },
+      metadata: {
+        importance: 1,
+      },
+    },
   ],
   edges: [
     // Network flow: Gateway -> Load Balancer
@@ -341,9 +400,60 @@ export const mockTopologyData: TopologyGraph = {
       flow_type: 'https',
       properties: {},
     },
+
+    // Service Bus Topology
+    // Namespace contains topics
+    {
+      source_id: 'servicebus-ns-1',
+      target_id: 'servicebus-topic-1',
+      relationship_type: 'contains',
+      flow_type: 'message_queue',
+      properties: {},
+    },
+    {
+      source_id: 'servicebus-ns-1',
+      target_id: 'servicebus-topic-2',
+      relationship_type: 'contains',
+      flow_type: 'message_queue',
+      properties: {},
+    },
+
+    // Topic has subscription
+    {
+      source_id: 'servicebus-topic-1',
+      target_id: 'servicebus-sub-1',
+      relationship_type: 'contains',
+      flow_type: 'message_queue',
+      properties: {},
+    },
+
+    // API pods publish to Service Bus topics
+    {
+      source_id: 'pod-api-1',
+      target_id: 'servicebus-topic-1',
+      relationship_type: 'publishes_to',
+      flow_type: 'message_queue',
+      properties: {},
+    },
+    {
+      source_id: 'pod-api-2',
+      target_id: 'servicebus-topic-2',
+      relationship_type: 'publishes_to',
+      flow_type: 'message_queue',
+      properties: {},
+    },
+
+    // Worker pod subscribes from Service Bus
+    {
+      source_id: 'servicebus-sub-1',
+      target_id: 'pod-worker-1',
+      relationship_type: 'subscribes_from',
+      flow_type: 'message_queue',
+      properties: {},
+    },
   ],
   metadata: {
-    total_nodes: 13,
-    total_edges: 19,
+    total_nodes: 17,
+    total_edges: 26,
   },
 };
