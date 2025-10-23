@@ -45,6 +45,7 @@ export const mockTopologyData: TopologyGraph = {
       properties: {
         health_status: 'healthy',
         node_count: 5,
+        cluster: 'AKS-Prod-Cluster',
       },
       metadata: {
         importance: 3,
@@ -59,6 +60,7 @@ export const mockTopologyData: TopologyGraph = {
       properties: {
         health_status: 'healthy',
         namespace: 'production',
+        cluster: 'AKS-Prod-Cluster',
       },
       metadata: {
         importance: 2,
@@ -73,6 +75,7 @@ export const mockTopologyData: TopologyGraph = {
       properties: {
         health_status: 'healthy',
         namespace: 'production',
+        cluster: 'AKS-Prod-Cluster',
       },
       metadata: {
         importance: 2,
@@ -87,6 +90,7 @@ export const mockTopologyData: TopologyGraph = {
       properties: {
         health_status: 'degraded',
         namespace: 'production',
+        cluster: 'AKS-Prod-Cluster',
       },
       metadata: {
         importance: 1,

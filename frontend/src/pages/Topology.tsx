@@ -17,13 +17,17 @@ import {
   Alert,
   ToggleButton,
   ToggleButtonGroup,
+  Button,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
-import { AccountTree, ViewModule } from '@mui/icons-material';
+import { AccountTree, ViewModule, FilterList } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
 import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
 import ServiceDependencyGraph from '../components/topology/ServiceDependencyGraph';
+import ResourceSelector from '../components/topology/ResourceSelector';
 import { mockTopologyData } from '../utils/mockTopologyData';
 import type { TopologyGraph as TopologyGraphType } from '../types';
 
@@ -43,8 +47,13 @@ export default function Topology() {
 
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [availableClusters, setAvailableClusters] = useState<string[]>([]);
+  const [availableNamespaces, setAvailableNamespaces] = useState<string[]>([]);
   const [graphView, setGraphView] = useState<'standard' | 'dependency'>('dependency');
   const [useMockData, setUseMockData] = useState(true); // Start with demo data
+  const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
+  const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
+  const [filteredTopology, setFilteredTopology] = useState<TopologyGraphType | null>(null);
 
   const loadTopology = useCallback(async () => {
     setLoading(true);
@@ -60,11 +69,24 @@ export default function Topology() {
       }
       setTopology(data);
 
-      // Extract unique providers and types
+      // Extract unique providers, types, clusters, and namespaces
       const providers = [...new Set(data.nodes.map((n) => n.cloud_provider))] as string[];
       const types = [...new Set(data.nodes.map((n) => n.resource_type))] as string[];
+      const clusters = [...new Set(
+        data.nodes
+          .map((n) => (n.properties?.cluster as string) || (n.metadata?.cluster as string))
+          .filter(Boolean)
+      )] as string[];
+      const namespaces = [...new Set(
+        data.nodes
+          .map((n) => (n.properties?.namespace as string) || (n.metadata?.namespace as string))
+          .filter(Boolean)
+      )] as string[];
+      
       setAvailableProviders(providers);
       setAvailableTypes(types);
+      setAvailableClusters(clusters);
+      setAvailableNamespaces(namespaces);
     } catch (err) {
       const error = err as Error;
       setError(error.message || 'Failed to load topology');
@@ -77,6 +99,71 @@ export default function Topology() {
     loadTopology();
   }, [loadTopology]);
 
+  // Apply filters and resource selection
+  useEffect(() => {
+    if (!topology) {
+      setFilteredTopology(null);
+      return;
+    }
+
+    let filtered = { ...topology };
+
+    // Filter by selected resources if any
+    if (selectedResourceIds.length > 0) {
+      const selectedSet = new Set(selectedResourceIds);
+      // Include selected resources and their direct dependencies
+      const relatedIds = new Set<string>(selectedResourceIds);
+      
+      // Add upstream and downstream dependencies
+      topology.edges.forEach((edge) => {
+        if (selectedSet.has(edge.source_id)) {
+          relatedIds.add(edge.target_id);
+        }
+        if (selectedSet.has(edge.target_id)) {
+          relatedIds.add(edge.source_id);
+        }
+      });
+
+      filtered.nodes = topology.nodes.filter((n) => relatedIds.has(n.id));
+      filtered.edges = topology.edges.filter(
+        (e) => relatedIds.has(e.source_id) && relatedIds.has(e.target_id)
+      );
+    }
+
+    // Apply other filters
+    if (filters.cluster) {
+      filtered.nodes = filtered.nodes.filter(
+        (n) => 
+          (n.properties?.cluster as string) === filters.cluster ||
+          (n.metadata?.cluster as string) === filters.cluster
+      );
+      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
+      filtered.edges = filtered.edges.filter(
+        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      );
+    }
+
+    if (filters.namespace) {
+      filtered.nodes = filtered.nodes.filter(
+        (n) => 
+          (n.properties?.namespace as string) === filters.namespace ||
+          (n.metadata?.namespace as string) === filters.namespace
+      );
+      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
+      filtered.edges = filtered.edges.filter(
+        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      );
+    }
+
+    filtered.metadata = {
+      ...filtered.metadata,
+      total_nodes: filtered.nodes.length,
+      total_edges: filtered.edges.length,
+    };
+
+    setFilteredTopology(filtered);
+  }, [topology, selectedResourceIds, filters]);
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);
   };
@@ -87,9 +174,15 @@ export default function Topology() {
 
   const clearFilters = () => {
     setFilters({});
+    setSelectedResourceIds([]);
   };
 
-  const activeFilterCount = Object.keys(filters).filter((k) => filters[k as keyof typeof filters]).length;
+  const handleResourceSelection = (resourceIds: string[]) => {
+    setSelectedResourceIds(resourceIds);
+  };
+
+  const activeFilterCount = Object.keys(filters).filter((k) => filters[k as keyof typeof filters]).length + 
+    (selectedResourceIds.length > 0 ? 1 : 0);
 
   return (
     <Box>
@@ -124,63 +217,113 @@ export default function Topology() {
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-          <FormControl sx={{ minWidth: 150 }} size="small">
-            <InputLabel>View Mode</InputLabel>
-            <Select
-              value={viewMode}
-              label="View Mode"
-              onChange={handleViewModeChange}
-            >
-              <MenuItem value="service">Service View</MenuItem>
-              <MenuItem value="cluster">Cluster View</MenuItem>
-              <MenuItem value="namespace">Namespace View</MenuItem>
-              <MenuItem value="network">Network View</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ minWidth: 150 }} size="small">
-            <InputLabel>Cloud Provider</InputLabel>
-            <Select
-              value={filters.cloud_provider || ''}
-              label="Cloud Provider"
-              onChange={(e) => handleFilterChange('cloud_provider', e.target.value)}
-            >
-              <MenuItem value="">All</MenuItem>
-              {availableProviders.map((provider) => (
-                <MenuItem key={provider} value={provider}>
-                  {provider.toUpperCase()}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ minWidth: 150 }} size="small">
-            <InputLabel>Resource Type</InputLabel>
-            <Select
-              value={filters.resource_type || ''}
-              label="Resource Type"
-              onChange={(e) => handleFilterChange('resource_type', e.target.value)}
-            >
-              <MenuItem value="">All</MenuItem>
-              {availableTypes.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {activeFilterCount > 0 && (
-            <Chip
-              label={`${activeFilterCount} filter(s) active - Clear`}
-              onDelete={clearFilters}
-              color="primary"
+        <Stack spacing={2}>
+          {/* Resource Selector Button */}
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<FilterList />}
+              onClick={() => setResourceSelectorOpen(true)}
               size="small"
+            >
+              Select Resources
+              {selectedResourceIds.length > 0 && ` (${selectedResourceIds.length})`}
+            </Button>
+            {selectedResourceIds.length > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                Showing {selectedResourceIds.length} selected resources and their dependencies
+              </Typography>
+            )}
+          </Box>
+
+          {/* Quick Filters */}
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>View Mode</InputLabel>
+              <Select
+                value={viewMode}
+                label="View Mode"
+                onChange={handleViewModeChange}
+              >
+                <MenuItem value="service">Service View</MenuItem>
+                <MenuItem value="cluster">Cluster View</MenuItem>
+                <MenuItem value="namespace">Namespace View</MenuItem>
+                <MenuItem value="network">Network View</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Cloud Provider</InputLabel>
+              <Select
+                value={filters.cloud_provider || ''}
+                label="Cloud Provider"
+                onChange={(e) => handleFilterChange('cloud_provider', e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {availableProviders.map((provider) => (
+                  <MenuItem key={provider} value={provider}>
+                    {provider.toUpperCase()}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Autocomplete
+              size="small"
+              sx={{ minWidth: 150 }}
+              options={availableClusters}
+              value={filters.cluster || null}
+              onChange={(_e, newValue) => handleFilterChange('cluster', newValue || '')}
+              renderInput={(params) => <TextField {...params} label="Cluster" />}
             />
-          )}
+
+            <Autocomplete
+              size="small"
+              sx={{ minWidth: 150 }}
+              options={availableNamespaces}
+              value={filters.namespace || null}
+              onChange={(_e, newValue) => handleFilterChange('namespace', newValue || '')}
+              renderInput={(params) => <TextField {...params} label="Namespace" />}
+            />
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Resource Type</InputLabel>
+              <Select
+                value={filters.resource_type || ''}
+                label="Resource Type"
+                onChange={(e) => handleFilterChange('resource_type', e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {availableTypes.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {activeFilterCount > 0 && (
+              <Chip
+                label={`${activeFilterCount} filter(s) active - Clear`}
+                onDelete={clearFilters}
+                color="primary"
+                size="small"
+              />
+            )}
+          </Stack>
         </Stack>
       </Paper>
+
+      {/* Resource Selector Dialog */}
+      {topology && (
+        <ResourceSelector
+          open={resourceSelectorOpen}
+          onClose={() => setResourceSelectorOpen(false)}
+          resources={topology.nodes}
+          selectedResourceIds={selectedResourceIds}
+          onSelectResources={handleResourceSelection}
+        />
+      )}
 
       {/* Topology Graph */}
       {loading ? (
@@ -189,12 +332,12 @@ export default function Topology() {
         </Box>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
-      ) : topology ? (
-        <Paper sx={{ p: 0, height: 'calc(100vh - 300px)', minHeight: 500 }}>
+      ) : filteredTopology ? (
+        <Paper sx={{ p: 0, height: 'calc(100vh - 400px)', minHeight: 500 }}>
           {graphView === 'dependency' ? (
-            <ServiceDependencyGraph data={topology} />
+            <ServiceDependencyGraph data={filteredTopology} />
           ) : (
-            <TopologyGraph data={topology} viewMode={viewMode} />
+            <TopologyGraph data={filteredTopology} viewMode={viewMode} />
           )}
         </Paper>
       ) : (
