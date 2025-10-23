@@ -656,12 +656,12 @@ async def get_aks_servicebus_connections(
                     kubeconfig = creds.kubeconfigs[0].value.decode("utf-8")
 
                     # Load configuration from kubeconfig string
-                    k8s_config.load_kube_config_from_dict(
-                        config_dict=k8s_config.kube_config.yaml.safe_load(kubeconfig)
-                    )
+                    import yaml
+                    kubeconfig_dict = yaml.safe_load(kubeconfig)
+                    api_client = k8s_config.new_client_from_config(config_dict=kubeconfig_dict)
 
                     # Create Kubernetes API clients
-                    v1 = k8s_client.CoreV1Api()
+                    v1 = k8s_client.CoreV1Api(api_client=api_client)
 
                     # Get all namespaces
                     namespaces = v1.list_namespace()
