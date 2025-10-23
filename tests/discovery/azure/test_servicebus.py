@@ -5,7 +5,10 @@ Tests for Azure Service Bus discovery.
 import pytest
 
 from topdeck.discovery.azure.mapper import AzureResourceMapper
-from topdeck.discovery.azure.resources import detect_servicebus_dependencies
+from topdeck.discovery.azure.resources import (
+    detect_servicebus_dependencies,
+    parse_servicebus_connection_string,
+)
 from topdeck.discovery.models import (
     CloudProvider,
     DependencyCategory,
@@ -250,3 +253,48 @@ class TestServiceBusDependencies:
 
         topic_to_sub = [d for d in dependencies if d.source_id == topic1.id and d.target_id == subscription1.id]
         assert len(topic_to_sub) == 1
+
+
+class TestServiceBusConnectionParsing:
+    """Test Service Bus connection string parsing"""
+
+    def test_parse_valid_connection_string(self):
+        """Test parsing a valid Service Bus connection string"""
+        conn_str = "Endpoint=sb://myns.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123"
+        result = parse_servicebus_connection_string(conn_str)
+        
+        assert result is not None
+        assert result["namespace"] == "myns"
+        assert "sb://myns.servicebus.windows.net/" in result["endpoint"]
+
+    def test_parse_connection_string_with_entity(self):
+        """Test parsing connection string with entity path"""
+        conn_str = "Endpoint=sb://prodns.servicebus.windows.net/;SharedAccessKeyName=SendPolicy;SharedAccessKey=xyz789;EntityPath=mytopic"
+        result = parse_servicebus_connection_string(conn_str)
+        
+        assert result is not None
+        assert result["namespace"] == "prodns"
+
+    def test_parse_non_servicebus_connection_string(self):
+        """Test that non-Service Bus connection strings return None"""
+        conn_str = "Server=tcp:myserver.database.windows.net,1433;Database=mydb"
+        result = parse_servicebus_connection_string(conn_str)
+        
+        assert result is None
+
+    def test_parse_empty_connection_string(self):
+        """Test parsing empty connection string"""
+        result = parse_servicebus_connection_string("")
+        assert result is None
+
+    def test_parse_none_connection_string(self):
+        """Test parsing None connection string"""
+        result = parse_servicebus_connection_string(None)
+        assert result is None
+
+    def test_parse_malformed_connection_string(self):
+        """Test parsing malformed connection string"""
+        conn_str = "Endpoint=sb://;something=wrong"
+        result = parse_servicebus_connection_string(conn_str)
+        # Should handle gracefully and return None or partial result
+        # Implementation handles this, just ensure no exception

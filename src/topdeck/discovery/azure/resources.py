@@ -8,16 +8,25 @@ import logging
 
 try:
     from azure.mgmt.compute import ComputeManagementClient
+    from azure.mgmt.containerservice import ContainerServiceClient
     from azure.mgmt.network import NetworkManagementClient
     from azure.mgmt.servicebus import ServiceBusManagementClient
     from azure.mgmt.storage import StorageManagementClient
     from azure.mgmt.web import WebSiteManagementClient
 except ImportError:
     ComputeManagementClient = None
+    ContainerServiceClient = None
     NetworkManagementClient = None
     StorageManagementClient = None
     WebSiteManagementClient = None
     ServiceBusManagementClient = None
+
+try:
+    from kubernetes import client as k8s_client
+    from kubernetes import config as k8s_config
+except ImportError:
+    k8s_client = None
+    k8s_config = None
 
 from ..models import DiscoveredResource, ResourceDependency
 from .mapper import AzureResourceMapper
@@ -488,8 +497,236 @@ async def discover_messaging_resources(
     return resources
 
 
+def parse_servicebus_connection_string(connection_string: str) -> dict[str, str] | None:
+    """
+    Parse Service Bus connection string to extract namespace information.
+
+    Args:
+        connection_string: Service Bus connection string
+
+    Returns:
+        Dictionary with 'namespace' and 'endpoint' keys, or None if not a Service Bus connection
+    """
+    if not connection_string or "servicebus" not in connection_string.lower():
+        return None
+
+    try:
+        # Service Bus connection strings look like:
+        # Endpoint=sb://namespace.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=...
+        parts = {}
+        for part in connection_string.split(";"):
+            if "=" in part:
+                key, value = part.split("=", 1)
+                parts[key.lower()] = value
+
+        endpoint = parts.get("endpoint", "")
+        if "sb://" in endpoint:
+            # Extract namespace from endpoint: sb://namespace.servicebus.windows.net/
+            namespace = endpoint.replace("sb://", "").split(".")[0]
+            return {"namespace": namespace, "endpoint": endpoint}
+
+    except Exception as e:
+        logger.debug(f"Error parsing connection string: {e}")
+
+    return None
+
+
+async def get_app_service_servicebus_connections(
+    subscription_id: str,
+    credential,
+    app_service_resources: list[DiscoveredResource],
+) -> dict[str, list[str]]:
+    """
+    Get Service Bus connections from App Service application settings and connection strings.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        app_service_resources: List of App Service resources
+
+    Returns:
+        Dictionary mapping app service resource ID to list of Service Bus namespace names
+    """
+    connections = {}
+
+    if WebSiteManagementClient is None:
+        logger.warning("Azure Web SDK not available, skipping App Service config parsing")
+        return connections
+
+    try:
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        for app in app_service_resources:
+            app_connections = set()
+
+            try:
+                # Extract resource group and app name from resource ID
+                resource_group = app.resource_group
+                if not resource_group:
+                    continue
+
+                # Get application settings
+                try:
+                    app_settings = web_client.web_apps.list_application_settings(
+                        resource_group, app.name
+                    )
+                    if hasattr(app_settings, "properties"):
+                        for key, value in app_settings.properties.items():
+                            if value and isinstance(value, str):
+                                sb_info = parse_servicebus_connection_string(value)
+                                if sb_info:
+                                    app_connections.add(sb_info["namespace"])
+                except Exception as e:
+                    logger.debug(f"Error getting app settings for {app.name}: {e}")
+
+                # Get connection strings
+                try:
+                    conn_strings = web_client.web_apps.list_connection_strings(
+                        resource_group, app.name
+                    )
+                    if hasattr(conn_strings, "properties"):
+                        for key, conn in conn_strings.properties.items():
+                            if hasattr(conn, "value") and conn.value:
+                                sb_info = parse_servicebus_connection_string(conn.value)
+                                if sb_info:
+                                    app_connections.add(sb_info["namespace"])
+                except Exception as e:
+                    logger.debug(f"Error getting connection strings for {app.name}: {e}")
+
+                if app_connections:
+                    connections[app.id] = list(app_connections)
+                    logger.info(
+                        f"Found {len(app_connections)} Service Bus connections for {app.name}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error processing App Service {app.name}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error getting App Service Service Bus connections: {e}")
+
+    return connections
+
+
+async def get_aks_servicebus_connections(
+    subscription_id: str,
+    credential,
+    aks_resources: list[DiscoveredResource],
+) -> dict[str, list[str]]:
+    """
+    Get Service Bus connections from AKS cluster ConfigMaps and Secrets.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        aks_resources: List of AKS cluster resources
+
+    Returns:
+        Dictionary mapping AKS resource ID to list of Service Bus namespace names
+    """
+    connections = {}
+
+    if ContainerServiceClient is None or k8s_client is None:
+        logger.warning(
+            "Azure Container or Kubernetes SDK not available, skipping AKS config parsing"
+        )
+        return connections
+
+    try:
+        container_client = ContainerServiceClient(credential, subscription_id)
+
+        for aks in aks_resources:
+            aks_connections = set()
+
+            try:
+                resource_group = aks.resource_group
+                if not resource_group:
+                    continue
+
+                # Get cluster credentials
+                try:
+                    creds = container_client.managed_clusters.list_cluster_admin_credentials(
+                        resource_group, aks.name
+                    )
+
+                    if not hasattr(creds, "kubeconfigs") or not creds.kubeconfigs:
+                        continue
+
+                    # Load kubeconfig
+                    kubeconfig = creds.kubeconfigs[0].value.decode("utf-8")
+
+                    # Load configuration from kubeconfig string
+                    k8s_config.load_kube_config_from_dict(
+                        config_dict=k8s_config.kube_config.yaml.safe_load(kubeconfig)
+                    )
+
+                    # Create Kubernetes API clients
+                    v1 = k8s_client.CoreV1Api()
+
+                    # Get all namespaces
+                    namespaces = v1.list_namespace()
+
+                    for ns in namespaces.items:
+                        ns_name = ns.metadata.name
+
+                        # Get ConfigMaps
+                        try:
+                            configmaps = v1.list_namespaced_config_map(ns_name)
+                            for cm in configmaps.items:
+                                if cm.data:
+                                    for key, value in cm.data.items():
+                                        if value and isinstance(value, str):
+                                            sb_info = parse_servicebus_connection_string(value)
+                                            if sb_info:
+                                                aks_connections.add(sb_info["namespace"])
+                        except Exception as e:
+                            logger.debug(f"Error reading ConfigMaps in {ns_name}: {e}")
+
+                        # Get Secrets
+                        try:
+                            secrets = v1.list_namespaced_secret(ns_name)
+                            for secret in secrets.items:
+                                if secret.data:
+                                    for key, value_bytes in secret.data.items():
+                                        if value_bytes:
+                                            try:
+                                                import base64
+
+                                                value = base64.b64decode(value_bytes).decode(
+                                                    "utf-8"
+                                                )
+                                                sb_info = parse_servicebus_connection_string(
+                                                    value
+                                                )
+                                                if sb_info:
+                                                    aks_connections.add(sb_info["namespace"])
+                                            except Exception:
+                                                pass
+                        except Exception as e:
+                            logger.debug(f"Error reading Secrets in {ns_name}: {e}")
+
+                    if aks_connections:
+                        connections[aks.id] = list(aks_connections)
+                        logger.info(
+                            f"Found {len(aks_connections)} Service Bus connections for AKS {aks.name}"
+                        )
+
+                except Exception as e:
+                    logger.debug(f"Error getting AKS credentials for {aks.name}: {e}")
+
+            except Exception as e:
+                logger.error(f"Error processing AKS cluster {aks.name}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error getting AKS Service Bus connections: {e}")
+
+    return connections
+
+
 async def detect_servicebus_dependencies(
     resources: list[DiscoveredResource],
+    subscription_id: str | None = None,
+    credential=None,
 ) -> list[ResourceDependency]:
     """
     Detect Service Bus messaging dependencies.
@@ -576,16 +813,78 @@ async def detect_servicebus_dependencies(
                     break
 
     # Detect app → Service Bus dependencies via connection strings and app settings
-    # This is heuristic-based - would need to parse actual connection strings
     app_services = [r for r in resources if r.resource_type == "app_service"]
     aks_clusters = [r for r in resources if r.resource_type == "aks"]
 
+    # Phase 1: Parse actual configuration (strong dependencies)
+    if subscription_id and credential:
+        # Get App Service connections from application settings and connection strings
+        app_service_connections = await get_app_service_servicebus_connections(
+            subscription_id, credential, app_services
+        )
+
+        for app_id, namespace_names in app_service_connections.items():
+            app = next((r for r in app_services if r.id == app_id), None)
+            if not app:
+                continue
+
+            for namespace_name in namespace_names:
+                # Find the namespace resource
+                for ns_id, namespace in namespaces.items():
+                    if namespace.name == namespace_name:
+                        dep = ResourceDependency(
+                            source_id=app_id,
+                            target_id=ns_id,
+                            category=DependencyCategory.DATA,
+                            dependency_type=DependencyType.REQUIRED,
+                            strength=0.9,
+                            discovered_method="app_service_config",
+                            description=f"App Service {app.name} uses Service Bus {namespace_name} (from app settings)",
+                        )
+                        dependencies.append(dep)
+                        break
+
+        # Get AKS connections from ConfigMaps and Secrets
+        aks_connections = await get_aks_servicebus_connections(
+            subscription_id, credential, aks_clusters
+        )
+
+        for aks_id, namespace_names in aks_connections.items():
+            aks = next((r for r in aks_clusters if r.id == aks_id), None)
+            if not aks:
+                continue
+
+            for namespace_name in namespace_names:
+                # Find the namespace resource
+                for ns_id, namespace in namespaces.items():
+                    if namespace.name == namespace_name:
+                        dep = ResourceDependency(
+                            source_id=aks_id,
+                            target_id=ns_id,
+                            category=DependencyCategory.DATA,
+                            dependency_type=DependencyType.REQUIRED,
+                            strength=0.9,
+                            discovered_method="kubernetes_config",
+                            description=f"AKS cluster {aks.name} uses Service Bus {namespace_name} (from ConfigMaps/Secrets)",
+                        )
+                        dependencies.append(dep)
+                        break
+
+    # Phase 2: Fallback to heuristics for apps without found connections
+    # This catches cases where we couldn't access configs or for additional weak signals
+    detected_app_ids = set()
+    for dep in dependencies:
+        if dep.discovered_method in ("app_service_config", "kubernetes_config"):
+            detected_app_ids.add(dep.source_id)
+
     for app in app_services + aks_clusters:
-        # In production, would parse app settings/connection strings
-        # For now, assume apps in same resource group might use Service Bus
+        # Skip apps where we already found strong connections
+        if app.id in detected_app_ids:
+            continue
+
+        # Use heuristic for remaining apps
         for namespace in namespaces.values():
             if namespace.resource_group == app.resource_group:
-                # Create a weak dependency indicating potential usage
                 dep = ResourceDependency(
                     source_id=app.id,
                     target_id=namespace.id,

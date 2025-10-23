@@ -264,7 +264,9 @@ class AzureDiscoverer:
                         dependencies.append(dep)
 
         # Detect Service Bus messaging dependencies
-        servicebus_deps = await detect_servicebus_dependencies(resources)
+        servicebus_deps = await detect_servicebus_dependencies(
+            resources, self.subscription_id, self.credential
+        )
         dependencies.extend(servicebus_deps)
 
         return dependencies

@@ -56,6 +56,31 @@ When analyzing risk for Service Bus resources, the system considers:
 - Impact on dependent services
 - Blast radius calculations
 
+### Enhanced Dependency Detection (Phase 1) ✨ **NEW**
+
+The system now uses **definitive configuration parsing** instead of just heuristics:
+
+#### App Service Configuration Parsing
+- Automatically fetches application settings and connection strings from Azure App Services
+- Parses Service Bus connection strings (format: `Endpoint=sb://namespace.servicebus.windows.net/...`)
+- Creates **strong dependencies** (0.9 strength) when connections are found
+- Discovery method: `app_service_config`
+
+#### Kubernetes ConfigMaps & Secrets
+- Queries AKS clusters for ConfigMaps and Secrets across all namespaces
+- Parses environment variables for Service Bus connection strings
+- Decodes base64-encoded secrets automatically
+- Creates **strong dependencies** (0.9 strength) when connections are found
+- Discovery method: `kubernetes_config`
+
+#### Fallback to Heuristics
+- For apps where configuration parsing fails or isn't accessible
+- Uses resource group colocation as a weak signal
+- Creates **weak dependencies** (0.3 strength)
+- Discovery method: `heuristic_colocation`
+
+This multi-layered approach ensures maximum accuracy while maintaining broad coverage.
+
 ### Frontend Visualization
 
 #### Color Scheme
@@ -208,6 +233,7 @@ The enhancement requires:
 
 ### Permissions Required
 
+#### Basic Service Bus Discovery
 To discover Service Bus resources, the service principal needs:
 - `Microsoft.ServiceBus/namespaces/read`
 - `Microsoft.ServiceBus/namespaces/topics/read`
@@ -215,6 +241,21 @@ To discover Service Bus resources, the service principal needs:
 - `Microsoft.ServiceBus/namespaces/topics/subscriptions/read`
 
 These are typically included in the `Reader` role.
+
+#### Enhanced Dependency Detection (Phase 1)
+For configuration parsing, additional permissions are required:
+
+**App Service Configuration:**
+- `Microsoft.Web/sites/config/list/action` - Read app settings and connection strings
+- Typically included in `Website Contributor` or `Contributor` role
+
+**AKS Cluster Configuration:**
+- `Microsoft.ContainerService/managedClusters/listClusterAdminCredential/action` - Get cluster credentials
+- `Microsoft.ContainerService/managedClusters/read` - Read cluster details
+- Kubernetes RBAC permissions to read ConfigMaps and Secrets in all namespaces
+- Typically requires `Azure Kubernetes Service Cluster Admin Role` or custom role
+
+**Note**: The system gracefully degrades if these permissions aren't available. It will log debug messages and fall back to heuristic detection. Core Service Bus discovery still works without these enhanced permissions.
 
 ## Future Enhancements
 
@@ -247,12 +288,21 @@ pytest tests/discovery/azure/test_servicebus.py -v
 ```
 
 Tests cover:
-- Resource type mapping
-- Namespace discovery
-- Topic and queue discovery
-- Subscription discovery
+- Resource type mapping (4 tests)
+- Namespace, topic, queue, and subscription discovery
 - Dependency detection (all relationship types)
 - Complete topology scenarios
+- **Connection string parsing** (6 tests - NEW)
+- **Configuration-based dependency detection** (tested via integration)
+
+### Integration Testing
+To test with real Azure resources:
+1. Set up Azure credentials with appropriate permissions (see below)
+2. Create test Service Bus namespace with topics/queues
+3. Create test App Service or AKS cluster with Service Bus connection strings
+4. Run discovery: `python scripts/test_discovery.py`
+5. Verify resources and dependencies appear in Neo4j
+6. Check topology visualization in web UI
 
 ### Integration Testing
 To test with real Azure resources:
