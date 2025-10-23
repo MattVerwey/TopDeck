@@ -2,7 +2,7 @@
  * Topology visualization page with filtering and interactive graph
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -15,11 +15,16 @@ import {
   Stack,
   CircularProgress,
   Alert,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
+import { AccountTree, ViewModule } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
 import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
+import ServiceDependencyGraph from '../components/topology/ServiceDependencyGraph';
+import { mockTopologyData } from '../utils/mockTopologyData';
 
 export default function Topology() {
   const {
@@ -37,16 +42,21 @@ export default function Topology() {
 
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [graphView, setGraphView] = useState<'standard' | 'dependency'>('dependency');
+  const [useMockData, setUseMockData] = useState(true); // Start with demo data
 
-  useEffect(() => {
-    loadTopology();
-  }, [filters]);
-
-  const loadTopology = async () => {
+  const loadTopology = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiClient.getTopology(filters);
+      let data;
+      if (useMockData) {
+        // Use mock data for demonstration
+        data = mockTopologyData;
+      } else {
+        // Load from API
+        data = await apiClient.getTopology(filters);
+      }
       setTopology(data);
 
       // Extract unique providers and types
@@ -59,7 +69,11 @@ export default function Topology() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [useMockData, filters, setLoading, setError, setTopology]);
+
+  useEffect(() => {
+    loadTopology();
+  }, [loadTopology]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined });
@@ -77,9 +91,34 @@ export default function Topology() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        Network Topology
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" fontWeight={600}>
+          Network Topology
+        </Typography>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Chip
+            label={useMockData ? 'Demo Mode' : 'Live Data'}
+            color={useMockData ? 'warning' : 'success'}
+            onClick={() => setUseMockData(!useMockData)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <ToggleButtonGroup
+            value={graphView}
+            exclusive
+            onChange={(_e, newView) => newView && setGraphView(newView)}
+            size="small"
+          >
+            <ToggleButton value="dependency">
+              <AccountTree sx={{ mr: 1 }} />
+              Dependency View
+            </ToggleButton>
+            <ToggleButton value="standard">
+              <ViewModule sx={{ mr: 1 }} />
+              Standard View
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+      </Stack>
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -150,7 +189,11 @@ export default function Topology() {
         <Alert severity="error">{error}</Alert>
       ) : topology ? (
         <Paper sx={{ p: 0, height: 'calc(100vh - 300px)', minHeight: 500 }}>
-          <TopologyGraph data={topology} viewMode={viewMode} />
+          {graphView === 'dependency' ? (
+            <ServiceDependencyGraph data={topology} />
+          ) : (
+            <TopologyGraph data={topology} viewMode={viewMode} />
+          )}
         </Paper>
       ) : (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
