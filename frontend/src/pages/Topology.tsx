@@ -25,6 +25,7 @@ import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
 import ServiceDependencyGraph from '../components/topology/ServiceDependencyGraph';
 import { mockTopologyData } from '../utils/mockTopologyData';
+import type { TopologyGraph as TopologyGraphType } from '../types';
 
 export default function Topology() {
   const {
@@ -49,7 +50,7 @@ export default function Topology() {
     setLoading(true);
     setError(null);
     try {
-      let data;
+      let data: TopologyGraphType;
       if (useMockData) {
         // Use mock data for demonstration
         data = mockTopologyData;
@@ -60,12 +61,13 @@ export default function Topology() {
       setTopology(data);
 
       // Extract unique providers and types
-      const providers = [...new Set(data.nodes.map((n) => n.cloud_provider))];
-      const types = [...new Set(data.nodes.map((n) => n.resource_type))];
+      const providers = [...new Set(data.nodes.map((n) => n.cloud_provider))] as string[];
+      const types = [...new Set(data.nodes.map((n) => n.resource_type))] as string[];
       setAvailableProviders(providers);
       setAvailableTypes(types);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load topology');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to load topology');
     } finally {
       setLoading(false);
     }
@@ -76,11 +78,11 @@ export default function Topology() {
   }, [loadTopology]);
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilters({ ...filters, [key]: value || undefined });
+    setFilters({ ...filters, [key]: value || undefined } as typeof filters);
   };
 
   const handleViewModeChange = (event: SelectChangeEvent) => {
-    setViewMode(event.target.value as any);
+    setViewMode(event.target.value as 'service' | 'cluster' | 'namespace' | 'network');
   };
 
   const clearFilters = () => {

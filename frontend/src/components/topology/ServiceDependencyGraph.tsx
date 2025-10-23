@@ -31,7 +31,7 @@ import {
   CheckCircle,
 } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
-import type { TopologyGraph as TopologyGraphType } from '../../types';
+import type { TopologyGraph as TopologyGraphType, Resource } from '../../types';
 import { useStore } from '../../store/useStore';
 
 interface ServiceDependencyGraphProps {
@@ -69,7 +69,7 @@ const serviceColors: Record<string, string> = {
 };
 
 // Get color based on resource type or provider
-const getNodeColor = (node: any): string => {
+const getNodeColor = (node: Resource): string => {
   const type = node.resource_type?.toLowerCase() || '';
   const provider = node.cloud_provider?.toLowerCase() || '';
   
@@ -91,7 +91,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { setSelectedResource } = useStore();
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<Resource | null>(null);
   const [graphStats, setGraphStats] = useState({
     nodes: 0,
     edges: 0,
@@ -147,7 +147,8 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         {
           selector: 'node',
           style: {
-            'background-color': (ele: any) => getNodeColor(ele.data()),
+            'background-color': (ele: cytoscape.NodeSingular) =>
+              getNodeColor(ele.data() as Resource),
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
@@ -156,25 +157,25 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             color: '#fff',
             'font-size': '11px',
             'font-weight': 500,
-            width: (ele: any) => 40 + (ele.data('importance') || 1) * 10,
-            height: (ele: any) => 40 + (ele.data('importance') || 1) * 10,
+            width: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
+            height: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
             'border-width': 3,
             'border-color': '#1e293b',
             'overlay-opacity': 0,
-          } as any,
+          } as cytoscape.Css.Node,
         },
         {
           selector: 'node:selected',
           style: {
             'border-width': 5,
             'border-color': '#fbbf24',
-          } as any,
+          } as cytoscape.Css.Node,
         },
         {
-          selector: 'node:hover',
+          selector: 'node:active',
           style: {
             'border-color': '#60a5fa',
-          },
+          } as cytoscape.Css.Node,
         },
         {
           selector: 'edge',
@@ -207,11 +208,11 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           },
         },
         {
-          selector: 'edge:hover',
+          selector: 'edge:active',
           style: {
             'line-color': '#60a5fa',
             'target-arrow-color': '#60a5fa',
-          },
+          } as cytoscape.Css.Edge,
         },
       ],
       layout: {
@@ -237,7 +238,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     // Add event handlers
     cyRef.current.on('tap', 'node', (evt) => {
       const node = evt.target;
-      const nodeData = node.data();
+      const nodeData = node.data() as Resource;
       setSelectedNode(nodeData);
       setSelectedResource(nodeData);
       
@@ -288,7 +289,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
   };
 
   // Get health status icon and color
-  const getHealthStatus = (status: string) => {
+  const getHealthStatus = (status: string | undefined) => {
     switch (status?.toLowerCase()) {
       case 'healthy':
       case 'running':
@@ -304,7 +305,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     }
   };
 
-  const health = selectedNode ? getHealthStatus(selectedNode.health) : null;
+  const health = selectedNode ? getHealthStatus((selectedNode.properties?.health_status as string) || 'unknown') : null;
 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
