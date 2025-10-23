@@ -8,14 +8,25 @@ import logging
 
 try:
     from azure.mgmt.compute import ComputeManagementClient
+    from azure.mgmt.containerservice import ContainerServiceClient
     from azure.mgmt.network import NetworkManagementClient
+    from azure.mgmt.servicebus import ServiceBusManagementClient
     from azure.mgmt.storage import StorageManagementClient
     from azure.mgmt.web import WebSiteManagementClient
 except ImportError:
     ComputeManagementClient = None
+    ContainerServiceClient = None
     NetworkManagementClient = None
     StorageManagementClient = None
     WebSiteManagementClient = None
+    ServiceBusManagementClient = None
+
+try:
+    from kubernetes import client as k8s_client
+    from kubernetes import config as k8s_config
+except ImportError:
+    k8s_client = None
+    k8s_config = None
 
 from ..models import DiscoveredResource, ResourceDependency
 from .mapper import AzureResourceMapper
@@ -293,6 +304,600 @@ async def discover_config_resources(
 
     logger.info("Config resource discovery not yet implemented")
     return resources
+
+
+async def discover_messaging_resources(
+    subscription_id: str,
+    credential,
+    resource_group: str | None = None,
+) -> list[DiscoveredResource]:
+    """
+    Discover Service Bus namespaces, topics, queues, and subscriptions.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        resource_group: Optional resource group filter
+
+    Returns:
+        List of DiscoveredResource objects with detailed properties
+    """
+    resources = []
+    mapper = AzureResourceMapper()
+
+    if ServiceBusManagementClient is None:
+        logger.warning("Azure Service Bus SDK not available, skipping messaging discovery")
+        return resources
+
+    try:
+        servicebus_client = ServiceBusManagementClient(credential, subscription_id)
+
+        # Discover Service Bus namespaces
+        if resource_group:
+            namespaces = servicebus_client.namespaces.list_by_resource_group(resource_group)
+        else:
+            namespaces = servicebus_client.namespaces.list()
+
+        for namespace in namespaces:
+            try:
+                # Map namespace resource
+                namespace_resource = mapper.map_azure_resource(
+                    resource_id=namespace.id,
+                    resource_name=namespace.name,
+                    resource_type=namespace.type,
+                    location=namespace.location,
+                    tags=namespace.tags,
+                    properties={
+                        "sku": namespace.sku.name if namespace.sku else None,
+                        "tier": namespace.sku.tier if namespace.sku else None,
+                        "endpoint": (
+                            namespace.service_bus_endpoint
+                            if hasattr(namespace, "service_bus_endpoint")
+                            else None
+                        ),
+                        "status": namespace.status if hasattr(namespace, "status") else None,
+                    },
+                    provisioning_state=(
+                        namespace.provisioning_state
+                        if hasattr(namespace, "provisioning_state")
+                        else None
+                    ),
+                )
+                resources.append(namespace_resource)
+
+                # Discover topics in this namespace
+                namespace_rg = mapper.extract_resource_group(namespace.id)
+                if namespace_rg:
+                    topics = servicebus_client.topics.list_by_namespace(
+                        namespace_rg, namespace.name
+                    )
+                    for topic in topics:
+                        try:
+                            topic_resource = mapper.map_azure_resource(
+                                resource_id=topic.id,
+                                resource_name=topic.name,
+                                resource_type=topic.type,
+                                location=namespace.location,
+                                tags={},
+                                properties={
+                                    "namespace": namespace.name,
+                                    "max_size_in_mb": (
+                                        topic.max_size_in_megabytes
+                                        if hasattr(topic, "max_size_in_megabytes")
+                                        else None
+                                    ),
+                                    "requires_duplicate_detection": (
+                                        topic.requires_duplicate_detection
+                                        if hasattr(topic, "requires_duplicate_detection")
+                                        else None
+                                    ),
+                                    "support_ordering": (
+                                        topic.support_ordering
+                                        if hasattr(topic, "support_ordering")
+                                        else None
+                                    ),
+                                    "status": topic.status if hasattr(topic, "status") else None,
+                                },
+                                provisioning_state=None,
+                            )
+                            resources.append(topic_resource)
+
+                            # Discover subscriptions for this topic
+                            subscriptions = servicebus_client.subscriptions.list_by_topic(
+                                namespace_rg, namespace.name, topic.name
+                            )
+                            for subscription in subscriptions:
+                                try:
+                                    sub_resource = mapper.map_azure_resource(
+                                        resource_id=subscription.id,
+                                        resource_name=subscription.name,
+                                        resource_type=subscription.type,
+                                        location=namespace.location,
+                                        tags={},
+                                        properties={
+                                            "namespace": namespace.name,
+                                            "topic": topic.name,
+                                            "max_delivery_count": (
+                                                subscription.max_delivery_count
+                                                if hasattr(subscription, "max_delivery_count")
+                                                else None
+                                            ),
+                                            "requires_session": (
+                                                subscription.requires_session
+                                                if hasattr(subscription, "requires_session")
+                                                else None
+                                            ),
+                                            "status": (
+                                                subscription.status
+                                                if hasattr(subscription, "status")
+                                                else None
+                                            ),
+                                        },
+                                        provisioning_state=None,
+                                    )
+                                    resources.append(sub_resource)
+                                except Exception as e:
+                                    logger.error(
+                                        f"Error discovering subscription {subscription.name}: {e}"
+                                    )
+
+                        except Exception as e:
+                            logger.error(f"Error discovering topic {topic.name}: {e}")
+
+                    # Discover queues in this namespace
+                    queues = servicebus_client.queues.list_by_namespace(
+                        namespace_rg, namespace.name
+                    )
+                    for queue in queues:
+                        try:
+                            queue_resource = mapper.map_azure_resource(
+                                resource_id=queue.id,
+                                resource_name=queue.name,
+                                resource_type=queue.type,
+                                location=namespace.location,
+                                tags={},
+                                properties={
+                                    "namespace": namespace.name,
+                                    "max_size_in_mb": (
+                                        queue.max_size_in_megabytes
+                                        if hasattr(queue, "max_size_in_megabytes")
+                                        else None
+                                    ),
+                                    "requires_duplicate_detection": (
+                                        queue.requires_duplicate_detection
+                                        if hasattr(queue, "requires_duplicate_detection")
+                                        else None
+                                    ),
+                                    "requires_session": (
+                                        queue.requires_session
+                                        if hasattr(queue, "requires_session")
+                                        else None
+                                    ),
+                                    "max_delivery_count": (
+                                        queue.max_delivery_count
+                                        if hasattr(queue, "max_delivery_count")
+                                        else None
+                                    ),
+                                    "status": queue.status if hasattr(queue, "status") else None,
+                                },
+                                provisioning_state=None,
+                            )
+                            resources.append(queue_resource)
+                        except Exception as e:
+                            logger.error(f"Error discovering queue {queue.name}: {e}")
+
+            except Exception as e:
+                logger.error(f"Error discovering Service Bus namespace {namespace.name}: {e}")
+
+        logger.info(f"Discovered {len(resources)} messaging resources")
+
+    except Exception as e:
+        logger.error(f"Error discovering messaging resources: {e}")
+
+    return resources
+
+
+def parse_servicebus_connection_string(connection_string: str) -> dict[str, str] | None:
+    """
+    Parse Service Bus connection string to extract namespace information.
+
+    Args:
+        connection_string: Service Bus connection string
+
+    Returns:
+        Dictionary with 'namespace' and 'endpoint' keys, or None if not a Service Bus connection
+    """
+    if not connection_string or "servicebus" not in connection_string.lower():
+        return None
+
+    try:
+        # Service Bus connection strings look like:
+        # Endpoint=sb://namespace.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=...
+        parts = {}
+        for part in connection_string.split(";"):
+            if "=" in part:
+                key, value = part.split("=", 1)
+                parts[key.lower()] = value
+
+        endpoint = parts.get("endpoint", "")
+        if "sb://" in endpoint:
+            # Extract namespace from endpoint: sb://namespace.servicebus.windows.net/
+            namespace = endpoint.replace("sb://", "").split(".")[0]
+            return {"namespace": namespace, "endpoint": endpoint}
+
+    except Exception as e:
+        logger.debug(f"Error parsing connection string: {e}")
+
+    return None
+
+
+async def get_app_service_servicebus_connections(
+    subscription_id: str,
+    credential,
+    app_service_resources: list[DiscoveredResource],
+) -> dict[str, list[str]]:
+    """
+    Get Service Bus connections from App Service application settings and connection strings.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        app_service_resources: List of App Service resources
+
+    Returns:
+        Dictionary mapping app service resource ID to list of Service Bus namespace names
+    """
+    connections = {}
+
+    if WebSiteManagementClient is None:
+        logger.warning("Azure Web SDK not available, skipping App Service config parsing")
+        return connections
+
+    try:
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        for app in app_service_resources:
+            app_connections = set()
+
+            try:
+                # Extract resource group and app name from resource ID
+                resource_group = app.resource_group
+                if not resource_group:
+                    continue
+
+                # Get application settings
+                try:
+                    app_settings = web_client.web_apps.list_application_settings(
+                        resource_group, app.name
+                    )
+                    if hasattr(app_settings, "properties"):
+                        for key, value in app_settings.properties.items():
+                            if value and isinstance(value, str):
+                                sb_info = parse_servicebus_connection_string(value)
+                                if sb_info:
+                                    app_connections.add(sb_info["namespace"])
+                except Exception as e:
+                    logger.debug(f"Error getting app settings for {app.name}: {e}")
+
+                # Get connection strings
+                try:
+                    conn_strings = web_client.web_apps.list_connection_strings(
+                        resource_group, app.name
+                    )
+                    if hasattr(conn_strings, "properties"):
+                        for key, conn in conn_strings.properties.items():
+                            if hasattr(conn, "value") and conn.value:
+                                sb_info = parse_servicebus_connection_string(conn.value)
+                                if sb_info:
+                                    app_connections.add(sb_info["namespace"])
+                except Exception as e:
+                    logger.debug(f"Error getting connection strings for {app.name}: {e}")
+
+                if app_connections:
+                    connections[app.id] = list(app_connections)
+                    logger.info(
+                        f"Found {len(app_connections)} Service Bus connections for {app.name}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error processing App Service {app.name}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error getting App Service Service Bus connections: {e}")
+
+    return connections
+
+
+async def get_aks_servicebus_connections(
+    subscription_id: str,
+    credential,
+    aks_resources: list[DiscoveredResource],
+) -> dict[str, list[str]]:
+    """
+    Get Service Bus connections from AKS cluster ConfigMaps and Secrets.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        aks_resources: List of AKS cluster resources
+
+    Returns:
+        Dictionary mapping AKS resource ID to list of Service Bus namespace names
+    """
+    connections = {}
+
+    if ContainerServiceClient is None or k8s_client is None:
+        logger.warning(
+            "Azure Container or Kubernetes SDK not available, skipping AKS config parsing"
+        )
+        return connections
+
+    try:
+        container_client = ContainerServiceClient(credential, subscription_id)
+
+        for aks in aks_resources:
+            aks_connections = set()
+
+            try:
+                resource_group = aks.resource_group
+                if not resource_group:
+                    continue
+
+                # Get cluster credentials
+                try:
+                    creds = container_client.managed_clusters.list_cluster_admin_credentials(
+                        resource_group, aks.name
+                    )
+
+                    if not hasattr(creds, "kubeconfigs") or not creds.kubeconfigs:
+                        continue
+
+                    # Load kubeconfig
+                    kubeconfig = creds.kubeconfigs[0].value.decode("utf-8")
+
+                    # Load configuration from kubeconfig string
+                    import yaml
+                    kubeconfig_dict = yaml.safe_load(kubeconfig)
+                    api_client = k8s_config.new_client_from_config(config_dict=kubeconfig_dict)
+
+                    # Create Kubernetes API clients
+                    v1 = k8s_client.CoreV1Api(api_client=api_client)
+
+                    # Get all namespaces
+                    namespaces = v1.list_namespace()
+
+                    for ns in namespaces.items:
+                        ns_name = ns.metadata.name
+
+                        # Get ConfigMaps
+                        try:
+                            configmaps = v1.list_namespaced_config_map(ns_name)
+                            for cm in configmaps.items:
+                                if cm.data:
+                                    for key, value in cm.data.items():
+                                        if value and isinstance(value, str):
+                                            sb_info = parse_servicebus_connection_string(value)
+                                            if sb_info:
+                                                aks_connections.add(sb_info["namespace"])
+                        except Exception as e:
+                            logger.debug(f"Error reading ConfigMaps in {ns_name}: {e}")
+
+                        # Get Secrets
+                        try:
+                            secrets = v1.list_namespaced_secret(ns_name)
+                            for secret in secrets.items:
+                                if secret.data:
+                                    for key, value_bytes in secret.data.items():
+                                        if value_bytes:
+                                            try:
+                                                import base64
+
+                                                value = base64.b64decode(value_bytes).decode(
+                                                    "utf-8"
+                                                )
+                                                sb_info = parse_servicebus_connection_string(
+                                                    value
+                                                )
+                                                if sb_info:
+                                                    aks_connections.add(sb_info["namespace"])
+                                            except Exception:
+                                                pass
+                        except Exception as e:
+                            logger.debug(f"Error reading Secrets in {ns_name}: {e}")
+
+                    if aks_connections:
+                        connections[aks.id] = list(aks_connections)
+                        logger.info(
+                            f"Found {len(aks_connections)} Service Bus connections for AKS {aks.name}"
+                        )
+
+                except Exception as e:
+                    logger.debug(f"Error getting AKS credentials for {aks.name}: {e}")
+
+            except Exception as e:
+                logger.error(f"Error processing AKS cluster {aks.name}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error getting AKS Service Bus connections: {e}")
+
+    return connections
+
+
+async def detect_servicebus_dependencies(
+    resources: list[DiscoveredResource],
+    subscription_id: str | None = None,
+    credential=None,
+) -> list[ResourceDependency]:
+    """
+    Detect Service Bus messaging dependencies.
+
+    Creates relationships between:
+    - Service Bus namespaces and their topics/queues
+    - Topics and their subscriptions
+    - Applications and the topics/queues they publish to or subscribe from
+
+    Args:
+        resources: List of discovered resources
+
+    Returns:
+        List of ResourceDependency objects representing messaging patterns
+    """
+    from ..models import DependencyCategory, DependencyType
+
+    dependencies = []
+
+    # Create lookup maps for Service Bus resources
+    namespaces = {r.id: r for r in resources if r.resource_type == "servicebus_namespace"}
+    topics = [r for r in resources if r.resource_type == "servicebus_topic"]
+    queues = [r for r in resources if r.resource_type == "servicebus_queue"]
+    subscriptions = [r for r in resources if r.resource_type == "servicebus_subscription"]
+
+    # Create namespace → topic/queue dependencies
+    for topic in topics:
+        namespace_name = topic.properties.get("namespace")
+        if namespace_name:
+            # Find the namespace resource
+            for ns_id, namespace in namespaces.items():
+                if namespace.name == namespace_name:
+                    dep = ResourceDependency(
+                        source_id=ns_id,
+                        target_id=topic.id,
+                        category=DependencyCategory.CONFIGURATION,
+                        dependency_type=DependencyType.STRONG,
+                        strength=1.0,
+                        discovered_method="servicebus_structure",
+                        description=f"Service Bus namespace contains topic {topic.name}",
+                    )
+                    dependencies.append(dep)
+                    break
+
+    for queue in queues:
+        namespace_name = queue.properties.get("namespace")
+        if namespace_name:
+            # Find the namespace resource
+            for ns_id, namespace in namespaces.items():
+                if namespace.name == namespace_name:
+                    dep = ResourceDependency(
+                        source_id=ns_id,
+                        target_id=queue.id,
+                        category=DependencyCategory.CONFIGURATION,
+                        dependency_type=DependencyType.STRONG,
+                        strength=1.0,
+                        discovered_method="servicebus_structure",
+                        description=f"Service Bus namespace contains queue {queue.name}",
+                    )
+                    dependencies.append(dep)
+                    break
+
+    # Create topic → subscription dependencies
+    for subscription in subscriptions:
+        topic_name = subscription.properties.get("topic")
+        namespace_name = subscription.properties.get("namespace")
+        if topic_name and namespace_name:
+            # Find the topic resource
+            for topic in topics:
+                if (
+                    topic.name == topic_name
+                    and topic.properties.get("namespace") == namespace_name
+                ):
+                    dep = ResourceDependency(
+                        source_id=topic.id,
+                        target_id=subscription.id,
+                        category=DependencyCategory.CONFIGURATION,
+                        dependency_type=DependencyType.STRONG,
+                        strength=1.0,
+                        discovered_method="servicebus_structure",
+                        description=f"Topic {topic_name} has subscription {subscription.name}",
+                    )
+                    dependencies.append(dep)
+                    break
+
+    # Detect app → Service Bus dependencies via connection strings and app settings
+    app_services = [r for r in resources if r.resource_type == "app_service"]
+    aks_clusters = [r for r in resources if r.resource_type == "aks"]
+
+    # Phase 1: Parse actual configuration (strong dependencies)
+    if subscription_id and credential:
+        # Get App Service connections from application settings and connection strings
+        app_service_connections = await get_app_service_servicebus_connections(
+            subscription_id, credential, app_services
+        )
+
+        for app_id, namespace_names in app_service_connections.items():
+            app = next((r for r in app_services if r.id == app_id), None)
+            if not app:
+                continue
+
+            for namespace_name in namespace_names:
+                # Find the namespace resource
+                for ns_id, namespace in namespaces.items():
+                    if namespace.name == namespace_name:
+                        dep = ResourceDependency(
+                            source_id=app_id,
+                            target_id=ns_id,
+                            category=DependencyCategory.DATA,
+                            dependency_type=DependencyType.REQUIRED,
+                            strength=0.9,
+                            discovered_method="app_service_config",
+                            description=f"App Service {app.name} uses Service Bus {namespace_name} (from app settings)",
+                        )
+                        dependencies.append(dep)
+                        break
+
+        # Get AKS connections from ConfigMaps and Secrets
+        aks_connections = await get_aks_servicebus_connections(
+            subscription_id, credential, aks_clusters
+        )
+
+        for aks_id, namespace_names in aks_connections.items():
+            aks = next((r for r in aks_clusters if r.id == aks_id), None)
+            if not aks:
+                continue
+
+            for namespace_name in namespace_names:
+                # Find the namespace resource
+                for ns_id, namespace in namespaces.items():
+                    if namespace.name == namespace_name:
+                        dep = ResourceDependency(
+                            source_id=aks_id,
+                            target_id=ns_id,
+                            category=DependencyCategory.DATA,
+                            dependency_type=DependencyType.REQUIRED,
+                            strength=0.9,
+                            discovered_method="kubernetes_config",
+                            description=f"AKS cluster {aks.name} uses Service Bus {namespace_name} (from ConfigMaps/Secrets)",
+                        )
+                        dependencies.append(dep)
+                        break
+
+    # Phase 2: Fallback to heuristics for apps without found connections
+    # This catches cases where we couldn't access configs or for additional weak signals
+    detected_app_ids = set()
+    for dep in dependencies:
+        if dep.discovered_method in ("app_service_config", "kubernetes_config"):
+            detected_app_ids.add(dep.source_id)
+
+    for app in app_services + aks_clusters:
+        # Skip apps where we already found strong connections
+        if app.id in detected_app_ids:
+            continue
+
+        # Use heuristic for remaining apps
+        for namespace in namespaces.values():
+            if namespace.resource_group == app.resource_group:
+                dep = ResourceDependency(
+                    source_id=app.id,
+                    target_id=namespace.id,
+                    category=DependencyCategory.DATA,
+                    dependency_type=DependencyType.OPTIONAL,
+                    strength=0.3,
+                    discovered_method="heuristic_colocation",
+                    description=f"Application {app.name} may use Service Bus {namespace.name} (same RG)",
+                )
+                dependencies.append(dep)
+
+    logger.info(f"Detected {len(dependencies)} Service Bus dependencies")
+    return dependencies
 
 
 async def detect_advanced_dependencies(

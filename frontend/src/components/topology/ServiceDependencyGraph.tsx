@@ -52,6 +52,12 @@ const serviceColors: Record<string, string> = {
   storage: '#ff9800',
   cache: '#f44336',
   
+  // Messaging (Service Bus)
+  servicebus_namespace: '#8b5cf6',
+  servicebus_topic: '#a78bfa',
+  servicebus_queue: '#c4b5fd',
+  servicebus_subscription: '#ddd6fe',
+  
   // Network layer
   load_balancer: '#e91e63',
   application_gateway: '#ec407a',
@@ -85,6 +91,9 @@ const relationshipLabels: Record<string, string> = {
   stores_in: 'stores in',
   accesses: 'accesses',
   uses: 'uses',
+  publishes_to: 'publishes to',
+  subscribes_from: 'subscribes from',
+  contains: 'contains',
 };
 
 export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphProps) {

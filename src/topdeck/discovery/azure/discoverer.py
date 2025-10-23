@@ -21,6 +21,7 @@ from .resources import (
     discover_compute_resources,
     discover_config_resources,
     discover_data_resources,
+    discover_messaging_resources,
     discover_networking_resources,
 )
 
@@ -202,6 +203,8 @@ class AzureDiscoverer:
         Returns:
             List of discovered dependencies
         """
+        from .resources import detect_servicebus_dependencies
+
         dependencies = []
 
         # Create resource lookup by ID
@@ -259,6 +262,12 @@ class AzureDiscoverer:
                             description="AKS may use Storage Account for persistent volumes",
                         )
                         dependencies.append(dep)
+
+        # Detect Service Bus messaging dependencies
+        servicebus_deps = await detect_servicebus_dependencies(
+            resources, self.subscription_id, self.credential
+        )
+        dependencies.extend(servicebus_deps)
 
         return dependencies
 
@@ -420,10 +429,12 @@ class AzureDiscoverer:
             discover_networking_resources,
             discover_data_resources,
             discover_config_resources,
+            discover_messaging_resources,
         ]
 
         # Prepare arguments for each task
         task_args = [
+            (self.subscription_id, self.credential),
             (self.subscription_id, self.credential),
             (self.subscription_id, self.credential),
             (self.subscription_id, self.credential),

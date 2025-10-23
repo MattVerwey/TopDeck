@@ -40,6 +40,11 @@ class AzureResourceMapper:
         "Microsoft.Cache/redis": "redis_cache",
         # Identity & Access
         "Microsoft.ManagedIdentity/userAssignedIdentities": "managed_identity",
+        # Messaging
+        "Microsoft.ServiceBus/namespaces": "servicebus_namespace",
+        "Microsoft.ServiceBus/namespaces/topics": "servicebus_topic",
+        "Microsoft.ServiceBus/namespaces/queues": "servicebus_queue",
+        "Microsoft.ServiceBus/namespaces/topics/subscriptions": "servicebus_subscription",
     }
 
     @staticmethod
