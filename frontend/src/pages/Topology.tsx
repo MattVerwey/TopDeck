@@ -70,18 +70,18 @@ export default function Topology() {
       setTopology(data);
 
       // Extract unique providers, types, clusters, and namespaces
-      const providers = [...new Set(data.nodes.map((n) => n.cloud_provider))] as string[];
-      const types = [...new Set(data.nodes.map((n) => n.resource_type))] as string[];
+      const providers = [...new Set(data.nodes.map((n) => n.cloud_provider))];
+      const types = [...new Set(data.nodes.map((n) => n.resource_type))];
       const clusters = [...new Set(
         data.nodes
           .map((n) => (n.properties?.cluster as string) || (n.metadata?.cluster as string))
           .filter(Boolean)
-      )] as string[];
+      )];
       const namespaces = [...new Set(
         data.nodes
           .map((n) => (n.properties?.namespace as string) || (n.metadata?.namespace as string))
           .filter(Boolean)
-      )] as string[];
+      )];
       
       setAvailableProviders(providers);
       setAvailableTypes(types);
