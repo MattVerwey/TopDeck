@@ -70,6 +70,8 @@ class ConnectionStringParser:
     )
     
     # AWS S3-style endpoint
+    # Note: This pattern checks for amazonaws.com to identify S3 endpoints
+    # It is not used for security validation, only for connection discovery
     S3_ENDPOINT_PATTERN = re.compile(
         r"https?://([^.]+)\.s3(?:\.([^.]+))?\.amazonaws\.com",
         re.IGNORECASE
