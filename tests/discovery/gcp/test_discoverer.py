@@ -227,61 +227,66 @@ class TestGCPDiscoverer:
     @pytest.mark.asyncio
     async def test_multi_region_discovery(self, discoverer):
         """Test discovery across multiple regions."""
-        with patch.object(discoverer, "_discover_compute_instances", new_callable=AsyncMock) as mock_compute:
-            with patch.object(discoverer, "_discover_gke_clusters", new_callable=AsyncMock) as mock_gke:
-                with patch.object(discoverer, "_discover_cloud_sql_instances", new_callable=AsyncMock) as mock_sql:
-                    with patch.object(discoverer, "_discover_vpcs", new_callable=AsyncMock) as mock_vpcs:
-                        with patch.object(discoverer, "_discover_cloud_functions", new_callable=AsyncMock) as mock_functions:
-                            with patch.object(discoverer, "_discover_cloud_run_services", new_callable=AsyncMock) as mock_run:
-                                with patch.object(discoverer, "_discover_storage_buckets", new_callable=AsyncMock) as mock_storage:
-                                    with patch.object(discoverer, "_discover_dependencies", new_callable=AsyncMock) as mock_deps:
-                                        with patch.object(discoverer, "_infer_applications", new_callable=AsyncMock) as mock_apps:
-                                            # Set return values
-                                            mock_compute.return_value = []
-                                            mock_gke.return_value = []
-                                            mock_sql.return_value = []
-                                            mock_vpcs.return_value = []
-                                            mock_functions.return_value = []
-                                            mock_run.return_value = []
-                                            mock_storage.return_value = []
-                                            mock_deps.return_value = []
-                                            mock_apps.return_value = []
+        with patch.multiple(
+            discoverer,
+            _discover_compute_instances=AsyncMock(),
+            _discover_gke_clusters=AsyncMock(),
+            _discover_cloud_sql_instances=AsyncMock(),
+            _discover_vpcs=AsyncMock(),
+            _discover_cloud_functions=AsyncMock(),
+            _discover_cloud_run_services=AsyncMock(),
+            _discover_storage_buckets=AsyncMock(),
+            _discover_dependencies=AsyncMock(),
+            _infer_applications=AsyncMock(),
+        ) as mocks:
+            # Set return values
+            mocks["_discover_compute_instances"].return_value = []
+            mocks["_discover_gke_clusters"].return_value = []
+            mocks["_discover_cloud_sql_instances"].return_value = []
+            mocks["_discover_vpcs"].return_value = []
+            mocks["_discover_cloud_functions"].return_value = []
+            mocks["_discover_cloud_run_services"].return_value = []
+            mocks["_discover_storage_buckets"].return_value = []
+            mocks["_discover_dependencies"].return_value = []
+            mocks["_infer_applications"].return_value = []
 
-                                            regions = ["us-central1", "us-east1"]
-                                            result = await discoverer.discover_all_resources(regions=regions)
+            regions = ["us-central1", "us-east1"]
+            result = await discoverer.discover_all_resources(regions=regions)
 
-                                            # Should call each discovery method once per region
-                                            assert mock_compute.call_count == 2
-                                            assert mock_gke.call_count == 2
-                                            assert result.cloud_provider == "gcp"
+            # Should call each discovery method once per region
+            assert mocks["_discover_compute_instances"].call_count == 2
+            assert mocks["_discover_gke_clusters"].call_count == 2
+            assert result.cloud_provider == "gcp"
 
     @pytest.mark.asyncio
     async def test_error_handling_in_discovery(self, discoverer):
         """Test that errors during discovery are captured and logged."""
-        with patch.object(discoverer, "_discover_compute_instances", new_callable=AsyncMock) as mock_compute:
+        with patch.multiple(
+            discoverer,
+            _discover_compute_instances=AsyncMock(),
+            _discover_gke_clusters=AsyncMock(),
+            _discover_cloud_sql_instances=AsyncMock(),
+            _discover_vpcs=AsyncMock(),
+            _discover_cloud_functions=AsyncMock(),
+            _discover_cloud_run_services=AsyncMock(),
+            _discover_storage_buckets=AsyncMock(),
+            _discover_dependencies=AsyncMock(),
+            _infer_applications=AsyncMock(),
+        ) as mocks:
             # Make the method raise an exception
-            mock_compute.side_effect = Exception("Test error")
-            
-            with patch.object(discoverer, "_discover_gke_clusters", new_callable=AsyncMock) as mock_gke:
-                with patch.object(discoverer, "_discover_cloud_sql_instances", new_callable=AsyncMock) as mock_sql:
-                    with patch.object(discoverer, "_discover_vpcs", new_callable=AsyncMock) as mock_vpcs:
-                        with patch.object(discoverer, "_discover_cloud_functions", new_callable=AsyncMock) as mock_functions:
-                            with patch.object(discoverer, "_discover_cloud_run_services", new_callable=AsyncMock) as mock_run:
-                                with patch.object(discoverer, "_discover_storage_buckets", new_callable=AsyncMock) as mock_storage:
-                                    with patch.object(discoverer, "_discover_dependencies", new_callable=AsyncMock) as mock_deps:
-                                        with patch.object(discoverer, "_infer_applications", new_callable=AsyncMock) as mock_apps:
-                                            # Set return values for other methods
-                                            mock_gke.return_value = []
-                                            mock_sql.return_value = []
-                                            mock_vpcs.return_value = []
-                                            mock_functions.return_value = []
-                                            mock_run.return_value = []
-                                            mock_storage.return_value = []
-                                            mock_deps.return_value = []
-                                            mock_apps.return_value = []
+            mocks["_discover_compute_instances"].side_effect = Exception("Test error")
+            # Set return values for other methods
+            mocks["_discover_gke_clusters"].return_value = []
+            mocks["_discover_cloud_sql_instances"].return_value = []
+            mocks["_discover_vpcs"].return_value = []
+            mocks["_discover_cloud_functions"].return_value = []
+            mocks["_discover_cloud_run_services"].return_value = []
+            mocks["_discover_storage_buckets"].return_value = []
+            mocks["_discover_dependencies"].return_value = []
+            mocks["_infer_applications"].return_value = []
 
-                                            result = await discoverer.discover_all_resources(regions=["us-central1"])
+            result = await discoverer.discover_all_resources(regions=["us-central1"])
 
-                                            # Should have error in result
-                                            assert len(result.errors) > 0
-                                            assert any("Test error" in error for error in result.errors)
+            # Should have error in result
+            assert len(result.errors) > 0
+            assert any("Test error" in error for error in result.errors)
