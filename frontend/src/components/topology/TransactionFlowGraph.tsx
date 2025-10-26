@@ -28,6 +28,7 @@ export default function TransactionFlowGraph({ flow }: TransactionFlowGraphProps
         {
           selector: 'node',
           style: {
+            shape: 'rectangle',
             'background-color': '#1976d2',
             label: 'data(label)',
             'text-valign': 'center',

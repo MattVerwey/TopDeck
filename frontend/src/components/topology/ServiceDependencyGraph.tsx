@@ -156,6 +156,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         {
           selector: 'node',
           style: {
+            shape: 'rectangle',
             'background-color': (ele: cytoscape.NodeSingular) =>
               getNodeColor(ele.data() as Resource),
             label: 'data(label)',

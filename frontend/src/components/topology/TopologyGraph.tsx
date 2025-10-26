@@ -67,6 +67,7 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
         {
           selector: 'node',
           style: {
+            shape: 'rectangle',
             'background-color': (ele: any) =>
               colorMap[ele.data('provider')] || colorMap[ele.data('type')] || '#2196f3',
             label: 'data(label)',
