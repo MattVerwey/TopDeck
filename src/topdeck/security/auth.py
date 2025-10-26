@@ -24,7 +24,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # JWT settings (from config)
-SECRET_KEY = settings.secret_key or "your-secret-key-change-in-production"
+if not settings.secret_key:
+    raise RuntimeError("SECRET_KEY is not configured. Please set settings.secret_key in your configuration.")
+SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes or 60
 
