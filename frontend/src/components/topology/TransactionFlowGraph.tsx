@@ -33,6 +33,8 @@ export default function TransactionFlowGraph({ flow }: TransactionFlowGraphProps
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'text-max-width': '50px',
             color: '#fff',
             'text-outline-color': '#1976d2',
             'text-outline-width': 2,

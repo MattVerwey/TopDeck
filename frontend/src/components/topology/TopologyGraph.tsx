@@ -73,6 +73,8 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'text-max-width': '40px',
             color: '#fff',
             'font-size': '12px',
             width: 50,

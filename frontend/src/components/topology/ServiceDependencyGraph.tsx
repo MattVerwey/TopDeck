@@ -163,7 +163,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': '80px',
+            'text-max-width': (ele: cytoscape.NodeSingular) => `${(40 + ((ele.data('importance') as number) || 1) * 10) - 10}px`,
             color: '#fff',
             'font-size': '11px',
             'font-weight': 500,
