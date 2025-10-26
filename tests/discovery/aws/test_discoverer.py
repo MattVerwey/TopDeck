@@ -354,32 +354,35 @@ class TestAWSDiscoverer:
     @pytest.mark.asyncio
     async def test_multi_region_discovery(self, discoverer):
         """Test discovery across multiple regions."""
-        with patch.object(discoverer, "_discover_ec2_instances", new_callable=AsyncMock) as mock_ec2:
-            with patch.object(discoverer, "_discover_eks_clusters", new_callable=AsyncMock) as mock_eks:
-                with patch.object(discoverer, "_discover_rds_databases", new_callable=AsyncMock) as mock_rds:
-                    with patch.object(discoverer, "_discover_s3_buckets", new_callable=AsyncMock) as mock_s3:
-                        with patch.object(discoverer, "_discover_lambda_functions", new_callable=AsyncMock) as mock_lambda:
-                            with patch.object(discoverer, "_discover_dynamodb_tables", new_callable=AsyncMock) as mock_dynamodb:
-                                with patch.object(discoverer, "_discover_vpcs", new_callable=AsyncMock) as mock_vpcs:
-                                    with patch.object(discoverer, "_discover_load_balancers", new_callable=AsyncMock) as mock_lbs:
-                                        with patch.object(discoverer, "_discover_dependencies", new_callable=AsyncMock) as mock_deps:
-                                            with patch.object(discoverer, "_infer_applications", new_callable=AsyncMock) as mock_apps:
-                                                # Set return values
-                                                mock_ec2.return_value = []
-                                                mock_eks.return_value = []
-                                                mock_rds.return_value = []
-                                                mock_s3.return_value = []
-                                                mock_lambda.return_value = []
-                                                mock_dynamodb.return_value = []
-                                                mock_vpcs.return_value = []
-                                                mock_lbs.return_value = []
-                                                mock_deps.return_value = []
-                                                mock_apps.return_value = []
+        with patch.multiple(
+            discoverer,
+            _discover_ec2_instances=AsyncMock(),
+            _discover_eks_clusters=AsyncMock(),
+            _discover_rds_databases=AsyncMock(),
+            _discover_s3_buckets=AsyncMock(),
+            _discover_lambda_functions=AsyncMock(),
+            _discover_dynamodb_tables=AsyncMock(),
+            _discover_vpcs=AsyncMock(),
+            _discover_load_balancers=AsyncMock(),
+            _discover_dependencies=AsyncMock(),
+            _infer_applications=AsyncMock(),
+        ) as mocks:
+            # Set return values
+            mocks["_discover_ec2_instances"].return_value = []
+            mocks["_discover_eks_clusters"].return_value = []
+            mocks["_discover_rds_databases"].return_value = []
+            mocks["_discover_s3_buckets"].return_value = []
+            mocks["_discover_lambda_functions"].return_value = []
+            mocks["_discover_dynamodb_tables"].return_value = []
+            mocks["_discover_vpcs"].return_value = []
+            mocks["_discover_load_balancers"].return_value = []
+            mocks["_discover_dependencies"].return_value = []
+            mocks["_infer_applications"].return_value = []
 
-                                                regions = ["us-east-1", "us-west-2"]
-                                                result = await discoverer.discover_all_resources(regions=regions)
+            regions = ["us-east-1", "us-west-2"]
+            result = await discoverer.discover_all_resources(regions=regions)
 
-                                                # Should call each discovery method once per region
-                                                assert mock_ec2.call_count == 2
-                                                assert mock_eks.call_count == 2
-                                                assert result.cloud_provider == "aws"
+            # Should call each discovery method once per region
+            assert mocks["_discover_ec2_instances"].call_count == 2
+            assert mocks["_discover_eks_clusters"].call_count == 2
+            assert result.cloud_provider == "aws"
