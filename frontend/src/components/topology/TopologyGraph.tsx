@@ -27,6 +27,14 @@ const colorMap: Record<string, string> = {
   gateway: '#00bcd4',
 };
 
+// Node sizing constants
+const NODE_WIDTH = 50;
+const NODE_HEIGHT = 50;
+const NODE_BORDER_WIDTH = 2;
+// Text max width derived from node width minus padding (50 - 18 = 32)
+const NODE_TEXT_PADDING = 18;
+const NODE_TEXT_MAX_WIDTH = NODE_WIDTH - NODE_TEXT_PADDING;
+
 export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -74,12 +82,12 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': '32px',
+            'text-max-width': `${NODE_TEXT_MAX_WIDTH}px`, // Derived from NODE_WIDTH - NODE_TEXT_PADDING
             color: '#fff',
             'font-size': '9px',
-            width: 50,
-            height: 50,
-            'border-width': 2,
+            width: NODE_WIDTH,
+            height: NODE_HEIGHT,
+            'border-width': NODE_BORDER_WIDTH,
             'border-color': '#fff',
           },
         },

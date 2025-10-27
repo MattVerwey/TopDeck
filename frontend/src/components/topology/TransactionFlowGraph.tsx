@@ -13,6 +13,13 @@ interface TransactionFlowGraphProps {
   flow: TransactionFlow;
 }
 
+// Node sizing constants
+const NODE_WIDTH = 60;
+const NODE_HEIGHT = 60;
+// Text max width derived from node width minus padding (60 - 18 = 42)
+const NODE_TEXT_PADDING = 18;
+const NODE_TEXT_MAX_WIDTH = NODE_WIDTH - NODE_TEXT_PADDING;
+
 export default function TransactionFlowGraph({ flow }: TransactionFlowGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -34,12 +41,12 @@ export default function TransactionFlowGraph({ flow }: TransactionFlowGraphProps
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': '42px',
+            'text-max-width': `${NODE_TEXT_MAX_WIDTH}px`, // Derived from NODE_WIDTH - NODE_TEXT_PADDING
             color: '#fff',
             'text-outline-color': '#1976d2',
             'text-outline-width': 2,
-            width: 60,
-            height: 60,
+            width: NODE_WIDTH,
+            height: NODE_HEIGHT,
             'font-size': '8px',
             'font-weight': 'bold',
           },

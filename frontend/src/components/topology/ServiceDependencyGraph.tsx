@@ -34,6 +34,17 @@ import cytoscape from 'cytoscape';
 import type { TopologyGraph as TopologyGraphType, Resource } from '../../types';
 import { useStore } from '../../store/useStore';
 
+
+// Constants for node sizing and padding
+const NODE_BASE_SIZE = 40;
+const NODE_IMPORTANCE_MULTIPLIER = 10;
+const NODE_TEXT_PADDING = 20; // Padding to account for text margins within node
+
+// Helper function to calculate node size based on importance
+const getNodeSize = (ele: cytoscape.NodeSingular): number => {
+  return NODE_BASE_SIZE + ((ele.data('importance') as number) || 1) * NODE_IMPORTANCE_MULTIPLIER;
+};
+
 interface ServiceDependencyGraphProps {
   data: TopologyGraphType;
 }
@@ -163,12 +174,13 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': (ele: cytoscape.NodeSingular) => `${(40 + ((ele.data('importance') as number) || 1) * 10) - 20}px`,
+            // Text width calculated as node width minus padding for readability
+            'text-max-width': (ele: cytoscape.NodeSingular) => `${getNodeSize(ele) - NODE_TEXT_PADDING}px`,
             color: '#fff',
             'font-size': '9px',
             'font-weight': 500,
-            width: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
-            height: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
+            width: getNodeSize,
+            height: getNodeSize,
             'border-width': 3,
             'border-color': '#1e293b',
             'overlay-opacity': 0,
