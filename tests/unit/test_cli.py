@@ -1,6 +1,5 @@
 """Tests for the TopDeck CLI entry point."""
 
-import os
 import subprocess
 import sys
 from pathlib import Path
