@@ -4,7 +4,7 @@ Enhanced error handling and response utilities.
 Provides consistent error responses with correlation IDs and detailed error information.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -169,7 +169,7 @@ def create_error_response(
     error_response = ErrorResponse(
         error=error_detail,
         request_id=request_id,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         path=str(request.url.path),
     )
 
@@ -236,7 +236,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     error_response = ErrorResponse(
         error=error_detail,
         request_id=request_id,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         path=str(request.url.path),
     )
 

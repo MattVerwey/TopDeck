@@ -6,7 +6,7 @@ error tracking, and correlation with resource topology.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -70,7 +70,7 @@ class AzureLogAnalyticsCollector:
         """Get Azure access token for Log Analytics API."""
         if (
             self._access_token is None
-            or self._access_token.expires_on < datetime.utcnow().timestamp()
+            or self._access_token.expires_on < datetime.now(timezone.utc).timestamp()
         ):
             # Get token synchronously (azure-identity doesn't support async yet)
             self._access_token = self.credential.get_token("https://api.loganalytics.io/.default")

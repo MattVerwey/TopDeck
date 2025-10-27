@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,7 +129,7 @@ async def detailed_health() -> HealthCheckResponse:
     return HealthCheckResponse(
         status=overall_status,
         components=components,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
 

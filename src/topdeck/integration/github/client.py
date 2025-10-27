@@ -8,7 +8,7 @@ Uses GitHub REST API to discover:
 - Deployment history
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 try:
@@ -183,7 +183,7 @@ class GitHubIntegration:
         Returns:
             List of discovered repositories
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         repositories = []
         error_tracker = ErrorTracker()
 
@@ -245,7 +245,7 @@ class GitHubIntegration:
             logger.error(f"Repository discovery failed: {e}")
 
         # Log metrics
-        duration = (datetime.utcnow() - start_time).total_seconds()
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
         summary = error_tracker.get_summary()
 
         log_operation_metrics(
@@ -381,7 +381,7 @@ class GitHubIntegration:
         Returns:
             List of discovered deployments
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         deployments = []
         error_tracker = ErrorTracker()
 
@@ -431,7 +431,7 @@ class GitHubIntegration:
             logger.error(f"Deployment discovery failed: {e}")
 
         # Log metrics
-        duration = (datetime.utcnow() - start_time).total_seconds()
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
         summary = error_tracker.get_summary()
 
         log_operation_metrics(
@@ -475,7 +475,7 @@ class GitHubIntegration:
                 deployed_at=(
                     datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
                     if data.get("created_at")
-                    else datetime.utcnow()
+                    else datetime.now(timezone.utc)
                 ),
                 deployed_by=data.get("creator", {}).get("login", "unknown"),
                 status="success" if data.get("statuses_url") else "pending",
