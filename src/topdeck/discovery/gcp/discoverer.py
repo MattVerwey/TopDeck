@@ -356,6 +356,8 @@ class GCPDiscoverer:
     async def _discover_vpcs(self, region: str) -> list[DiscoveredResource]:
         """Discover VPC networks (global but listed per region)."""
         resources = []
+        seen_resource_ids = set()  # O(1) lookup for deduplication
+        
         try:
             networks_client = compute_v1.NetworksClient(credentials=self.credentials)
 
@@ -365,6 +367,12 @@ class GCPDiscoverer:
             for network in networks:
                 # Build resource name
                 resource_name = f"projects/{self.project_id}/global/networks/{network.name}"
+
+                # Skip if already seen (avoid duplicates across regions)
+                if resource_name in seen_resource_ids:
+                    continue
+                
+                seen_resource_ids.add(resource_name)
 
                 # Map to DiscoveredResource (VPCs are global)
                 resource = self.mapper.map_resource(
@@ -379,9 +387,7 @@ class GCPDiscoverer:
                 resource.properties["auto_create_subnetworks"] = network.auto_create_subnetworks
                 resource.properties["routing_mode"] = network.routing_config.routing_mode
 
-                # Only add once (avoid duplicates across regions)
-                if not any(r.id == resource.id for r in resources):
-                    resources.append(resource)
+                resources.append(resource)
 
         except Exception as e:
             logger.error(f"Error discovering VPC networks: {e}")
