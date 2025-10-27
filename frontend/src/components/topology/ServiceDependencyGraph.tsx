@@ -156,15 +156,16 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         {
           selector: 'node',
           style: {
+            shape: 'rectangle',
             'background-color': (ele: cytoscape.NodeSingular) =>
               getNodeColor(ele.data() as Resource),
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': '80px',
+            'text-max-width': (ele: cytoscape.NodeSingular) => `${(40 + ((ele.data('importance') as number) || 1) * 10) - 20}px`,
             color: '#fff',
-            'font-size': '11px',
+            'font-size': '9px',
             'font-weight': 500,
             width: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
             height: (ele: cytoscape.NodeSingular) => 40 + ((ele.data('importance') as number) || 1) * 10,
