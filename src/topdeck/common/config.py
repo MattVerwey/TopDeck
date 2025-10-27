@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -141,6 +141,18 @@ class Settings(BaseSettings):
         default="/var/log/topdeck/audit.log",
         description="Path to audit log file",
     )
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        """Validate that production environments don't use insecure defaults."""
+        if self.app_env == "production":
+            # Check for default secret key
+            if self.secret_key == "change-this-secret-key-in-production":
+                raise ValueError(
+                    "Production environment detected with default secret_key. "
+                    "Please set a secure SECRET_KEY environment variable."
+                )
+        return self
 
 
 # Global settings instance

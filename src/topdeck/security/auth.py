@@ -3,7 +3,7 @@ Authentication and JWT token handling.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 
 from topdeck.common.config import settings
 
-from .models import TokenData, User, UserInDB
+from .models import Role, TokenData, User, UserInDB
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,9 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -97,9 +97,15 @@ async def get_user_from_db(username: str) -> UserInDB | None:
     """
     # TODO: Implement actual database lookup
     # This is a placeholder implementation
-    from .models import Role
 
-    # Example users (in production, store in Neo4j)
+    # Prevent use of fake users in production
+    if settings.app_env == "production":
+        raise RuntimeError(
+            "fake_users_db should not be used in production. "
+            "Please implement proper user database storage (e.g., Neo4j)."
+        )
+
+    # Example users (for development and testing only)
     fake_users_db = {
         "admin": UserInDB(
             username="admin",
@@ -107,7 +113,7 @@ async def get_user_from_db(username: str) -> UserInDB | None:
             full_name="Admin User",
             disabled=False,
             roles=[Role.ADMIN],
-            hashed_password=get_password_hash("admin123"),  # Change in production
+            hashed_password=get_password_hash("admin123"),  # Only for dev/test
         ),
         "operator": UserInDB(
             username="operator",
@@ -191,7 +197,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         raise credentials_exception
 
     # Update last login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
 
     return User(**user.model_dump())
 

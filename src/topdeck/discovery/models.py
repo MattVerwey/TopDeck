@@ -6,7 +6,7 @@ in a cloud-agnostic format before they are stored in Neo4j.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -779,7 +779,7 @@ class DiscoveryResult:
 
     def complete(self) -> None:
         """Mark discovery as completed"""
-        self.discovery_completed_at = datetime.utcnow()
+        self.discovery_completed_at = datetime.now(timezone.utc)
 
     def summary(self) -> str:
         """Get a summary of discovery results"""

@@ -5,7 +5,7 @@ Extracts features from Prometheus metrics and Neo4j graph for training
 and prediction.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
@@ -93,8 +93,8 @@ class FeatureExtractor:
             return features
 
         # Get time-series data
-        end = datetime.utcnow()
-        end - timedelta(hours=lookback_hours)
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(hours=lookback_hours)
 
         # This is a placeholder - actual implementation would query Prometheus
         # query = f'{metric_name}{{resource_id="{resource_id}"}}'

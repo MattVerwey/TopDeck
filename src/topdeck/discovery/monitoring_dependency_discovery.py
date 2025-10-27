@@ -7,7 +7,7 @@ from Prometheus to identify actual communication patterns.
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from ..monitoring.collectors.loki import LokiCollector
@@ -116,7 +116,7 @@ class MonitoringDependencyDiscovery:
                                         "endpoint": target.get("endpoint"),
                                         "log_timestamp": entry.timestamp.isoformat()
                                     },
-                                    discovered_at=datetime.utcnow()
+                                    discovered_at=datetime.now(timezone.utc)
                                 )
                             )
             except Exception:
@@ -179,7 +179,7 @@ class MonitoringDependencyDiscovery:
                                         "avg_value": value.value,
                                         "timestamp": value.timestamp.isoformat()
                                     },
-                                    discovered_at=datetime.utcnow()
+                                    discovered_at=datetime.now(timezone.utc)
                                 )
                             )
                 
@@ -200,7 +200,7 @@ class MonitoringDependencyDiscovery:
                                         "avg_value": value.value,
                                         "timestamp": value.timestamp.isoformat()
                                     },
-                                    discovered_at=datetime.utcnow()
+                                    discovered_at=datetime.now(timezone.utc)
                                 )
                             )
             except Exception:
@@ -440,7 +440,7 @@ class MonitoringDependencyDiscovery:
                     evidence_type="aggregated",
                     confidence=avg_confidence,
                     details=combined_details,
-                    discovered_at=datetime.utcnow()
+                    discovered_at=datetime.now(timezone.utc)
                 )
             )
         

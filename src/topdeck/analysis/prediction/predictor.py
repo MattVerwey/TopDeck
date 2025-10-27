@@ -4,7 +4,7 @@ Main prediction orchestrator.
 Coordinates feature extraction, model loading, and prediction generation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 
@@ -90,7 +90,7 @@ class Predictor:
             confidence=confidence,
             contributing_factors=contributing_factors,
             recommendations=recommendations,
-            predicted_at=datetime.utcnow(),
+            predicted_at=datetime.now(timezone.utc),
             model_version="1.0.0-rule-based",
             similar_incidents=[],
         )
@@ -135,7 +135,7 @@ class Predictor:
         # Simple linear trend for demonstration
         predictions = []
         for i in range(horizon_hours):
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             predicted = current_value + (i * 5.0)  # Increasing trend
             predictions.append(
                 TimeSeriesPoint(
@@ -161,7 +161,7 @@ class Predictor:
             seasonality_detected=False,
             anomalies_detected=0,
             recommendations=self._generate_performance_recommendations(current_value, baseline),
-            predicted_at=datetime.utcnow(),
+            predicted_at=datetime.now(timezone.utc),
             prediction_horizon_hours=horizon_hours,
             model_version="1.0.0-rule-based",
         )
@@ -202,7 +202,7 @@ class Predictor:
             similar_historical_incidents=[],
             correlated_resources=[],
             recommendations=["Continue monitoring", "No immediate action required"],
-            detected_at=datetime.utcnow(),
+            detected_at=datetime.now(timezone.utc),
             detection_window_hours=window_hours,
             model_version="1.0.0-rule-based",
         )

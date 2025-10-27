@@ -2,9 +2,14 @@
 
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+# Dynamically determine project root
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
+SRC_PATH = PROJECT_ROOT / "src"
 
 
 class TestCLI:
@@ -16,8 +21,8 @@ class TestCLI:
             [sys.executable, "-m", "topdeck", "--help"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/TopDeck/TopDeck",
-            env={"PYTHONPATH": "/home/runner/work/TopDeck/TopDeck/src"},
+            cwd=str(PROJECT_ROOT),
+            env={"PYTHONPATH": str(SRC_PATH)},
         )
         assert result.returncode == 0
         assert "TopDeck - Multi-Cloud Integration & Risk Analysis Platform" in result.stdout
@@ -31,8 +36,8 @@ class TestCLI:
             [sys.executable, "-m", "topdeck", "--version"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/TopDeck/TopDeck",
-            env={"PYTHONPATH": "/home/runner/work/TopDeck/TopDeck/src"},
+            cwd=str(PROJECT_ROOT),
+            env={"PYTHONPATH": str(SRC_PATH)},
         )
         assert result.returncode == 0
         assert "TopDeck v" in result.stdout
@@ -92,8 +97,8 @@ class TestCLI:
             [sys.executable, "-m", "topdeck", "--log-level", "INVALID"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/TopDeck/TopDeck",
-            env={"PYTHONPATH": "/home/runner/work/TopDeck/TopDeck/src"},
+            cwd=str(PROJECT_ROOT),
+            env={"PYTHONPATH": str(SRC_PATH)},
         )
         assert result.returncode != 0
         assert "invalid choice" in result.stderr.lower()
@@ -104,8 +109,8 @@ class TestCLI:
             [sys.executable, "-m", "topdeck", "--port", "not-a-number"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/TopDeck/TopDeck",
-            env={"PYTHONPATH": "/home/runner/work/TopDeck/TopDeck/src"},
+            cwd=str(PROJECT_ROOT),
+            env={"PYTHONPATH": str(SRC_PATH)},
         )
         assert result.returncode != 0
         assert "invalid int value" in result.stderr.lower()
