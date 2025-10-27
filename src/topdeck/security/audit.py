@@ -80,7 +80,7 @@ class AuditEvent(BaseModel):
     event_id: str = Field(default_factory=lambda: f"audit-{datetime.now(timezone.utc).timestamp()}")
     event_type: AuditEventType
     level: AuditLevel = AuditLevel.INFO
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     username: str | None = None
     user_id: str | None = None
     ip_address: str | None = None
