@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 
 from topdeck.common.config import settings
 
-from .models import TokenData, User, UserInDB
+from .models import Role, TokenData, User, UserInDB
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,6 @@ async def get_user_from_db(username: str) -> UserInDB | None:
     """
     # TODO: Implement actual database lookup
     # This is a placeholder implementation
-    from .models import Role
 
     # Prevent use of fake users in production
     if settings.app_env == "production":
