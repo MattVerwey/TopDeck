@@ -673,10 +673,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔒 Security
 
-- All cloud credentials are stored securely using industry-standard encryption
-- Read-only access is enforced for cloud resource scanning
-- Sensitive data is masked in logs and UI
-- Role-based access control (RBAC) for platform users
+TopDeck provides comprehensive security features:
+
+- **Encryption in Transit**: TLS/SSL support for API server, Neo4j, Redis, and RabbitMQ
+- **Encryption at Rest**: Database encryption support with Neo4j Enterprise and filesystem encryption
+- **Credential Protection**: Secure handling of cloud credentials and API keys via environment variables
+- **Read-Only Access**: Cloud resource scanning uses read-only permissions
+- **Data Masking**: Sensitive data is masked in logs and UI
+- **RBAC**: Role-based access control for platform users
+- **Audit Logging**: Security event tracking and audit trails
+
+For detailed encryption configuration, see **[Security & Encryption Guide](docs/SECURITY_ENCRYPTION.md)**.
 
 ## 📞 Support
 
