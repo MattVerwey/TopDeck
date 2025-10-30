@@ -4,7 +4,7 @@ Tests for encryption configuration and security settings.
 
 import os
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from topdeck.common.config import Settings
 from topdeck.storage.neo4j_client import Neo4jClient
