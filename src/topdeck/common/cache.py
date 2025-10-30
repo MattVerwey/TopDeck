@@ -33,6 +33,8 @@ class CacheConfig:
         password: str | None = None,
         default_ttl: int = 3600,  # 1 hour
         key_prefix: str = "topdeck:",
+        ssl: bool = False,
+        ssl_cert_reqs: str = "required",
     ):
         """
         Initialize cache configuration.
@@ -44,6 +46,8 @@ class CacheConfig:
             password: Optional Redis password
             default_ttl: Default TTL in seconds
             key_prefix: Prefix for all cache keys
+            ssl: Enable SSL/TLS encryption for Redis connection
+            ssl_cert_reqs: SSL certificate requirements ('none', 'optional', 'required')
         """
         self.host = host
         self.port = port
@@ -51,6 +55,8 @@ class CacheConfig:
         self.password = password
         self.default_ttl = default_ttl
         self.key_prefix = key_prefix
+        self.ssl = ssl
+        self.ssl_cert_reqs = ssl_cert_reqs
 
 
 class Cache:
@@ -78,18 +84,34 @@ class Cache:
             )
 
     async def connect(self) -> None:
-        """Connect to Redis server."""
+        """Connect to Redis server with optional SSL/TLS encryption."""
         if not self._enabled:
             return
 
         try:
-            self._client = aioredis.Redis(
-                host=self.config.host,
-                port=self.config.port,
-                db=self.config.db,
-                password=self.config.password,
-                decode_responses=True,
-            )
+            connection_params = {
+                "host": self.config.host,
+                "port": self.config.port,
+                "db": self.config.db,
+                "password": self.config.password,
+                "decode_responses": True,
+            }
+            
+            # Add SSL parameters if encryption is enabled
+            if self.config.ssl:
+                connection_params["ssl"] = True
+                # Map our ssl_cert_reqs string to ssl module constant
+                if self.config.ssl_cert_reqs == "none":
+                    import ssl
+                    connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+                elif self.config.ssl_cert_reqs == "optional":
+                    import ssl
+                    connection_params["ssl_cert_reqs"] = ssl.CERT_OPTIONAL
+                # 'required' is the default, no need to set explicitly
+                
+                logger.info(f"Connecting to Redis with SSL/TLS encryption at {self.config.host}:{self.config.port}")
+            
+            self._client = aioredis.Redis(**connection_params)
             # Test connection
             await self._client.ping()
             logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")

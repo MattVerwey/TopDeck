@@ -49,21 +49,40 @@ class Settings(BaseSettings):
     github_organization: str = Field(default="", description="GitHub organization")
 
     # Neo4j Configuration
-    neo4j_uri: str = Field(default="bolt://localhost:7687", description="Neo4j URI")
+    neo4j_uri: str = Field(
+        default="bolt://localhost:7687",
+        description="Neo4j URI (use bolt+s:// for encrypted connections)",
+    )
     neo4j_username: str = Field(default="neo4j", description="Neo4j username")
     neo4j_password: str = Field(default="", description="Neo4j password")
+    neo4j_encrypted: bool = Field(
+        default=False,
+        description="Enable TLS encryption for Neo4j (auto-upgrades bolt:// to bolt+s://)",
+    )
 
     # Redis Configuration
     redis_host: str = Field(default="localhost", description="Redis host")
     redis_port: int = Field(default=6379, description="Redis port")
     redis_password: str = Field(default="", description="Redis password")
     redis_db: int = Field(default=0, description="Redis database number")
+    redis_ssl: bool = Field(
+        default=False,
+        description="Enable SSL/TLS encryption for Redis connections",
+    )
+    redis_ssl_cert_reqs: Literal["none", "optional", "required"] = Field(
+        default="required",
+        description="SSL certificate verification requirement for Redis",
+    )
 
     # RabbitMQ Configuration
     rabbitmq_host: str = Field(default="localhost", description="RabbitMQ host")
     rabbitmq_port: int = Field(default=5672, description="RabbitMQ port")
     rabbitmq_username: str = Field(default="guest", description="RabbitMQ username")
     rabbitmq_password: str = Field(default="guest", description="RabbitMQ password")
+    rabbitmq_ssl: bool = Field(
+        default=False,
+        description="Enable SSL/TLS encryption for RabbitMQ connections (use port 5671)",
+    )
 
     # Monitoring & Observability Configuration
     prometheus_url: str = Field(
@@ -141,6 +160,20 @@ class Settings(BaseSettings):
         default="/var/log/topdeck/audit.log",
         description="Path to audit log file",
     )
+    
+    # TLS/SSL Configuration for API Server
+    ssl_enabled: bool = Field(
+        default=False,
+        description="Enable HTTPS/TLS for API server (requires ssl_keyfile and ssl_certfile)",
+    )
+    ssl_keyfile: str = Field(
+        default="",
+        description="Path to SSL private key file for HTTPS",
+    )
+    ssl_certfile: str = Field(
+        default="",
+        description="Path to SSL certificate file for HTTPS",
+    )
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
@@ -152,6 +185,43 @@ class Settings(BaseSettings):
                     "Production environment detected with default secret_key. "
                     "Please set a secure SECRET_KEY environment variable."
                 )
+            
+            # Warn about unencrypted connections in production
+            if not self.neo4j_encrypted and "bolt://" in self.neo4j_uri and "+s://" not in self.neo4j_uri:
+                import warnings
+                warnings.warn(
+                    "Production environment using unencrypted Neo4j connection. "
+                    "Consider setting NEO4J_ENCRYPTED=true or using bolt+s:// URI for security.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            
+            if not self.redis_ssl:
+                import warnings
+                warnings.warn(
+                    "Production environment using unencrypted Redis connection. "
+                    "Consider setting REDIS_SSL=true for security.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            
+            if not self.ssl_enabled:
+                import warnings
+                warnings.warn(
+                    "Production environment with SSL disabled for API server. "
+                    "Consider enabling SSL_ENABLED=true with valid certificates.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        
+        # Validate SSL configuration if enabled
+        if self.ssl_enabled:
+            if not self.ssl_keyfile or not self.ssl_certfile:
+                raise ValueError(
+                    "SSL is enabled but ssl_keyfile and/or ssl_certfile are not configured. "
+                    "Please provide valid SSL certificate paths."
+                )
+        
         return self
 
 

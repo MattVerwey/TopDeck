@@ -2,6 +2,7 @@
 Neo4j Client for TopDeck.
 
 Handles connection and operations with Neo4j graph database.
+Supports encrypted connections using bolt+s:// or neo4j+s:// schemes.
 """
 
 from contextlib import contextmanager
@@ -13,25 +14,41 @@ from neo4j import Driver, GraphDatabase, Session
 class Neo4jClient:
     """
     Client for interacting with Neo4j database.
+    
+    Supports both encrypted and unencrypted connections:
+    - bolt://     - Unencrypted (development only)
+    - bolt+s://   - Encrypted with TLS
+    - neo4j://    - Unencrypted routing
+    - neo4j+s://  - Encrypted routing with TLS
     """
 
-    def __init__(self, uri: str, username: str, password: str):
+    def __init__(self, uri: str, username: str, password: str, encrypted: bool = False):
         """
         Initialize Neo4j client.
 
         Args:
-            uri: Neo4j connection URI (e.g., "bolt://localhost:7687")
+            uri: Neo4j connection URI (e.g., "bolt://localhost:7687" or "bolt+s://localhost:7687")
             username: Neo4j username
             password: Neo4j password
+            encrypted: If True and URI doesn't specify encryption, upgrades to encrypted connection
         """
         self.uri = uri
         self.username = username
         self.password = password
+        self.encrypted = encrypted
         self.driver: Driver | None = None
+        
+        # Auto-upgrade to encrypted connection if requested and not already encrypted
+        if encrypted and not ("+s://" in uri or "+ssc://" in uri):
+            self.uri = uri.replace("bolt://", "bolt+s://").replace("neo4j://", "neo4j+s://")
 
     def connect(self) -> None:
-        """Establish connection to Neo4j"""
-        self.driver = GraphDatabase.driver(self.uri, auth=(self.username, self.password))
+        """Establish connection to Neo4j with optional TLS encryption."""
+        self.driver = GraphDatabase.driver(
+            self.uri,
+            auth=(self.username, self.password),
+            encrypted=self.encrypted or "+s://" in self.uri or "+ssc://" in self.uri,
+        )
 
     def close(self) -> None:
         """Close connection to Neo4j"""

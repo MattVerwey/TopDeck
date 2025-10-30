@@ -89,13 +89,23 @@ def main() -> None:
     else:
         reload = settings.app_env == "development"
 
+    # Determine SSL/TLS configuration
+    ssl_keyfile = settings.ssl_keyfile if settings.ssl_enabled else None
+    ssl_certfile = settings.ssl_certfile if settings.ssl_enabled else None
+    protocol = "https" if settings.ssl_enabled else "http"
+
     print(f"🚀 Starting TopDeck API v{__version__}")
     print(f"   Environment: {settings.app_env}")
-    print(f"   Host: {args.host}")
-    print(f"   Port: {args.port}")
+    print(f"   URL: {protocol}://{args.host}:{args.port}")
+    print(f"   SSL/TLS: {'✅ Enabled' if settings.ssl_enabled else '❌ Disabled'}")
     print(f"   Log Level: {args.log_level}")
     print(f"   Auto-reload: {reload}")
     print(f"   Workers: {args.workers}")
+    
+    # Security warnings
+    if settings.app_env == "production" and not settings.ssl_enabled:
+        print(f"   ⚠️  WARNING: Running in production without SSL/TLS encryption!")
+    
     print()
 
     try:
@@ -106,6 +116,8 @@ def main() -> None:
             reload=reload,
             log_level=args.log_level.lower(),
             workers=args.workers if not reload else 1,  # Workers incompatible with reload
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
         )
     except KeyboardInterrupt:
         print("\n👋 Shutting down TopDeck API")
