@@ -100,13 +100,13 @@ class Cache:
             # Add SSL parameters if encryption is enabled
             if self.config.ssl:
                 import ssl
-                connection_params["ssl"] = True
-                # Map our ssl_cert_reqs string to ssl module constant
+                import ssl
                 if self.config.ssl_cert_reqs == "none":
                     connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
                 elif self.config.ssl_cert_reqs == "optional":
                     connection_params["ssl_cert_reqs"] = ssl.CERT_OPTIONAL
-                # 'required' is the default, no need to set explicitly
+                elif self.config.ssl_cert_reqs == "required":
+                    connection_params["ssl_cert_reqs"] = ssl.CERT_REQUIRED
                 
                 logger.info(f"Connecting to Redis with SSL/TLS encryption at {self.config.host}:{self.config.port}")
             
