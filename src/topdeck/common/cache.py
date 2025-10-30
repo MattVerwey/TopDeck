@@ -99,13 +99,12 @@ class Cache:
             
             # Add SSL parameters if encryption is enabled
             if self.config.ssl:
+                import ssl
                 connection_params["ssl"] = True
                 # Map our ssl_cert_reqs string to ssl module constant
                 if self.config.ssl_cert_reqs == "none":
-                    import ssl
                     connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
                 elif self.config.ssl_cert_reqs == "optional":
-                    import ssl
                     connection_params["ssl_cert_reqs"] = ssl.CERT_OPTIONAL
                 # 'required' is the default, no need to set explicitly
                 
