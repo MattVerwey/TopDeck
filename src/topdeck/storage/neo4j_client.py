@@ -47,12 +47,16 @@ class Neo4jClient:
             else:
                 self.uri = uri
 
+    def _is_encrypted_uri(self, uri: str) -> bool:
+        """Check if a URI uses an encrypted protocol."""
+        return "+s://" in uri or "+ssc://" in uri
+
     def connect(self) -> None:
         """Establish connection to Neo4j with optional TLS encryption."""
         self.driver = GraphDatabase.driver(
             self.uri,
             auth=(self.username, self.password),
-            encrypted=self.encrypted or "+s://" in self.uri or "+ssc://" in self.uri,
+            encrypted=self.encrypted or self._is_encrypted_uri(self.uri),
         )
 
     def close(self) -> None:

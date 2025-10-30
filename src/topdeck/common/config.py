@@ -1,5 +1,6 @@
 """Application configuration using Pydantic Settings."""
 
+import warnings
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -188,7 +189,6 @@ class Settings(BaseSettings):
             
             # Warn about unencrypted connections in production
             if not self.neo4j_encrypted and "bolt://" in self.neo4j_uri and "+s://" not in self.neo4j_uri:
-                import warnings
                 warnings.warn(
                     "Production environment using unencrypted Neo4j connection. "
                     "Consider setting NEO4J_ENCRYPTED=true or using bolt+s:// URI for security.",
@@ -197,7 +197,6 @@ class Settings(BaseSettings):
                 )
             
             if not self.redis_ssl:
-                import warnings
                 warnings.warn(
                     "Production environment using unencrypted Redis connection. "
                     "Consider setting REDIS_SSL=true for security.",
@@ -206,7 +205,6 @@ class Settings(BaseSettings):
                 )
             
             if not self.ssl_enabled:
-                import warnings
                 warnings.warn(
                     "Production environment with SSL disabled for API server. "
                     "Consider enabling SSL_ENABLED=true with valid certificates.",
