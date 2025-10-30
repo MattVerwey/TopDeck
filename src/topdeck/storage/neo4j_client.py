@@ -40,7 +40,12 @@ class Neo4jClient:
         
         # Auto-upgrade to encrypted connection if requested and not already encrypted
         if encrypted and not ("+s://" in uri or "+ssc://" in uri):
-            self.uri = uri.replace("bolt://", "bolt+s://").replace("neo4j://", "neo4j+s://")
+            if uri.startswith("bolt://"):
+                self.uri = "bolt+s://" + uri[len("bolt://") :]
+            elif uri.startswith("neo4j://"):
+                self.uri = "neo4j+s://" + uri[len("neo4j://") :]
+            else:
+                self.uri = uri
 
     def connect(self) -> None:
         """Establish connection to Neo4j with optional TLS encryption."""
