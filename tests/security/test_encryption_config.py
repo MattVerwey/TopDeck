@@ -69,7 +69,7 @@ class TestNeo4jEncryption:
         )
         
         # Should keep the URI as-is since it's already encrypted
-        assert "bolt+s://" in client.uri or client.encrypted
+        assert client.uri == "bolt+s://remote-host:7687"
 
 
 class TestRedisEncryption:
