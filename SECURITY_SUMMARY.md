@@ -163,6 +163,58 @@ The enhanced dependency mapping implementation is **secure** for production use:
 
 The two CodeQL alerts are **false positives** and do not represent security risks. They flag URL substring checks that are intentionally used for service endpoint identification, not for security validation.
 
+## Encryption and Security Configuration
+
+### Data Encryption Support
+
+TopDeck now includes comprehensive encryption support for data at rest and in transit:
+
+#### Data in Transit (TLS/SSL)
+- ✅ **API Server**: HTTPS support with SSL certificates
+- ✅ **Neo4j**: Encrypted connections using `bolt+s://` protocol
+- ✅ **Redis**: SSL/TLS encryption for cache connections
+- ✅ **RabbitMQ**: SSL/TLS encryption for message queue
+
+#### Data at Rest
+- ✅ **Neo4j**: Enterprise Edition encryption at rest support
+- ✅ **Volume Encryption**: Filesystem and cloud volume encryption
+- ✅ **Credential Protection**: Secure environment variable handling
+
+### Configuration Options
+
+All encryption features are **opt-in** and controlled via environment variables:
+
+```bash
+# Enable HTTPS for API
+SSL_ENABLED=true
+SSL_KEYFILE=/path/to/server.key
+SSL_CERTFILE=/path/to/server.crt
+
+# Enable Neo4j encryption
+NEO4J_ENCRYPTED=true
+NEO4J_URI=bolt+s://your-host:7687
+
+# Enable Redis encryption
+REDIS_SSL=true
+
+# Enable RabbitMQ encryption
+RABBITMQ_SSL=true
+```
+
+### Production Security Validation
+
+TopDeck validates security configuration on startup:
+- ❌ **Fails** if default secret key is used in production
+- ⚠️  **Warns** if encryption is disabled for databases
+- ⚠️  **Warns** if API SSL is disabled
+
+### Documentation
+
+For detailed configuration and deployment guides, see:
+- **[Security & Encryption Guide](docs/SECURITY_ENCRYPTION.md)** - Complete encryption documentation
+- **[Production Security Checklist](docs/PRODUCTION_SECURITY_CHECKLIST.md)** - Deployment checklist
+- **[.env.example](.env.example)** - Configuration template with encryption options
+
 ## Contact
 
 For security concerns or questions, please contact the security team or create an issue in the repository.
