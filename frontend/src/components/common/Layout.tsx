@@ -121,6 +121,7 @@ export default function Layout({ children }: LayoutProps) {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
             mt: '64px',
+            height: 'calc(100vh - 64px)',
             background: '#132f4c',
           },
         }}
