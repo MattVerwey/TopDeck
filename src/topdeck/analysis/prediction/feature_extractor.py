@@ -274,3 +274,194 @@ class FeatureExtractor:
             "deployment_frequency",
             "config_change_frequency",
         ]
+
+    def get_feature_metadata(self) -> dict[str, dict]:
+        """
+        Get metadata about each feature including expected ranges and importance.
+
+        Returns:
+            Dictionary mapping feature names to metadata
+        """
+        return {
+            # CPU features
+            "cpu_mean": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "high",
+                "description": "Average CPU utilization",
+            },
+            "cpu_max": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "high",
+                "description": "Maximum CPU utilization",
+            },
+            "cpu_std": {
+                "type": "float",
+                "range": (0.0, 0.5),
+                "importance": "medium",
+                "description": "CPU utilization standard deviation",
+            },
+            "cpu_trend": {
+                "type": "float",
+                "range": (-1.0, 1.0),
+                "importance": "high",
+                "description": "CPU utilization trend (positive = increasing)",
+            },
+            # Memory features
+            "memory_mean": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "high",
+                "description": "Average memory utilization",
+            },
+            "memory_max": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "high",
+                "description": "Maximum memory utilization",
+            },
+            "memory_std": {
+                "type": "float",
+                "range": (0.0, 0.5),
+                "importance": "medium",
+                "description": "Memory utilization standard deviation",
+            },
+            "memory_trend": {
+                "type": "float",
+                "range": (-1.0, 1.0),
+                "importance": "high",
+                "description": "Memory utilization trend (positive = increasing)",
+            },
+            # Error features
+            "error_rate_mean": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "critical",
+                "description": "Average error rate",
+            },
+            "error_rate_max": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "critical",
+                "description": "Maximum error rate",
+            },
+            "error_spike_count": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "high",
+                "description": "Number of error spikes",
+            },
+            # Latency features
+            "latency_p95_mean": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "high",
+                "description": "Average 95th percentile latency",
+            },
+            "latency_p95_max": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "high",
+                "description": "Maximum 95th percentile latency",
+            },
+            "latency_increasing": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "medium",
+                "description": "Whether latency is increasing",
+            },
+            # History features
+            "restart_count": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "high",
+                "description": "Number of restarts",
+            },
+            "days_since_last_failure": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "high",
+                "description": "Days since last failure",
+            },
+            # Graph features
+            "dependency_count": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "medium",
+                "description": "Number of dependencies",
+            },
+            "dependent_count": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "medium",
+                "description": "Number of dependents",
+            },
+            "dependency_depth": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "medium",
+                "description": "Depth in dependency chain",
+            },
+            "is_central_node": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "high",
+                "description": "Whether node is central in topology",
+            },
+            "betweenness_centrality": {
+                "type": "float",
+                "range": (0.0, 1.0),
+                "importance": "medium",
+                "description": "Betweenness centrality metric",
+            },
+            "blast_radius": {
+                "type": "int",
+                "range": (0, None),
+                "importance": "critical",
+                "description": "Number of resources affected by failure",
+            },
+            "is_spof": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "critical",
+                "description": "Whether resource is a single point of failure",
+            },
+            # Metadata features
+            "is_database": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "low",
+                "description": "Whether resource is a database",
+            },
+            "is_web_app": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "low",
+                "description": "Whether resource is a web app",
+            },
+            "is_load_balancer": {
+                "type": "bool",
+                "range": (0.0, 1.0),
+                "importance": "low",
+                "description": "Whether resource is a load balancer",
+            },
+            "resource_age_days": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "low",
+                "description": "Age of resource in days",
+            },
+            "deployment_frequency": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "medium",
+                "description": "Deployments per week",
+            },
+            "config_change_frequency": {
+                "type": "float",
+                "range": (0, None),
+                "importance": "medium",
+                "description": "Configuration changes per week",
+            },
+        }

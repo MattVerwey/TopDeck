@@ -59,7 +59,7 @@ async def predict_failure_risk(
         )
 
         # Convert to dict for JSON response
-        return {
+        response = {
             "resource_id": prediction.resource_id,
             "resource_name": prediction.resource_name,
             "resource_type": prediction.resource_type,
@@ -81,6 +81,22 @@ async def predict_failure_risk(
             "predicted_at": prediction.predicted_at.isoformat(),
             "model_version": prediction.model_version,
         }
+
+        # Include detailed confidence metrics if available
+        if prediction.confidence_metrics:
+            response["confidence_metrics"] = {
+                "overall_score": prediction.confidence_metrics.overall_score,
+                "confidence_level": prediction.confidence_metrics.confidence_level.value,
+                "feature_completeness": prediction.confidence_metrics.feature_completeness,
+                "feature_quality": prediction.confidence_metrics.feature_quality,
+                "data_recency": prediction.confidence_metrics.data_recency,
+                "prediction_consistency": prediction.confidence_metrics.prediction_consistency,
+                "total_features": prediction.confidence_metrics.total_features,
+                "valid_features": prediction.confidence_metrics.valid_features,
+                "missing_features": prediction.confidence_metrics.missing_features,
+            }
+
+        return response
 
     except Exception as e:
         logger.error("predict_failure_risk_error", error=str(e), resource_id=resource_id)
