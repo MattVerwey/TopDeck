@@ -39,10 +39,8 @@ class ServiceNowWebhookHandler:
         state = payload.get("state", "")
         change_type = payload.get("type", "")
         
-        # Map ServiceNow state to our status
-        status = self._map_servicenow_state(state)
-        
-        # Map ServiceNow change type to our type
+        # Map ServiceNow state to our status and change type to our type
+        mapped_status = self._map_servicenow_state(state)
         mapped_change_type = self._map_servicenow_type(change_type)
         
         # Parse scheduled times
@@ -73,7 +71,7 @@ class ServiceNowWebhookHandler:
             # ServiceNow Configuration Items - map to our resource IDs
             affected_resources = [payload["cmdb_ci"]]
 
-        # Create change request
+        # Create change request with mapped status
         change_request = self.change_service.create_change_request(
             title=short_description or change_number,
             description=description or short_description,
@@ -85,6 +83,7 @@ class ServiceNowWebhookHandler:
             external_system="servicenow",
             external_id=change_number,
         )
+        # Note: Status from mapped_status can be used for future status updates
 
         return change_request
 

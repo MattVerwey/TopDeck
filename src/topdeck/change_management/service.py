@@ -188,7 +188,7 @@ class ChangeManagementService:
             List of scheduled changes
         """
         if start_date is None:
-            start_date = datetime.utcnow()
+            start_date = datetime.now(timezone.utc)
         if end_date is None:
             end_date = start_date + timedelta(days=30)
 

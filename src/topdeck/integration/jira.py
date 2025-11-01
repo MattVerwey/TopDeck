@@ -36,9 +36,8 @@ class JiraWebhookHandler:
         fields = issue.get("fields", {})
         
         issue_key = issue.get("key", "")
-        # priority = fields.get("priority", {}).get("name", "")
+        summary = fields.get("summary", "")
         description = fields.get("description", "")
-        status = fields.get("status", {}).get("name", "")
         issue_type = fields.get("issuetype", {}).get("name", "")
         
         # Map Jira issue type to our change type
