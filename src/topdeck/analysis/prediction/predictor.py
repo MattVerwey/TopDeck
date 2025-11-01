@@ -279,7 +279,7 @@ class Predictor:
 
         # Factor 1: Feature completeness (0-1 scale)
         feature_count = sum(1 for v in features.values() if v is not None)
-        total_possible_features = 30  # Expected number of features
+        total_possible_features = len(self.feature_extractor.get_feature_names())
         completeness_score = min(feature_count / total_possible_features, 1.0)
 
         # Factor 2: Feature quality (0-1 scale)
@@ -386,31 +386,9 @@ class Predictor:
 
             total_features += 1
 
-            # Check if feature values are in expected ranges
-            if key in ("cpu_mean", "cpu_max", "memory_mean", "memory_max"):
-                # CPU and memory should be 0-1
-                if 0.0 <= value <= 1.0:
-                    valid_features += 1
-            elif key in ("cpu_std", "memory_std"):
-                # Standard deviation should be reasonable (0-0.5)
-                if 0.0 <= value <= 0.5:
-                    valid_features += 1
-            elif key in ("error_rate_mean", "error_rate_max"):
-                # Error rates should be 0-1 (0-100%)
-                if 0.0 <= value <= 1.0:
-                    valid_features += 1
-            elif key in ("latency_p95_mean", "latency_p95_max"):
-                # Latency should be positive
-                if value >= 0:
-                    valid_features += 1
-            elif key.startswith("is_"):
-                # Boolean features should be 0 or 1
-                if value in (0.0, 1.0):
-                    valid_features += 1
-            else:
-                # Other features should be non-negative
-                if value >= 0:
-                    valid_features += 1
+            # Use shared validation logic
+            if self._is_feature_valid(key, value):
+                valid_features += 1
 
         return valid_features / total_features if total_features > 0 else 0.0
 
