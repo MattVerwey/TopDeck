@@ -17,6 +17,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -80,20 +81,24 @@ export default function Layout({ children }: LayoutProps) {
           <Typography variant="body2" sx={{ opacity: 0.7, mr: 2 }}>
             Multi-Cloud Platform
           </Typography>
-          <IconButton
-            color="inherit"
-            sx={{ mr: 1 }}
-            aria-label="settings"
-          >
-            <SettingsIcon />
-          </IconButton>
-          <IconButton
-            color="inherit"
-            edge="end"
-            aria-label="user profile"
-          >
-            <AccountCircleIcon />
-          </IconButton>
+          <Tooltip title="Settings">
+            <IconButton
+              color="inherit"
+              sx={{ mr: 1 }}
+              aria-label="settings"
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="User Profile">
+            <IconButton
+              color="inherit"
+              edge="end"
+              aria-label="user profile"
+            >
+              <AccountCircleIcon />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
