@@ -458,9 +458,6 @@ class Predictor:
 
         # Calculate average standard deviation from available data
         valid_stds = [s for s in [cpu_std, memory_std] if s is not None]
-        if not valid_stds:
-            return 0.7  # Moderate confidence
-
         avg_std = sum(valid_stds) / len(valid_stds)
 
         # Lower standard deviation = more consistent = higher confidence
