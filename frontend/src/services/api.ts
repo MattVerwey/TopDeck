@@ -12,6 +12,9 @@ import type {
   ChangeImpact,
   Integration,
   TransactionFlow,
+  FailurePrediction,
+  PerformancePrediction,
+  AnomalyDetection,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -424,6 +427,73 @@ class ApiClient {
   async getChangeTypes(): Promise<string[]> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get('/api/v1/changes/types');
+      return data;
+    });
+  }
+
+  // Prediction API
+  async getFailurePrediction(
+    resourceId: string,
+    resourceName?: string,
+    resourceType?: string
+  ): Promise<FailurePrediction> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, string> = {};
+      if (resourceName) params.resource_name = resourceName;
+      if (resourceType) params.resource_type = resourceType;
+      const { data } = await this.client.get(
+        `/api/v1/prediction/resources/${resourceId}/failure-risk`,
+        { params }
+      );
+      return data;
+    });
+  }
+
+  async getPerformancePrediction(
+    resourceId: string,
+    resourceName?: string,
+    metricName: string = 'latency_p95',
+    horizonHours: number = 24
+  ): Promise<PerformancePrediction> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, string | number> = {
+        metric_name: metricName,
+        horizon_hours: horizonHours,
+      };
+      if (resourceName) params.resource_name = resourceName;
+      const { data } = await this.client.get(
+        `/api/v1/prediction/resources/${resourceId}/performance`,
+        { params }
+      );
+      return data;
+    });
+  }
+
+  async getAnomalyDetection(
+    resourceId: string,
+    resourceName?: string,
+    windowHours: number = 24
+  ): Promise<AnomalyDetection> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, string | number> = {
+        window_hours: windowHours,
+      };
+      if (resourceName) params.resource_name = resourceName;
+      const { data } = await this.client.get(
+        `/api/v1/prediction/resources/${resourceId}/anomalies`,
+        { params }
+      );
+      return data;
+    });
+  }
+
+  async getPredictionHealth(): Promise<{
+    status: string;
+    models: Record<string, unknown>;
+    features: Record<string, boolean>;
+  }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/prediction/health');
       return data;
     });
   }
