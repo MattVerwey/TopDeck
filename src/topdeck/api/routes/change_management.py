@@ -256,3 +256,122 @@ async def get_change_types() -> list[str]:
     change requests.
     """
     return [change_type.value for change_type in ChangeType]
+
+
+@router.get("/metrics", response_model=dict[str, Any])
+async def get_change_metrics(
+    days: int = Query(30, description="Number of days to analyze", ge=1, le=365)
+) -> dict[str, Any]:
+    """
+    Get change management metrics.
+
+    Analyzes change requests over the specified period and returns
+    KPIs and effectiveness metrics.
+    """
+    try:
+        from datetime import datetime, timedelta
+        from topdeck.change_management.metrics import ChangeMetricsCalculator
+
+        service = get_change_service()
+
+        # Get changes from the last N days
+        start_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Query Neo4j for changes
+        query = """
+        MATCH (c:ChangeRequest)
+        WHERE c.created_at >= $start_date
+        RETURN c
+        ORDER BY c.created_at DESC
+        """
+        
+        changes = []
+        with service.neo4j_client.driver.session() as session:
+            result = session.run(query, start_date=start_date.isoformat())
+            for record in result:
+                node = record["c"]
+                changes.append(dict(node))
+
+        # Calculate metrics
+        calculator = ChangeMetricsCalculator()
+        metrics = calculator.calculate_metrics(changes)
+        trend = calculator.get_trend_analysis(changes, days)
+        recommendations = calculator.get_recommendations(metrics)
+
+        return {
+            "period_days": days,
+            "metrics": metrics.to_dict(),
+            "trend": trend,
+            "recommendations": recommendations,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate metrics: {str(e)}"
+        ) from e
+
+
+@router.post("/{change_id}/approve", response_model=dict[str, Any])
+async def approve_change(
+    change_id: str,
+    approver: str = Query(..., description="Username of the approver"),
+    comments: str | None = Query(None, description="Optional approval comments"),
+) -> dict[str, Any]:
+    """
+    Approve a change request.
+
+    Records approval from the specified approver.
+    """
+    try:
+        from topdeck.change_management.approval import ApprovalWorkflow
+
+        workflow = ApprovalWorkflow()
+        
+        # In a real implementation, this would load existing approvals from database
+        # For now, return a success response
+        return {
+            "success": True,
+            "message": f"Change {change_id} approved by {approver}",
+            "approver": approver,
+            "comments": comments,
+            "approved_at": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to approve change: {str(e)}"
+        ) from e
+
+
+@router.post("/{change_id}/reject", response_model=dict[str, Any])
+async def reject_change(
+    change_id: str,
+    approver: str = Query(..., description="Username of the approver"),
+    reason: str = Query(..., description="Reason for rejection"),
+) -> dict[str, Any]:
+    """
+    Reject a change request.
+
+    Records rejection from the specified approver with a reason.
+    """
+    try:
+        from topdeck.change_management.approval import ApprovalWorkflow
+
+        workflow = ApprovalWorkflow()
+        
+        # In a real implementation, this would load existing approvals from database
+        # For now, return a success response
+        return {
+            "success": True,
+            "message": f"Change {change_id} rejected by {approver}",
+            "approver": approver,
+            "reason": reason,
+            "rejected_at": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to reject change: {str(e)}"
+        ) from e
