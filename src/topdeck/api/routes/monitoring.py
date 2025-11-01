@@ -703,12 +703,11 @@ async def get_monitoring_health() -> dict[str, Any]:
             try:
                 # Try multiple health check endpoints for compatibility
                 # Different Tempo versions expose different endpoints
-                import httpx as health_httpx
                 
                 try:
                     # Try /ready endpoint (newer versions)
                     await collector.client.get(f"{settings.tempo_url}/ready")
-                except health_httpx.HTTPError:
+                except httpx.HTTPError:
                     # Try /api/echo as fallback
                     await collector.client.get(f"{settings.tempo_url}/api/echo")
                 health["tempo"] = {"status": "healthy", "url": settings.tempo_url}
