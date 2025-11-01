@@ -309,6 +309,6 @@ class TestServiceBusConnectionParsing:
     def test_parse_malformed_connection_string(self):
         """Test parsing malformed connection string"""
         conn_str = "Endpoint=sb://;something=wrong"
-        result = parse_servicebus_connection_string(conn_str)  # noqa: F841 - testing no exception
         # Should handle gracefully - implementation may return None or partial result
         # The test passes if no exception is raised
+        parse_servicebus_connection_string(conn_str)

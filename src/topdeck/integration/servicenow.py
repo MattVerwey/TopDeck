@@ -36,11 +36,10 @@ class ServiceNowWebhookHandler:
         change_number = payload.get("number", "")
         short_description = payload.get("short_description", "")
         description = payload.get("description", "")
-        state = payload.get("state", "")
         change_type = payload.get("type", "")
 
-        # Map ServiceNow state to our status and change type to our type
-        mapped_status = self._map_servicenow_state(state)  # noqa: F841 - for future status updates
+        # Map ServiceNow change type to our type
+        # Note: state mapping can be added in the future for status updates
         mapped_change_type = self._map_servicenow_type(change_type)
 
         # Parse scheduled times

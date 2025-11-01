@@ -413,9 +413,6 @@ class GCPDiscoverer:
         """
         dependencies = []
 
-        # Create lookup maps for future optimization
-        resource_by_id = {r.id: r for r in resources}  # noqa: F841 - prepared for optimization
-
         # Analyze Compute -> VPC dependencies
         for resource in resources:
             if resource.resource_type == "compute_engine":
