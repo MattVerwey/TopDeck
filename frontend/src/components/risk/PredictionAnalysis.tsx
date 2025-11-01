@@ -197,7 +197,19 @@ export default function PredictionAnalysis() {
       {/* Summary Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card sx={{ background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)' }}>
+          <Card
+            sx={{
+              background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              border: selectedRiskLevel === 'all' ? '2px solid #2196f3' : '2px solid transparent',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 16px rgba(33, 150, 243, 0.3)',
+              },
+            }}
+            onClick={() => setSelectedRiskLevel('all')}
+          >
             <CardContent>
               <Typography variant="h4" fontWeight={700}>
                 {summaryStats.total}
@@ -213,7 +225,15 @@ export default function PredictionAnalysis() {
             sx={{
               background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
               borderLeft: '4px solid #f44336',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              border: selectedRiskLevel === 'critical' ? '2px solid #f44336' : '2px solid transparent',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 16px rgba(244, 67, 54, 0.3)',
+              },
             }}
+            onClick={() => setSelectedRiskLevel('critical')}
           >
             <CardContent>
               <Typography variant="h4" fontWeight={700} color="error">
@@ -230,7 +250,15 @@ export default function PredictionAnalysis() {
             sx={{
               background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
               borderLeft: '4px solid #ff9800',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              border: selectedRiskLevel === 'high' ? '2px solid #ff9800' : '2px solid transparent',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 16px rgba(255, 152, 0, 0.3)',
+              },
             }}
+            onClick={() => setSelectedRiskLevel('high')}
           >
             <CardContent>
               <Typography variant="h4" fontWeight={700} color="warning.main">
@@ -247,7 +275,15 @@ export default function PredictionAnalysis() {
             sx={{
               background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
               borderLeft: '4px solid #2196f3',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              border: selectedRiskLevel === 'medium' ? '2px solid #2196f3' : '2px solid transparent',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 16px rgba(33, 150, 243, 0.3)',
+              },
             }}
+            onClick={() => setSelectedRiskLevel('medium')}
           >
             <CardContent>
               <Typography variant="h4" fontWeight={700} color="info.main">
