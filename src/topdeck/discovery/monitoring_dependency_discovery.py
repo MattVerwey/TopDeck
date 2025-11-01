@@ -5,6 +5,7 @@ Discovers resource dependencies by analyzing logs from Loki and metrics
 from Prometheus to identify actual communication patterns.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -15,6 +16,8 @@ from ..monitoring.collectors.prometheus import PrometheusCollector
 from ..monitoring.collectors.elasticsearch import ElasticsearchCollector
 from ..monitoring.collectors.azure_log_analytics import AzureLogAnalyticsCollector
 from .models import DependencyCategory, DependencyType, ResourceDependency
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -197,7 +200,8 @@ class MonitoringDependencyDiscovery:
                                 discovered_at=datetime.now(timezone.utc)
                             )
                         )
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to get Elasticsearch logs for resource {resource_id}: {e}")
                 continue
         
         return evidence_list
@@ -236,7 +240,10 @@ class MonitoringDependencyDiscovery:
                                 discovered_at=datetime.now(timezone.utc)
                             )
                         )
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    f"Failed to get Azure Log Analytics logs for resource {resource_id}: {e}"
+                )
                 continue
         
         return evidence_list

@@ -2,9 +2,11 @@
 Monitoring API endpoints.
 
 Provides API endpoints for retrieving metrics and logs from observability
-platforms (Prometheus, Loki) for resource monitoring and failure detection.
+platforms (Prometheus, Loki, Elasticsearch, Azure Log Analytics) for resource
+monitoring and failure detection.
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -16,6 +18,8 @@ from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.monitoring.transaction_flow import TransactionFlowService
 from topdeck.storage.neo4j_client import Neo4jClient
+
+logger = logging.getLogger(__name__)
 
 
 # Pydantic models for API responses
@@ -593,14 +597,24 @@ async def get_monitoring_health() -> dict[str, Any]:
                 api_key=es_api_key,
             )
             try:
-                # Try a simple search to check connectivity
+                # Try a simple search to check connectivity (lightweight query)
                 await collector.search({"size": 1, "query": {"match_all": {}}})
                 health["elasticsearch"] = {"status": "healthy", "url": elasticsearch_url}
-            except Exception:
-                health["elasticsearch"] = {"status": "unhealthy", "url": elasticsearch_url}
+            except Exception as e:
+                logger.warning(f"Elasticsearch health check failed: {e}")
+                health["elasticsearch"] = {
+                    "status": "unhealthy",
+                    "url": elasticsearch_url,
+                    "error": str(e),
+                }
             finally:
                 await collector.close()
-        except Exception:
-            health["elasticsearch"] = {"status": "error", "url": elasticsearch_url}
+        except Exception as e:
+            logger.error(f"Failed to create Elasticsearch collector: {e}")
+            health["elasticsearch"] = {
+                "status": "error",
+                "url": elasticsearch_url,
+                "error": str(e),
+            }
 
     return health

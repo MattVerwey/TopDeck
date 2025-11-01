@@ -5,16 +5,30 @@ Collects and queries logs from Elasticsearch for transaction tracing,
 error tracking, and correlation with resource topology.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ElasticsearchEntry:
-    """Represents a single log entry from Elasticsearch."""
+    """
+    Represents a single log entry from Elasticsearch.
+    
+    Attributes:
+        timestamp: When the log entry was created
+        message: The log message content
+        properties: Additional custom fields from the log entry
+        resource_id: Identifier of the resource that generated the log
+        correlation_id: Optional correlation/trace ID for request tracking
+        operation_name: Optional name of the operation being performed
+        level: Log level (debug, info, warning, error, critical)
+    """
 
     timestamp: datetime
     message: str
@@ -27,7 +41,19 @@ class ElasticsearchEntry:
 
 @dataclass
 class TransactionTrace:
-    """Represents a trace of a transaction through the system."""
+    """
+    Represents a trace of a transaction through the system.
+    
+    Attributes:
+        transaction_id: Unique identifier for the transaction
+        start_time: When the transaction started
+        end_time: When the transaction completed
+        duration_ms: Total duration in milliseconds
+        entries: All log entries associated with this transaction
+        resource_path: Ordered list of resources the transaction touched
+        error_count: Number of error-level log entries
+        warning_count: Number of warning-level log entries
+    """
 
     transaction_id: str
     start_time: datetime
@@ -102,7 +128,8 @@ class ElasticsearchCollector:
             hits = data.get("hits", {}).get("hits", [])
             return [hit.get("_source", {}) for hit in hits]
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to search Elasticsearch: {e}", exc_info=True)
             return []
 
     async def get_logs_by_correlation_id(
@@ -342,7 +369,10 @@ class ElasticsearchCollector:
             buckets = data.get("aggregations", {}).get("correlation_ids", {}).get("buckets", [])
             return [bucket["key"] for bucket in buckets]
 
-        except Exception:
+        except Exception as e:
+            logger.error(
+                f"Failed to find correlation IDs for resource {resource_id}: {e}", exc_info=True
+            )
             return []
 
     def _parse_timestamp(self, timestamp_str: str | None) -> datetime:
