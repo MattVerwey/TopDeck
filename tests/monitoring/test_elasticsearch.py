@@ -1,6 +1,6 @@
 """Tests for Elasticsearch collector."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
