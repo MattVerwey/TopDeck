@@ -47,10 +47,12 @@ Integrate with performance monitoring and observability platforms to track error
 - CloudWatch Logs Insights
 
 **Third-Party**:
-- Datadog
-- New Relic
-- Prometheus + Grafana
-- Elastic APM
+- ✅ Elasticsearch (Implemented)
+- ✅ Prometheus + Grafana (Implemented)
+- ✅ Loki (Implemented)
+- Datadog (Planned)
+- New Relic (Planned)
+- Elastic APM (Planned)
 
 ## Use Cases
 
