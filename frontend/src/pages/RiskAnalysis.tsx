@@ -28,6 +28,7 @@ import RiskBreakdown from '../components/risk/RiskBreakdown';
 import ResourceTester from '../components/risk/ResourceTester';
 import ResourceQuery from '../components/risk/ResourceQuery';
 import RemediationSuggestions from '../components/risk/RemediationSuggestions';
+import PredictionAnalysis from '../components/risk/PredictionAnalysis';
 
 interface RiskMetric {
   name: string;
@@ -186,6 +187,7 @@ export default function RiskAnalysis() {
           variant="fullWidth"
         >
           <Tab label="Overview" />
+          <Tab label="Prediction Analysis" />
           <Tab label="Remediation Suggestions" />
           <Tab label="Resource Testing" />
           <Tab label="Query Assistant" />
@@ -278,17 +280,20 @@ export default function RiskAnalysis() {
         </>
       )}
 
+      {/* Prediction Analysis Tab */}
+      {activeTab === 1 && <PredictionAnalysis />}
+
       {/* Remediation Suggestions Tab */}
-      {activeTab === 1 && <RemediationSuggestions />}
+      {activeTab === 2 && <RemediationSuggestions />}
 
       {/* Resource Testing Tab */}
-      {activeTab === 2 && <ResourceTester />}
+      {activeTab === 3 && <ResourceTester />}
 
       {/* Query Assistant Tab */}
-      {activeTab === 3 && <ResourceQuery />}
+      {activeTab === 4 && <ResourceQuery />}
 
       {/* Risk Breakdown Tab */}
-      {activeTab === 4 && <RiskBreakdown />}
+      {activeTab === 5 && <RiskBreakdown />}
     </Box>
   );
 }
