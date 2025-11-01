@@ -2,7 +2,7 @@
 Tests for monitoring-based dependency discovery.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -50,13 +50,13 @@ class TestMonitoringDependencyDiscovery:
         # Mock log data with HTTP requests
         log_entries = [
             LogEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="GET https://api.example.com/users HTTP/1.1 200",
                 labels={"resource_id": "service-a"},
                 level="info"
             ),
             LogEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="POST https://api.example.com/orders HTTP/1.1 201",
                 labels={"resource_id": "service-a"},
                 level="info"
@@ -82,7 +82,7 @@ class TestMonitoringDependencyDiscovery:
         """Test discovering dependencies from database connection logs."""
         log_entries = [
             LogEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Connecting to postgres://db.example.com:5432/mydb",
                 labels={"resource_id": "app-service"},
                 level="info"
@@ -129,7 +129,7 @@ class TestMonitoringDependencyDiscovery:
                     labels={"target_service": "service-b"},
                     values=[
                         MetricValue(
-                            timestamp=datetime.utcnow(),
+                            timestamp=datetime.now(timezone.utc),
                             value=10.5,
                             labels={"target_service": "service-b"}
                         )
@@ -161,7 +161,7 @@ class TestMonitoringDependencyDiscovery:
         # Mock log data
         log_entries = [
             LogEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Calling service-b",
                 labels={"resource_id": "service-a"},
                 level="info"
@@ -181,7 +181,7 @@ class TestMonitoringDependencyDiscovery:
                     labels={"target_service": "service-b"},
                     values=[
                         MetricValue(
-                            timestamp=datetime.utcnow(),
+                            timestamp=datetime.now(timezone.utc),
                             value=15.0,
                             labels={"target_service": "service-b"}
                         )
@@ -309,7 +309,7 @@ class TestMonitoringDependencyDiscovery:
                 evidence_type="logs",
                 confidence=0.6,
                 details={"source": "logs"},
-                discovered_at=datetime.utcnow()
+                discovered_at=datetime.now(timezone.utc)
             ),
             DependencyEvidence(
                 source_id="service-a",
@@ -317,7 +317,7 @@ class TestMonitoringDependencyDiscovery:
                 evidence_type="metrics",
                 confidence=0.8,
                 details={"source": "metrics"},
-                discovered_at=datetime.utcnow()
+                discovered_at=datetime.now(timezone.utc)
             ),
             DependencyEvidence(
                 source_id="service-a",
@@ -325,7 +325,7 @@ class TestMonitoringDependencyDiscovery:
                 evidence_type="logs",
                 confidence=0.7,
                 details={"source": "logs"},
-                discovered_at=datetime.utcnow()
+                discovered_at=datetime.now(timezone.utc)
             )
         ]
         
@@ -369,7 +369,7 @@ class TestElasticsearchIntegration:
         # Mock Elasticsearch log entries
         log_entries = [
             ElasticsearchEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Making HTTP request to https://api.service-b.com/endpoint",
                 properties={},
                 resource_id="service-a",
@@ -377,7 +377,7 @@ class TestElasticsearchIntegration:
                 level="info",
             ),
             ElasticsearchEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Connected to postgres://database-1.example.com",
                 properties={},
                 resource_id="service-a",
@@ -411,7 +411,7 @@ class TestElasticsearchIntegration:
         # Setup Loki data
         loki_entries = [
             LogEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Calling service-b via HTTP",
                 labels={"resource_id": "service-a"},
                 level="info",
@@ -424,7 +424,7 @@ class TestElasticsearchIntegration:
         # Setup Elasticsearch data
         es_entries = [
             ElasticsearchEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 message="Calling service-c via HTTPS",
                 properties={},
                 resource_id="service-a",
