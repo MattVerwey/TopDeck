@@ -12,6 +12,8 @@ from typing import Any
 
 from ..monitoring.collectors.loki import LokiCollector
 from ..monitoring.collectors.prometheus import PrometheusCollector
+from ..monitoring.collectors.elasticsearch import ElasticsearchCollector
+from ..monitoring.collectors.azure_log_analytics import AzureLogAnalyticsCollector
 from .models import DependencyCategory, DependencyType, ResourceDependency
 
 
@@ -47,12 +49,16 @@ class MonitoringDependencyDiscovery:
     Uses:
     - Loki logs to identify service-to-service communication
     - Prometheus metrics to identify connection patterns
+    - Elasticsearch logs to identify service communication and dependencies
+    - Azure Log Analytics logs to trace transactions and dependencies
     """
 
     def __init__(
         self,
         loki_collector: LokiCollector | None = None,
-        prometheus_collector: PrometheusCollector | None = None
+        prometheus_collector: PrometheusCollector | None = None,
+        elasticsearch_collector: ElasticsearchCollector | None = None,
+        azure_log_analytics_collector: AzureLogAnalyticsCollector | None = None
     ):
         """
         Initialize monitoring-based dependency discovery.
@@ -60,9 +66,13 @@ class MonitoringDependencyDiscovery:
         Args:
             loki_collector: Loki collector for log analysis
             prometheus_collector: Prometheus collector for metrics analysis
+            elasticsearch_collector: Elasticsearch collector for log analysis
+            azure_log_analytics_collector: Azure Log Analytics collector for log analysis
         """
         self.loki_collector = loki_collector
         self.prometheus_collector = prometheus_collector
+        self.elasticsearch_collector = elasticsearch_collector
+        self.azure_log_analytics_collector = azure_log_analytics_collector
 
     async def discover_dependencies_from_logs(
         self,
@@ -78,6 +88,11 @@ class MonitoringDependencyDiscovery:
         - Cache operations
         - Message queue operations
         
+        Supports multiple log platforms:
+        - Loki
+        - Elasticsearch
+        - Azure Log Analytics
+        
         Args:
             resource_ids: List of resource IDs to analyze
             duration: Time range to analyze
@@ -85,23 +100,46 @@ class MonitoringDependencyDiscovery:
         Returns:
             List of dependency evidence
         """
-        if not self.loki_collector:
-            return []
+        evidence_list = []
         
+        # Try Loki if available
+        if self.loki_collector:
+            evidence_list.extend(
+                await self._discover_from_loki(resource_ids, duration)
+            )
+        
+        # Try Elasticsearch if available
+        if self.elasticsearch_collector:
+            evidence_list.extend(
+                await self._discover_from_elasticsearch(resource_ids, duration)
+            )
+        
+        # Try Azure Log Analytics if available
+        if self.azure_log_analytics_collector:
+            evidence_list.extend(
+                await self._discover_from_azure_log_analytics(resource_ids, duration)
+            )
+        
+        # Aggregate evidence by source-target pairs
+        return self._aggregate_evidence(evidence_list)
+
+    async def _discover_from_loki(
+        self,
+        resource_ids: list[str],
+        duration: timedelta
+    ) -> list[DependencyEvidence]:
+        """Discover dependencies from Loki logs."""
         evidence_list = []
         
         for resource_id in resource_ids:
-            # Get logs for this resource
             try:
                 streams = await self.loki_collector.get_resource_logs(
                     resource_id=resource_id,
                     duration=duration
                 )
                 
-                # Analyze logs for dependency patterns
                 for stream in streams:
                     for entry in stream.entries:
-                        # Extract target services from log messages
                         targets = self._extract_targets_from_log(entry.message)
                         
                         for target in targets:
@@ -114,17 +152,94 @@ class MonitoringDependencyDiscovery:
                                     details={
                                         "protocol": target.get("protocol"),
                                         "endpoint": target.get("endpoint"),
-                                        "log_timestamp": entry.timestamp.isoformat()
+                                        "log_timestamp": entry.timestamp.isoformat(),
+                                        "source": "loki"
                                     },
                                     discovered_at=datetime.now(timezone.utc)
                                 )
                             )
             except Exception:
-                # Continue even if one resource fails
                 continue
         
-        # Aggregate evidence by source-target pairs
-        return self._aggregate_evidence(evidence_list)
+        return evidence_list
+
+    async def _discover_from_elasticsearch(
+        self,
+        resource_ids: list[str],
+        duration: timedelta
+    ) -> list[DependencyEvidence]:
+        """Discover dependencies from Elasticsearch logs."""
+        evidence_list = []
+        
+        for resource_id in resource_ids:
+            try:
+                entries = await self.elasticsearch_collector.get_resource_logs(
+                    resource_id=resource_id,
+                    duration=duration
+                )
+                
+                for entry in entries:
+                    targets = self._extract_targets_from_log(entry.message)
+                    
+                    for target in targets:
+                        evidence_list.append(
+                            DependencyEvidence(
+                                source_id=resource_id,
+                                target_id=target["id"],
+                                evidence_type="logs",
+                                confidence=target["confidence"],
+                                details={
+                                    "protocol": target.get("protocol"),
+                                    "endpoint": target.get("endpoint"),
+                                    "log_timestamp": entry.timestamp.isoformat(),
+                                    "source": "elasticsearch"
+                                },
+                                discovered_at=datetime.now(timezone.utc)
+                            )
+                        )
+            except Exception:
+                continue
+        
+        return evidence_list
+
+    async def _discover_from_azure_log_analytics(
+        self,
+        resource_ids: list[str],
+        duration: timedelta
+    ) -> list[DependencyEvidence]:
+        """Discover dependencies from Azure Log Analytics logs."""
+        evidence_list = []
+        
+        for resource_id in resource_ids:
+            try:
+                entries = await self.azure_log_analytics_collector.get_resource_logs(
+                    resource_id=resource_id,
+                    duration=duration
+                )
+                
+                for entry in entries:
+                    targets = self._extract_targets_from_log(entry.message)
+                    
+                    for target in targets:
+                        evidence_list.append(
+                            DependencyEvidence(
+                                source_id=resource_id,
+                                target_id=target["id"],
+                                evidence_type="logs",
+                                confidence=target["confidence"],
+                                details={
+                                    "protocol": target.get("protocol"),
+                                    "endpoint": target.get("endpoint"),
+                                    "log_timestamp": entry.timestamp.isoformat(),
+                                    "source": "azure_log_analytics"
+                                },
+                                discovered_at=datetime.now(timezone.utc)
+                            )
+                        )
+            except Exception:
+                continue
+        
+        return evidence_list
 
     async def discover_dependencies_from_metrics(
         self,

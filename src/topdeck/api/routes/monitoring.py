@@ -516,6 +516,7 @@ async def get_monitoring_health() -> dict[str, Any]:
         "prometheus": {"status": "not_configured", "url": None},
         "loki": {"status": "not_configured", "url": None},
         "azure_log_analytics": {"status": "not_configured", "workspace_id": None},
+        "elasticsearch": {"status": "not_configured", "url": None},
     }
 
     # Check Prometheus (only if configured)
@@ -571,5 +572,35 @@ async def get_monitoring_health() -> dict[str, Any]:
                 await collector.close()
         except Exception:
             health["azure_log_analytics"] = {"status": "error", "workspace_id": azure_workspace_id}
+
+    # Check Elasticsearch (only if configured)
+    elasticsearch_url = getattr(settings, "elasticsearch_url", None)
+    if elasticsearch_url:
+        try:
+            from topdeck.monitoring.collectors.elasticsearch import ElasticsearchCollector
+
+            # Get optional auth settings
+            es_username = getattr(settings, "elasticsearch_username", None)
+            es_password = getattr(settings, "elasticsearch_password", None)
+            es_api_key = getattr(settings, "elasticsearch_api_key", None)
+            es_index = getattr(settings, "elasticsearch_index_pattern", "logs-*")
+
+            collector = ElasticsearchCollector(
+                url=elasticsearch_url,
+                index_pattern=es_index,
+                username=es_username,
+                password=es_password,
+                api_key=es_api_key,
+            )
+            try:
+                # Try a simple search to check connectivity
+                await collector.search({"size": 1, "query": {"match_all": {}}})
+                health["elasticsearch"] = {"status": "healthy", "url": elasticsearch_url}
+            except Exception:
+                health["elasticsearch"] = {"status": "unhealthy", "url": elasticsearch_url}
+            finally:
+                await collector.close()
+        except Exception:
+            health["elasticsearch"] = {"status": "error", "url": elasticsearch_url}
 
     return health

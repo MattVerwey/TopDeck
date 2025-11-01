@@ -340,3 +340,110 @@ class TestMonitoringDependencyDiscovery:
         # Confidence should be boosted due to multiple evidence types
         assert service_b_evidence.confidence > 0.7
         assert service_b_evidence.details["occurrence_count"] == 2
+
+
+class TestElasticsearchIntegration:
+    """Test monitoring dependency discovery with Elasticsearch."""
+
+    @pytest.fixture
+    def mock_elasticsearch_collector(self):
+        """Create mock Elasticsearch collector."""
+        collector = MagicMock()
+        collector.get_resource_logs = AsyncMock()
+        return collector
+
+    @pytest.fixture
+    def discovery_with_es(self, mock_elasticsearch_collector):
+        """Create discovery service with Elasticsearch."""
+        return MonitoringDependencyDiscovery(
+            elasticsearch_collector=mock_elasticsearch_collector
+        )
+
+    @pytest.mark.asyncio
+    async def test_discover_from_elasticsearch(
+        self, discovery_with_es, mock_elasticsearch_collector
+    ):
+        """Test discovering dependencies from Elasticsearch logs."""
+        from topdeck.monitoring.collectors.elasticsearch import ElasticsearchEntry
+
+        # Mock Elasticsearch log entries
+        log_entries = [
+            ElasticsearchEntry(
+                timestamp=datetime.utcnow(),
+                message="Making HTTP request to https://api.service-b.com/endpoint",
+                properties={},
+                resource_id="service-a",
+                correlation_id="txn-123",
+                level="info",
+            ),
+            ElasticsearchEntry(
+                timestamp=datetime.utcnow(),
+                message="Connected to postgres://database-1.example.com",
+                properties={},
+                resource_id="service-a",
+                correlation_id="txn-123",
+                level="info",
+            ),
+        ]
+
+        mock_elasticsearch_collector.get_resource_logs.return_value = log_entries
+
+        evidence = await discovery_with_es.discover_dependencies_from_logs(
+            resource_ids=["service-a"], duration=timedelta(hours=1)
+        )
+
+        assert len(evidence) > 0
+        # Should find dependencies to both the API and database
+        target_ids = [e.target_id for e in evidence]
+        assert any("api.service-b.com" in tid for tid in target_ids)
+        assert any("database-1.example.com" in tid for tid in target_ids)
+
+        # Check that source is marked as elasticsearch
+        assert any(e.details.get("source") == "elasticsearch" for e in evidence)
+
+    @pytest.mark.asyncio
+    async def test_discover_with_multiple_collectors(
+        self, mock_loki_collector, mock_elasticsearch_collector
+    ):
+        """Test discovery with both Loki and Elasticsearch collectors."""
+        from topdeck.monitoring.collectors.elasticsearch import ElasticsearchEntry
+
+        # Setup Loki data
+        loki_entries = [
+            LogEntry(
+                timestamp=datetime.utcnow(),
+                message="Calling service-b via HTTP",
+                labels={"resource_id": "service-a"},
+                level="info",
+            )
+        ]
+        mock_loki_collector.get_resource_logs.return_value = [
+            LogStream(labels={"resource_id": "service-a"}, entries=loki_entries)
+        ]
+
+        # Setup Elasticsearch data
+        es_entries = [
+            ElasticsearchEntry(
+                timestamp=datetime.utcnow(),
+                message="Calling service-c via HTTPS",
+                properties={},
+                resource_id="service-a",
+                level="info",
+            )
+        ]
+        mock_elasticsearch_collector.get_resource_logs.return_value = es_entries
+
+        # Create discovery with both collectors
+        discovery = MonitoringDependencyDiscovery(
+            loki_collector=mock_loki_collector,
+            elasticsearch_collector=mock_elasticsearch_collector,
+        )
+
+        evidence = await discovery.discover_dependencies_from_logs(
+            resource_ids=["service-a"], duration=timedelta(hours=1)
+        )
+
+        # Should have evidence from both sources
+        sources = [e.details.get("source") for e in evidence]
+        assert "loki" in sources
+        assert "elasticsearch" in sources
