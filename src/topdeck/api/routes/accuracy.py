@@ -8,7 +8,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from topdeck.analysis.accuracy import DependencyValidator, PredictionTracker
+from topdeck.analysis.accuracy import (
+    DependencyValidator,
+    PredictionCalibrator,
+    PredictionTracker,
+)
 from topdeck.storage.neo4j_client import Neo4jClient
 
 router = APIRouter(prefix="/api/v1/accuracy", tags=["accuracy"])
@@ -93,6 +97,13 @@ def get_dependency_validator(
 ) -> DependencyValidator:
     """Get dependency validator instance."""
     return DependencyValidator(neo4j_client)
+
+
+def get_prediction_calibrator(
+    neo4j_client: Neo4jClient = Depends(get_neo4j_client),
+) -> PredictionCalibrator:
+    """Get prediction calibrator instance."""
+    return PredictionCalibrator(neo4j_client)
 
 
 # Prediction accuracy endpoints
@@ -367,6 +378,92 @@ async def get_dependency_metrics(
         },
         details=result.details,
     )
+
+
+@router.get("/calibration/thresholds")
+async def calibrate_thresholds(
+    target_precision: float = Query(
+        0.85, ge=0.5, le=1.0, description="Target precision"
+    ),
+    days: int = Query(30, ge=7, le=180, description="Days of history to analyze"),
+    calibrator: PredictionCalibrator = Depends(get_prediction_calibrator),
+) -> dict[str, Any]:
+    """
+    Calibrate prediction thresholds based on historical accuracy.
+    
+    Analyzes historical predictions to recommend threshold adjustments
+    that will achieve the target precision.
+    
+    Query Parameters:
+        target_precision: Desired precision (default: 0.85)
+        days: Days of history to analyze (default: 30)
+    
+    Returns:
+        Recommended threshold adjustments
+    """
+    result = await calibrator.calibrate_thresholds(
+        target_precision=target_precision, time_range_days=days
+    )
+    return result
+
+
+@router.get("/calibration/systematic-errors")
+async def analyze_systematic_errors(
+    days: int = Query(30, ge=7, le=180, description="Days of history to analyze"),
+    calibrator: PredictionCalibrator = Depends(get_prediction_calibrator),
+) -> dict[str, Any]:
+    """
+    Analyze systematic errors in predictions.
+    
+    Identifies patterns in false positives and false negatives to understand
+    where the prediction model is failing.
+    
+    Query Parameters:
+        days: Days of history to analyze (default: 30)
+    
+    Returns:
+        Error analysis with recommendations
+    """
+    result = await calibrator.analyze_systematic_errors(time_range_days=days)
+    return result
+
+
+@router.get("/calibration/confidence")
+async def calibrate_confidence(
+    days: int = Query(30, ge=7, le=180, description="Days of history to analyze"),
+    calibrator: PredictionCalibrator = Depends(get_prediction_calibrator),
+) -> dict[str, Any]:
+    """
+    Check if confidence levels are properly calibrated.
+    
+    Ensures that high-confidence predictions are more accurate than
+    medium or low-confidence predictions.
+    
+    Query Parameters:
+        days: Days of history to analyze (default: 30)
+    
+    Returns:
+        Confidence calibration status and recommendations
+    """
+    result = await calibrator.calibrate_confidence_levels(time_range_days=days)
+    return result
+
+
+@router.get("/calibration/report")
+async def get_improvement_report(
+    calibrator: PredictionCalibrator = Depends(get_prediction_calibrator),
+) -> dict[str, Any]:
+    """
+    Generate comprehensive improvement report.
+    
+    Combines all calibration analyses to provide actionable recommendations
+    for improving prediction accuracy.
+    
+    Returns:
+        Complete improvement report with priority actions
+    """
+    result = await calibrator.generate_improvement_report()
+    return result
 
 
 @router.get("/health")

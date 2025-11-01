@@ -6,8 +6,10 @@ This module provides mechanisms to:
 2. Validate dependency detection against ground truth
 3. Calculate accuracy metrics (precision, recall, F1)
 4. Provide feedback for model improvement
+5. Calibrate models based on accuracy feedback
 """
 
+from .calibration import PredictionCalibrator
 from .dependency_validator import DependencyValidator
 from .prediction_tracker import PredictionTracker
 from .models import (
@@ -19,6 +21,7 @@ from .models import (
 
 __all__ = [
     "DependencyValidator",
+    "PredictionCalibrator",
     "PredictionTracker",
     "AccuracyMetrics",
     "DependencyValidation",
