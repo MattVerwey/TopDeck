@@ -2,9 +2,11 @@
 Monitoring API endpoints.
 
 Provides API endpoints for retrieving metrics and logs from observability
-platforms (Prometheus, Loki) for resource monitoring and failure detection.
+platforms (Prometheus, Loki, Elasticsearch, Azure Log Analytics) for resource
+monitoring and failure detection.
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -16,6 +18,8 @@ from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.monitoring.transaction_flow import TransactionFlowService
 from topdeck.storage.neo4j_client import Neo4jClient
+
+logger = logging.getLogger(__name__)
 
 
 # Pydantic models for API responses
@@ -516,6 +520,7 @@ async def get_monitoring_health() -> dict[str, Any]:
         "prometheus": {"status": "not_configured", "url": None},
         "loki": {"status": "not_configured", "url": None},
         "azure_log_analytics": {"status": "not_configured", "workspace_id": None},
+        "elasticsearch": {"status": "not_configured", "url": None},
     }
 
     # Check Prometheus (only if configured)
@@ -571,5 +576,45 @@ async def get_monitoring_health() -> dict[str, Any]:
                 await collector.close()
         except Exception:
             health["azure_log_analytics"] = {"status": "error", "workspace_id": azure_workspace_id}
+
+    # Check Elasticsearch (only if configured)
+    elasticsearch_url = getattr(settings, "elasticsearch_url", None)
+    if elasticsearch_url:
+        try:
+            from topdeck.monitoring.collectors.elasticsearch import ElasticsearchCollector
+
+            # Get optional auth settings
+            es_username = getattr(settings, "elasticsearch_username", None)
+            es_password = getattr(settings, "elasticsearch_password", None)
+            es_api_key = getattr(settings, "elasticsearch_api_key", None)
+            es_index = getattr(settings, "elasticsearch_index_pattern", "logs-*")
+
+            collector = ElasticsearchCollector(
+                url=elasticsearch_url,
+                index_pattern=es_index,
+                username=es_username,
+                password=es_password,
+                api_key=es_api_key,
+            )
+            try:
+                # Try a simple search to check connectivity (lightweight query)
+                await collector.search({"size": 1, "query": {"match_all": {}}})
+                health["elasticsearch"] = {"status": "healthy", "url": elasticsearch_url}
+            except Exception as e:
+                logger.warning(f"Elasticsearch health check failed: {e}")
+                health["elasticsearch"] = {
+                    "status": "unhealthy",
+                    "url": elasticsearch_url,
+                    "error": str(e),
+                }
+            finally:
+                await collector.close()
+        except Exception as e:
+            logger.error(f"Failed to create Elasticsearch collector: {e}")
+            health["elasticsearch"] = {
+                "status": "error",
+                "url": elasticsearch_url,
+                "error": str(e),
+            }
 
     return health

@@ -203,6 +203,8 @@ curl "http://localhost:8000/api/v1/monitoring/health"
 
 ## Integration with Observability Platforms
 
+TopDeck provides **flexible log platform support** - you don't need Prometheus or Grafana. Use any combination of the supported platforms below.
+
 ### Prometheus
 
 TopDeck integrates with Prometheus to collect performance metrics:
@@ -214,6 +216,39 @@ TopDeck integrates with Prometheus to collect performance metrics:
 - **Latency**: P95/P99 response times
 - **Database Metrics**: Query duration, connections, deadlocks
 
+### Elasticsearch
+
+TopDeck integrates with Elasticsearch for log analytics:
+
+- **Transaction Tracing**: Follow requests across services using correlation IDs
+- **Dependency Discovery**: Identify service-to-service communication from logs
+- **Error Analysis**: Track errors, exceptions, and patterns
+- **Log Levels**: Critical, error, warn, info, debug
+- **Resource Logs**: Query logs by resource, time range, and level
+- **Correlation IDs**: Find and trace transaction flows
+
+**Configuration**:
+```bash
+ELASTICSEARCH_URL=https://elasticsearch.example.com:9200
+ELASTICSEARCH_INDEX_PATTERN=logs-*
+ELASTICSEARCH_API_KEY=your-api-key
+```
+
+### Azure Log Analytics
+
+TopDeck integrates with Azure Log Analytics for Azure-native logging:
+
+- **KQL Queries**: Use Kusto Query Language for powerful log analysis
+- **Application Insights**: Integration with Azure Application Insights
+- **Transaction Tracing**: Correlation ID-based tracing
+- **Resource Logs**: Query logs from Azure resources
+- **Dependency Discovery**: Automatic detection from logs
+
+**Configuration**:
+```bash
+AZURE_LOG_ANALYTICS_WORKSPACE_ID=your-workspace-id
+```
+
 ### Loki
 
 TopDeck integrates with Loki to collect and analyze logs:
@@ -222,15 +257,20 @@ TopDeck integrates with Loki to collect and analyze logs:
 - **Log Levels**: Fatal, error, warn, info, debug
 - **Error Types**: Timeout, connection, database, authentication, etc.
 - **Error Correlation**: Trace errors across resources in a flow
+- **Kubernetes Native**: Purpose-built for Kubernetes environments
 
 ### Grafana
 
 While not directly queried by the API, Grafana can be used to:
 
 - Visualize metrics from Prometheus
-- Display logs from Loki
+- Display logs from Loki or Elasticsearch
 - Create dashboards for topology and performance
 - Set up alerts based on thresholds
+
+## Multi-Platform Support
+
+**You can use multiple platforms simultaneously!** TopDeck will aggregate data from all configured sources. See the [Log Platform Support Guide](../LOG_PLATFORM_SUPPORT.md) for detailed configuration and examples.
 
 ---
 

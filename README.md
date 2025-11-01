@@ -132,10 +132,12 @@ TopDeck provides that answer by:
    - Failure scenario simulation
 
 5. **Performance Monitoring Integration**
+   - Multiple log platforms supported: Prometheus/Grafana, Elasticsearch, Azure Log Analytics, Loki
    - API latency tracking
    - Database deadlock detection
    - Error correlation analysis
    - Root cause identification
+   - Transaction tracing across services
 
 ## 🚀 Example Use Case
 
@@ -253,6 +255,15 @@ TopDeck/
 - Azure DevOps REST API
 - GitHub REST API & GraphQL
 - GitLab API (future)
+
+### Monitoring & Observability
+- **Prometheus** - Metrics collection and monitoring
+- **Grafana** - Visualization and dashboards
+- **Elasticsearch** - Log aggregation and search (supports Elastic Stack)
+- **Azure Log Analytics** - Azure-native log analytics
+- **Loki** - Log aggregation for Kubernetes
+
+**Flexible Log Platform Support**: TopDeck works with your existing observability stack. You don't need Prometheus or Grafana - use Elasticsearch, Azure Log Analytics, or any combination that fits your infrastructure.
 
 **Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
 

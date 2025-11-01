@@ -87,10 +87,29 @@ class Settings(BaseSettings):
 
     # Monitoring & Observability Configuration
     prometheus_url: str = Field(
-        default="http://prometheus:9090", description="Prometheus server URL"
+        default="", description="Prometheus server URL"
     )
-    loki_url: str = Field(default="http://loki:3100", description="Loki server URL")
-    grafana_url: str = Field(default="http://grafana:3000", description="Grafana server URL")
+    loki_url: str = Field(default="", description="Loki server URL")
+    grafana_url: str = Field(default="", description="Grafana server URL")
+    
+    # Elasticsearch Configuration
+    elasticsearch_url: str = Field(
+        default="", description="Elasticsearch server URL"
+    )
+    elasticsearch_index_pattern: str = Field(
+        default="logs-*", description="Elasticsearch index pattern for log search"
+    )
+    elasticsearch_username: str = Field(
+        default="", description="Elasticsearch username (basic auth)"
+    )
+    elasticsearch_password: str = Field(
+        default="", description="Elasticsearch password (basic auth)"
+    )
+    elasticsearch_api_key: str = Field(
+        default="", description="Elasticsearch API key (preferred over basic auth)"
+    )
+    
+    # Azure Log Analytics Configuration
     azure_log_analytics_workspace_id: str = Field(
         default="", description="Azure Log Analytics workspace ID"
     )
