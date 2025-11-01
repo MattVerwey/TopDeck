@@ -69,7 +69,7 @@ Feature validation rules:
 
 ## Penalty for Minimal Data
 
-If feature completeness is below 10% (< 3 features), the confidence score is halved. This prevents false confidence when we have very little information.
+If feature completeness is below 10% (i.e., fewer than 3 features out of 30), the confidence score is halved. This prevents false confidence when we have very little information.
 
 ## Confidence Metrics API Response
 
