@@ -94,7 +94,7 @@ class FeatureExtractor:
 
         # Get time-series data
         end = datetime.now(UTC)
-        end - timedelta(hours=lookback_hours)
+        start = end - timedelta(hours=lookback_hours)  # noqa: F841 - for Prometheus query
 
         # This is a placeholder - actual implementation would query Prometheus
         # query = f'{metric_name}{{resource_id="{resource_id}"}}'
