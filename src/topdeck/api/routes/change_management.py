@@ -96,7 +96,7 @@ def get_change_service() -> ChangeManagementService:
     """Get change management service instance"""
     neo4j_client = Neo4jClient(
         uri=settings.neo4j_uri,
-        user=settings.neo4j_user,
+        username=settings.neo4j_user,
         password=settings.neo4j_password,
     )
     return ChangeManagementService(neo4j_client)
@@ -325,10 +325,6 @@ async def approve_change(
     Records approval from the specified approver.
     """
     try:
-        from topdeck.change_management.approval import ApprovalWorkflow
-
-        workflow = ApprovalWorkflow()
-        
         # In a real implementation, this would load existing approvals from database
         # For now, return a success response
         return {
@@ -357,10 +353,6 @@ async def reject_change(
     Records rejection from the specified approver with a reason.
     """
     try:
-        from topdeck.change_management.approval import ApprovalWorkflow
-
-        workflow = ApprovalWorkflow()
-        
         # In a real implementation, this would load existing approvals from database
         # For now, return a success response
         return {

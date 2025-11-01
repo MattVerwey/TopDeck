@@ -32,7 +32,7 @@ def get_change_service() -> ChangeManagementService:
     """Get change management service instance"""
     neo4j_client = Neo4jClient(
         uri=settings.neo4j_uri,
-        user=settings.neo4j_user,
+        username=settings.neo4j_user,
         password=settings.neo4j_password,
     )
     return ChangeManagementService(neo4j_client)
@@ -54,9 +54,8 @@ async def servicenow_webhook(
         x_servicenow_signature: Optional signature for webhook verification
     """
     try:
-        # TODO: Verify webhook signature if configured
-        # if settings.servicenow_webhook_secret and x_servicenow_signature:
-        #     verify_servicenow_signature(payload, x_servicenow_signature)
+        # TODO: Implement webhook signature verification for security
+        # Verify HMAC signature against configured secret
 
         service = get_change_service()
         handler = ServiceNowWebhookHandler(service)
@@ -93,9 +92,8 @@ async def jira_webhook(
         x_hub_signature: Optional signature for webhook verification
     """
     try:
-        # TODO: Verify webhook signature if configured
-        # if settings.jira_webhook_secret and x_hub_signature:
-        #     verify_jira_signature(payload, x_hub_signature)
+        # TODO: Implement webhook signature verification for security
+        # Verify HMAC signature against configured secret
 
         service = get_change_service()
         handler = JiraWebhookHandler(service)

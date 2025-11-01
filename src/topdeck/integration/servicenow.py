@@ -37,7 +37,6 @@ class ServiceNowWebhookHandler:
         short_description = payload.get("short_description", "")
         description = payload.get("description", "")
         state = payload.get("state", "")
-        risk = payload.get("risk", "")
         change_type = payload.get("type", "")
         
         # Map ServiceNow state to our status

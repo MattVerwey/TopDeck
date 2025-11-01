@@ -13,7 +13,6 @@ from topdeck.analysis.risk import RiskAnalyzer
 from topdeck.change_management.models import (
     ChangeImpactAssessment,
     ChangeRequest,
-    ChangeRiskLevel,
     ChangeStatus,
     ChangeType,
 )
