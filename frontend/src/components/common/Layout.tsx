@@ -29,6 +29,8 @@ import {
   Layers as LayersIcon,
   Settings as SettingsIcon,
   AccountCircle as AccountCircleIcon,
+  Description as DescriptionIcon,
+  Api as ApiIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -44,6 +46,11 @@ const menuItems = [
   { text: 'Risk Analysis', icon: <RiskIcon />, path: '/risk' },
   { text: 'Change Impact', icon: <ImpactIcon />, path: '/impact' },
   { text: 'Integrations', icon: <IntegrationsIcon />, path: '/integrations' },
+];
+
+const bottomMenuItems = [
+  { text: 'API Documentation', icon: <ApiIcon />, path: '/api/docs', external: true },
+  { text: 'Documentation', icon: <DescriptionIcon />, path: '/docs' },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -118,7 +125,7 @@ export default function Layout({ children }: LayoutProps) {
           },
         }}
       >
-        <Box sx={{ overflow: 'auto' }}>
+        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <List>
             {menuItems.map((item) => (
               <ListItem key={item.text} disablePadding>
@@ -142,7 +149,37 @@ export default function Layout({ children }: LayoutProps) {
               </ListItem>
             ))}
           </List>
+          <Box sx={{ flexGrow: 1 }} />
           <Divider />
+          <List>
+            {bottomMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => {
+                    if (item.external) {
+                      window.open(item.path, '_blank');
+                    } else {
+                      navigate(item.path);
+                    }
+                  }}
+                  sx={{
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(33, 150, 243, 0.3)',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'primary.main' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
         </Box>
       </Drawer>
 
