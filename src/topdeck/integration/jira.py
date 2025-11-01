@@ -36,7 +36,7 @@ class JiraWebhookHandler:
         fields = issue.get("fields", {})
         
         issue_key = issue.get("key", "")
-        summary = fields.get("summary", "")
+        # priority = fields.get("priority", {}).get("name", "")
         description = fields.get("description", "")
         status = fields.get("status", {}).get("name", "")
         issue_type = fields.get("issuetype", {}).get("name", "")
