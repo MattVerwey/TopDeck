@@ -7,7 +7,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from topdeck import __version__
-from topdeck.api.routes import discovery, integrations, monitoring, prediction, risk, topology
+from topdeck.api.routes import (
+    change_management,
+    discovery,
+    integrations,
+    monitoring,
+    prediction,
+    risk,
+    topology,
+    webhooks,
+)
 from topdeck.common.config import settings
 from topdeck.common.errors import (
     TopDeckException,
@@ -90,6 +99,8 @@ app.include_router(risk.router)
 app.include_router(integrations.router)
 app.include_router(prediction.router)
 app.include_router(discovery.router)
+app.include_router(change_management.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/")

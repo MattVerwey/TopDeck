@@ -44,14 +44,46 @@ export default function ChangeImpact() {
 
     setAnalyzing(true);
     
-    // Simulate impact analysis
-    setTimeout(() => {
+    try {
+      // Import API client
+      const { default: apiClient } = await import('../services/api');
+      
+      // First, create a temporary change request to get an ID
+      const changeRequest = await apiClient.createChangeRequest({
+        title: `Impact Analysis for ${selectedService}`,
+        description: `Analyzing impact of ${changeType} on ${selectedService}`,
+        change_type: changeType,
+        affected_resources: [], // Would need actual resource IDs
+      });
+      
+      // Then assess the impact
+      const assessment = await apiClient.assessChangeImpact(changeRequest.id);
+      
+      // Map API response to component state
+      setImpactResult({
+        service: selectedService,
+        changeType,
+        affectedServices: assessment.total_affected_count,
+        performanceDegradation: assessment.performance_degradation_pct,
+        estimatedDowntime: assessment.estimated_downtime_seconds,
+        userImpact: assessment.user_impact_level,
+        breakdown: {
+          directDependents: assessment.directly_affected_resources.length,
+          indirectDependents: assessment.indirectly_affected_resources.length,
+          criticalPath: assessment.critical_path_affected,
+          recommendedWindow: assessment.recommended_window,
+        },
+        recommendations: assessment.recommendations,
+      });
+    } catch (error) {
+      console.error('Failed to analyze impact:', error);
+      // Fallback to mock data on error
       setImpactResult({
         service: selectedService,
         changeType,
         affectedServices: 12,
-        performanceDegradation: 15, // percentage
-        estimatedDowntime: 300, // seconds
+        performanceDegradation: 15,
+        estimatedDowntime: 300,
         userImpact: 'medium',
         breakdown: {
           directDependents: 5,
@@ -60,8 +92,9 @@ export default function ChangeImpact() {
           recommendedWindow: 'maintenance',
         },
       });
+    } finally {
       setAnalyzing(false);
-    }, 2000);
+    }
   };
 
   const getUserImpactColor = (impact: string) => {

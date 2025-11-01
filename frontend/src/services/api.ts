@@ -332,6 +332,102 @@ class ApiClient {
     return data;
   }
 
+  // Change Management API
+  async createChangeRequest(changeData: {
+    title: string;
+    description: string;
+    change_type: string;
+    affected_resources?: string[];
+    scheduled_start?: string;
+    scheduled_end?: string;
+    requester?: string;
+  }): Promise<{
+    id: string;
+    title: string;
+    description: string;
+    change_type: string;
+    status: string;
+    risk_level: string;
+    affected_resources: string[];
+    affected_services_count: number;
+    estimated_downtime_seconds: number;
+    created_at: string;
+    updated_at: string;
+  }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post('/api/v1/changes', changeData);
+      return data;
+    });
+  }
+
+  async assessChangeImpact(
+    changeId: string,
+    resourceId?: string
+  ): Promise<{
+    change_id: string;
+    directly_affected_resources: Array<{
+      resource_id: string;
+      name: string;
+      type: string;
+      risk_score: number;
+      blast_radius: number;
+    }>;
+    indirectly_affected_resources: Array<{
+      resource_id: string;
+      name: string;
+      type: string;
+    }>;
+    total_affected_count: number;
+    overall_risk_score: number;
+    performance_degradation_pct: number;
+    estimated_downtime_seconds: number;
+    user_impact_level: string;
+    critical_path_affected: boolean;
+    recommended_window: string;
+    rollback_plan_required: boolean;
+    approval_required: boolean;
+    breakdown: Record<string, unknown>;
+    recommendations: string[];
+    assessed_at: string;
+  }> {
+    return this.requestWithRetry(async () => {
+      const params = resourceId ? { resource_id: resourceId } : {};
+      const { data } = await this.client.post(`/api/v1/changes/${changeId}/assess`, null, {
+        params,
+      });
+      return data;
+    });
+  }
+
+  async getChangeCalendar(
+    startDate?: string,
+    endDate?: string
+  ): Promise<Array<{
+    id: string;
+    title: string;
+    change_type: string;
+    status: string;
+    risk_level: string;
+    scheduled_start: string;
+    scheduled_end?: string;
+    requester?: string;
+  }>> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, string> = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      const { data } = await this.client.get('/api/v1/changes/calendar', { params });
+      return data;
+    });
+  }
+
+  async getChangeTypes(): Promise<string[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/changes/types');
+      return data;
+    });
+  }
+
   // Health check
   async checkHealth() {
     const { data } = await this.client.get('/health');
