@@ -39,6 +39,24 @@ def get_integrations_data() -> list[dict[str, Any]]:
     """Get integrations data based on configuration."""
     integrations = []
 
+    # Azure integration
+    if settings.enable_azure_discovery:
+        integrations.append(
+            {
+                "id": "azure",
+                "name": "Azure",
+                "type": "cloud-provider",
+                "enabled": True,
+                "configured": bool(
+                    settings.azure_tenant_id
+                    and settings.azure_client_id
+                    and settings.azure_client_secret
+                    and settings.azure_subscription_id
+                ),
+                "last_sync": None,
+            }
+        )
+
     # Azure DevOps integration
     if settings.enable_azure_devops_integration:
         integrations.append(
