@@ -12,6 +12,9 @@ import type {
   ChangeImpact,
   Integration,
   TransactionFlow,
+  FailurePrediction,
+  PerformancePrediction,
+  AnomalyDetection,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -433,25 +436,7 @@ class ApiClient {
     resourceId: string,
     resourceName?: string,
     resourceType?: string
-  ): Promise<{
-    resource_id: string;
-    resource_name: string;
-    resource_type: string;
-    failure_probability: number;
-    time_to_failure_hours: number | null;
-    risk_level: 'low' | 'medium' | 'high' | 'critical';
-    confidence: 'low' | 'medium' | 'high';
-    contributing_factors: Array<{
-      factor: string;
-      importance: number;
-      current_value: number | string | null;
-      threshold: number | string | null;
-      description: string;
-    }>;
-    recommendations: string[];
-    predicted_at: string;
-    model_version: string;
-  }> {
+  ): Promise<FailurePrediction> {
     return this.requestWithRetry(async () => {
       const params: Record<string, string> = {};
       if (resourceName) params.resource_name = resourceName;
@@ -469,28 +454,7 @@ class ApiClient {
     resourceName?: string,
     metricName: string = 'latency_p95',
     horizonHours: number = 24
-  ): Promise<{
-    resource_id: string;
-    resource_name: string;
-    metric_name: string;
-    current_value: number | null;
-    baseline_value: number | null;
-    predictions: Array<{
-      timestamp: string;
-      predicted_value: number;
-      confidence_lower: number;
-      confidence_upper: number;
-    }>;
-    degradation_risk: 'low' | 'medium' | 'high' | 'critical';
-    confidence: 'low' | 'medium' | 'high';
-    trend: string;
-    seasonality_detected: boolean;
-    anomalies_detected: boolean;
-    recommendations: string[];
-    predicted_at: string;
-    prediction_horizon_hours: number;
-    model_version: string;
-  }> {
+  ): Promise<PerformancePrediction> {
     return this.requestWithRetry(async () => {
       const params: Record<string, string | number> = {
         metric_name: metricName,
@@ -509,28 +473,7 @@ class ApiClient {
     resourceId: string,
     resourceName?: string,
     windowHours: number = 24
-  ): Promise<{
-    resource_id: string;
-    resource_name: string;
-    anomalies: Array<{
-      timestamp: string;
-      metric_name: string;
-      actual_value: number;
-      expected_value: number;
-      anomaly_score: number;
-      deviation_percentage: number;
-    }>;
-    overall_anomaly_score: number;
-    risk_level: 'low' | 'medium' | 'high' | 'critical';
-    affected_metrics: string[];
-    potential_causes: string[];
-    similar_historical_incidents: string[];
-    correlated_resources: string[];
-    recommendations: string[];
-    detected_at: string;
-    detection_window_hours: number;
-    model_version: string;
-  }> {
+  ): Promise<AnomalyDetection> {
     return this.requestWithRetry(async () => {
       const params: Record<string, string | number> = {
         window_hours: windowHours,
