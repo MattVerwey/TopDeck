@@ -139,6 +139,14 @@ TopDeck provides that answer by:
    - Error correlation analysis
    - Root cause identification
 
+6. **Error Replay & Debugging** ✨ **NEW**
+   - "DVR for cloud errors" - capture and replay any error
+   - Automatic context collection (logs, metrics, traces, topology)
+   - Time-travel debugging to see system state at error time
+   - Root cause analysis with confidence scoring
+   - Actionable recommendations for fixing issues
+   - Error correlation and cascading failure tracking
+
 ## 🚀 Example Use Case
 
 **Scenario**: Application deployed from Azure DevOps to AKS
@@ -489,9 +497,56 @@ curl "http://localhost:8000/api/v1/changes/calendar?start_date=2024-11-01T00:00:
 
 See **[Change Management Guide](docs/CHANGE_MANAGEMENT_GUIDE.md)** for complete documentation.
 
+**7. Error Replay & Debugging** ✨ **NEW**
+```bash
+# Capture an error with full context
+curl -X POST http://localhost:8000/error-replay/capture \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Database connection timeout",
+    "severity": "high",
+    "source": "application",
+    "resource_id": "sql-db-prod-001",
+    "error_type": "connection_timeout",
+    "correlation_id": "abc-123"
+  }'
+
+# Replay an error to understand what happened
+curl http://localhost:8000/error-replay/replay/{error-id}
+
+# Search for errors
+curl -X POST http://localhost:8000/error-replay/search \
+  -H "Content-Type: application/json" \
+  -d '{"severity": "critical", "limit": 20}'
+
+# Get recent errors
+curl http://localhost:8000/error-replay/recent?limit=10
+
+# Get errors by resource
+curl http://localhost:8000/error-replay/by-resource/{resource-id}
+
+# Get error statistics
+curl "http://localhost:8000/error-replay/statistics?start_time=2024-01-01T00:00:00Z&end_time=2024-01-02T00:00:00Z"
+```
+
+**Error Replay Features:**
+- ✅ **"DVR for Cloud Errors"**: Capture and replay any error with full context
+- ✅ **Automatic Context Collection**: Logs, metrics, traces, topology state at error time
+- ✅ **Time-Travel Debugging**: Replay system state when error occurred
+- ✅ **Root Cause Analysis**: Automated analysis with confidence scoring
+- ✅ **Timeline Reconstruction**: See sequence of events leading to error
+- ✅ **Error Correlation**: Find related errors and cascading failures
+- ✅ **Actionable Recommendations**: Get specific steps to fix the issue
+- ✅ **Multi-Platform Integration**: Works with Prometheus, Loki, Tempo, Elasticsearch, Azure Log Analytics
+- ✅ **Rich Search**: Filter by severity, source, resource, time range, correlation ID
+- ✅ **Deployment Context**: Track errors related to recent deployments
+
+See **[Error Replay Guide](docs/ERROR_REPLAY_GUIDE.md)** for complete documentation.
+
 ### What's Next 🚀
 
 Recent additions:
+- **Error Replay & Debugging** ✨ NEW: "DVR for cloud errors" with time-travel debugging and root cause analysis
 - **Change Management** ✨ NEW: Full change request tracking with ServiceNow/Jira integration
 - **ML-Based Predictions** ✨ NEW: Predict failures, performance degradation, and detect anomalies using traditional ML (scikit-learn, Prophet)
 
