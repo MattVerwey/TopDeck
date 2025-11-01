@@ -24,6 +24,7 @@ import {
 import {
   GitHub as GitHubIcon,
   Cloud as AzureIcon,
+  DeveloperMode as AzureDevOpsIcon,
   Assessment as PrometheusIcon,
   ConfirmationNumber as JiraIcon,
   BugReport as ServiceNowIcon,
@@ -90,7 +91,7 @@ export default function Integrations() {
           description: 'Connect to Azure DevOps pipelines and repos',
           enabled: true,
           configured: true,
-          icon: <AzureIcon fontSize="large" />,
+          icon: <AzureDevOpsIcon fontSize="large" />,
           lastSync: '1 hour ago',
         },
         {
