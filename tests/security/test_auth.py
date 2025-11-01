@@ -2,18 +2,18 @@
 Tests for authentication module.
 """
 
-import pytest
 from datetime import timedelta
+
+import pytest
 from jose import jwt
 
 from topdeck.security.auth import (
-    create_access_token,
-    verify_password,
-    get_password_hash,
-    authenticate_user,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    SECRET_KEY,
     ALGORITHM,
+    SECRET_KEY,
+    authenticate_user,
+    create_access_token,
+    get_password_hash,
+    verify_password,
 )
 from topdeck.security.models import Role
 

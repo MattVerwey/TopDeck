@@ -6,12 +6,12 @@ Provides authentication, authorization, and RBAC functionality.
 
 from .auth import (
     create_access_token,
-    get_current_user,
     get_current_active_user,
-    verify_password,
+    get_current_user,
     get_password_hash,
+    verify_password,
 )
-from .models import User, Role, Permission, TokenData
+from .models import Permission, Role, TokenData, User
 from .rbac import check_permission, require_permission, require_role
 
 __all__ = [

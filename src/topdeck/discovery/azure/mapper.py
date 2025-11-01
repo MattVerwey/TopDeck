@@ -180,9 +180,7 @@ class AzureResourceMapper:
 
     @staticmethod
     def extract_connection_strings_from_properties(
-        resource_id: str,
-        resource_type: str,
-        properties: dict[str, Any]
+        resource_id: str, resource_type: str, properties: dict[str, Any]
     ) -> list[ResourceDependency]:
         """
         Extract connection string-based dependencies from resource properties.
@@ -206,8 +204,10 @@ class AzureResourceMapper:
                 if isinstance(setting, dict):
                     value = setting.get("value", "")
                     # Common connection string setting names
-                    if any(key in setting.get("name", "").lower()
-                           for key in ["connection", "database", "storage", "redis", "cache"]):
+                    if any(
+                        key in setting.get("name", "").lower()
+                        for key in ["connection", "database", "storage", "redis", "cache"]
+                    ):
                         conn_info = parser.parse_connection_string(value)
                         if conn_info and conn_info.host:
                             target_id = parser.extract_host_from_connection_info(conn_info)
@@ -216,7 +216,7 @@ class AzureResourceMapper:
                                     source_id=resource_id,
                                     target_id=target_id,
                                     conn_info=conn_info,
-                                    description=f"App Service connection: {setting.get('name')}"
+                                    description=f"App Service connection: {setting.get('name')}",
                                 )
                                 dependencies.append(dep)
 
@@ -233,7 +233,7 @@ class AzureResourceMapper:
                                 source_id=resource_id,
                                 target_id=target_id,
                                 conn_info=conn_info,
-                                description=f"Connection string: {conn_str.get('name')}"
+                                description=f"Connection string: {conn_str.get('name')}",
                             )
                             dependencies.append(dep)
 
@@ -244,7 +244,7 @@ class AzureResourceMapper:
                 if isinstance(ext, dict):
                     settings = ext.get("settings", {})
                     # Check for database or storage connections
-                    for key, value in settings.items():
+                    for _key, value in settings.items():
                         if isinstance(value, str) and any(
                             pattern in value.lower()
                             for pattern in ["://", "database", "storage", "cache"]
@@ -256,7 +256,7 @@ class AzureResourceMapper:
                                     dep = parser.create_dependency_from_connection(
                                         source_id=resource_id,
                                         target_id=target_id,
-                                        conn_info=conn_info
+                                        conn_info=conn_info,
                                     )
                                     dependencies.append(dep)
 
@@ -266,7 +266,7 @@ class AzureResourceMapper:
             for addon_name, addon_config in addon_profiles.items():
                 if isinstance(addon_config, dict):
                     config = addon_config.get("config", {})
-                    for key, value in config.items():
+                    for _key, value in config.items():
                         if isinstance(value, str) and "://" in value:
                             conn_info = parser.parse_connection_string(value)
                             if conn_info and conn_info.host:
@@ -276,7 +276,7 @@ class AzureResourceMapper:
                                         source_id=resource_id,
                                         target_id=target_id,
                                         conn_info=conn_info,
-                                        description=f"AKS addon: {addon_name}"
+                                        description=f"AKS addon: {addon_name}",
                                     )
                                     dependencies.append(dep)
 

@@ -571,7 +571,7 @@ async def get_app_service_servicebus_connections(
                         resource_group, app.name
                     )
                     if hasattr(app_settings, "properties"):
-                        for key, value in app_settings.properties.items():
+                        for _key, value in app_settings.properties.items():
                             if value and isinstance(value, str):
                                 sb_info = parse_servicebus_connection_string(value)
                                 if sb_info:
@@ -585,7 +585,7 @@ async def get_app_service_servicebus_connections(
                         resource_group, app.name
                     )
                     if hasattr(conn_strings, "properties"):
-                        for key, conn in conn_strings.properties.items():
+                        for _key, conn in conn_strings.properties.items():
                             if hasattr(conn, "value") and conn.value:
                                 sb_info = parse_servicebus_connection_string(conn.value)
                                 if sb_info:
@@ -657,6 +657,7 @@ async def get_aks_servicebus_connections(
 
                     # Load configuration from kubeconfig string
                     import yaml
+
                     kubeconfig_dict = yaml.safe_load(kubeconfig)
                     api_client = k8s_config.new_client_from_config(config_dict=kubeconfig_dict)
 
@@ -674,7 +675,7 @@ async def get_aks_servicebus_connections(
                             configmaps = v1.list_namespaced_config_map(ns_name)
                             for cm in configmaps.items:
                                 if cm.data:
-                                    for key, value in cm.data.items():
+                                    for _key, value in cm.data.items():
                                         if value and isinstance(value, str):
                                             sb_info = parse_servicebus_connection_string(value)
                                             if sb_info:
@@ -687,7 +688,7 @@ async def get_aks_servicebus_connections(
                             secrets = v1.list_namespaced_secret(ns_name)
                             for secret in secrets.items:
                                 if secret.data:
-                                    for key, value_bytes in secret.data.items():
+                                    for _key, value_bytes in secret.data.items():
                                         if value_bytes:
                                             try:
                                                 import base64
@@ -695,9 +696,7 @@ async def get_aks_servicebus_connections(
                                                 value = base64.b64decode(value_bytes).decode(
                                                     "utf-8"
                                                 )
-                                                sb_info = parse_servicebus_connection_string(
-                                                    value
-                                                )
+                                                sb_info = parse_servicebus_connection_string(value)
                                                 if sb_info:
                                                     aks_connections.add(sb_info["namespace"])
                                             except Exception:
@@ -796,10 +795,7 @@ async def detect_servicebus_dependencies(
         if topic_name and namespace_name:
             # Find the topic resource
             for topic in topics:
-                if (
-                    topic.name == topic_name
-                    and topic.properties.get("namespace") == namespace_name
-                ):
+                if topic.name == topic_name and topic.properties.get("namespace") == namespace_name:
                     dep = ResourceDependency(
                         source_id=topic.id,
                         target_id=subscription.id,

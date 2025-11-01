@@ -5,7 +5,7 @@ Provides API endpoints for change requests, impact assessment,
 and change calendar.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -115,26 +115,28 @@ async def create_change_request(request: ChangeRequestCreate) -> ChangeRequestRe
         # Parse change type
         try:
             change_type = ChangeType(request.change_type.lower())
-        except ValueError:
+        except ValueError as e:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid change type. Must be one of: {[t.value for t in ChangeType]}",
-            )
+            ) from e
 
         # Parse dates if provided
         scheduled_start = None
         scheduled_end = None
         if request.scheduled_start:
             try:
-                scheduled_start = datetime.fromisoformat(request.scheduled_start.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid scheduled_start format")
+                scheduled_start = datetime.fromisoformat(
+                    request.scheduled_start.replace("Z", "+00:00")
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_start format") from e
 
         if request.scheduled_end:
             try:
                 scheduled_end = datetime.fromisoformat(request.scheduled_end.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid scheduled_end format")
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_end format") from e
 
         # Create change request
         change_request = service.create_change_request(
@@ -225,14 +227,14 @@ async def get_change_calendar(
         if start_date:
             try:
                 start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid start_date format")
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="Invalid start_date format") from e
 
         if end_date:
             try:
                 end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid end_date format")
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="Invalid end_date format") from e
 
         # Get calendar
         changes = service.get_change_calendar(start, end)
@@ -269,14 +271,15 @@ async def get_change_metrics(
     KPIs and effectiveness metrics.
     """
     try:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
+
         from topdeck.change_management.metrics import ChangeMetricsCalculator
 
         service = get_change_service()
 
         # Get changes from the last N days
-        start_date = datetime.now(timezone.utc) - timedelta(days=days)
-        
+        start_date = datetime.now(UTC) - timedelta(days=days)
+
         # Query Neo4j for changes
         query = """
         MATCH (c:ChangeRequest)
@@ -284,7 +287,7 @@ async def get_change_metrics(
         RETURN c
         ORDER BY c.created_at DESC
         """
-        
+
         changes = []
         with service.neo4j_client.driver.session() as session:
             result = session.run(query, start_date=start_date.isoformat())
@@ -308,9 +311,7 @@ async def get_change_metrics(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to calculate metrics: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to calculate metrics: {str(e)}") from e
 
 
 @router.post("/{change_id}/approve", response_model=dict[str, Any])
@@ -332,13 +333,11 @@ async def approve_change(
             "message": f"Change {change_id} approved by {approver}",
             "approver": approver,
             "comments": comments,
-            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "approved_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to approve change: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to approve change: {str(e)}") from e
 
 
 @router.post("/{change_id}/reject", response_model=dict[str, Any])
@@ -360,10 +359,8 @@ async def reject_change(
             "message": f"Change {change_id} rejected by {approver}",
             "approver": approver,
             "reason": reason,
-            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "rejected_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to reject change: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to reject change: {str(e)}") from e

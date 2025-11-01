@@ -7,7 +7,7 @@ Discovers repositories, pipelines, and deployments from Azure DevOps.
 import base64
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -413,7 +413,7 @@ class AzureDevOpsDiscoverer:
                 run_number=int(build_number) if build_number and build_number.isdigit() else None,
                 version=build_number,
                 commit_sha=commit_sha,
-                deployed_at=deployed_at or datetime.now(timezone.utc),
+                deployed_at=deployed_at or datetime.now(UTC),
                 deployed_by=deployed_by,
                 deployment_duration=deployment_duration,
                 status=deployment_status,

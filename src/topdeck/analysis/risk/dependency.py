@@ -155,7 +155,7 @@ class DependencyAnalyzer:
         # Clamp max_depth to reasonable bounds
         # Note: Neo4j variable-length relationships cannot use query parameters for bounds
         clamped_depth = max(1, min(max_depth, 10))
-        
+
         if direction == "upstream":
             # Using hardcoded maximum to avoid f-string query construction
             query = """
@@ -265,7 +265,7 @@ class DependencyAnalyzer:
         """
         # Clamp max_depth to reasonable bounds
         clamped_depth = max(2, min(max_depth, 20))
-        
+
         # Get directly affected (immediate dependents)
         direct_query = """
         MATCH (r {id: $id})<-[:DEPENDS_ON]-(dependent)
@@ -380,7 +380,7 @@ class DependencyAnalyzer:
                 # Normalize cycle to start with smallest ID (for deduplication)
                 min_idx = min(range(len(cycle)), key=lambda i: cycle[i])
                 normalized = cycle[min_idx:] + cycle[:min_idx]
-                
+
                 # Only add if not already present (avoid duplicates)
                 if normalized not in cycles:
                     cycles.append(normalized)
@@ -414,7 +414,7 @@ class DependencyAnalyzer:
             factors["high_dependency_count"] = {
                 "count": dependencies_count,
                 "penalty": dependency_penalty,
-                "reason": f"Resource depends on {dependencies_count} other resources (high coupling)"
+                "reason": f"Resource depends on {dependencies_count} other resources (high coupling)",
             }
 
         # Factor 2: Circular dependencies (severe penalty)
@@ -426,16 +426,16 @@ class DependencyAnalyzer:
                 "count": len(circular_deps),
                 "penalty": circular_penalty,
                 "cycles": circular_deps,
-                "reason": f"Found {len(circular_deps)} circular dependency path(s)"
+                "reason": f"Found {len(circular_deps)} circular dependency path(s)",
             }
 
         # Factor 3: Single points of failure in dependency chain
         dependency_tree = self.get_dependency_tree(resource_id, direction="upstream", max_depth=3)
-        
+
         # Batch check all dependencies for SPOF status in single query
         dep_ids = list(dependency_tree.keys())
         spof_in_deps = []
-        
+
         if dep_ids:
             # Query all at once to reduce database roundtrips
             spof_query = """
@@ -450,11 +450,11 @@ class DependencyAnalyzer:
             WHERE dependent_count > 0 AND redundant_count = 0
             RETURN dep_id
             """
-            
+
             with self.neo4j_client.session() as session:
                 result = session.run(spof_query, dep_ids=dep_ids)
                 spof_in_deps = [record["dep_id"] for record in result]
-        
+
         if spof_in_deps:
             spof_penalty = min(20, len(spof_in_deps) * 5)
             score -= spof_penalty
@@ -462,7 +462,7 @@ class DependencyAnalyzer:
                 "count": len(spof_in_deps),
                 "penalty": spof_penalty,
                 "resources": spof_in_deps,
-                "reason": f"Depends on {len(spof_in_deps)} single point(s) of failure"
+                "reason": f"Depends on {len(spof_in_deps)} single point(s) of failure",
             }
 
         # Factor 4: Dependency depth (penalize deep trees)
@@ -473,7 +473,7 @@ class DependencyAnalyzer:
             factors["deep_dependency_tree"] = {
                 "max_depth": max_depth,
                 "penalty": depth_penalty,
-                "reason": f"Dependency tree is {max_depth} levels deep (complex)"
+                "reason": f"Dependency tree is {max_depth} levels deep (complex)",
             }
 
         # Ensure score is in valid range
@@ -484,7 +484,7 @@ class DependencyAnalyzer:
             "health_score": round(score, 2),
             "health_level": self._get_health_level(score),
             "factors": factors,
-            "recommendations": self._generate_health_recommendations(factors)
+            "recommendations": self._generate_health_recommendations(factors),
         }
 
     def _calculate_max_dependency_depth(self, resource_id: str, max_depth: int = 10) -> int:
@@ -500,7 +500,7 @@ class DependencyAnalyzer:
         ])
         RETURN max(length(path)) as max_depth
         """
-        
+
         with self.neo4j_client.session() as session:
             result = session.run(query, id=resource_id)
             record = result.single()
@@ -525,7 +525,7 @@ class DependencyAnalyzer:
     def _generate_health_recommendations(self, factors: dict) -> list[str]:
         """Generate recommendations based on health factors."""
         recommendations = []
-        
+
         if "high_dependency_count" in factors:
             recommendations.append(
                 "⚠️ Reduce coupling by consolidating dependencies or using facade pattern"
@@ -533,7 +533,7 @@ class DependencyAnalyzer:
             recommendations.append(
                 "Consider implementing dependency injection to manage complexity"
             )
-        
+
         if "circular_dependencies" in factors:
             recommendations.append(
                 "🔴 CRITICAL: Break circular dependencies immediately - they can cause deadlocks"
@@ -541,24 +541,18 @@ class DependencyAnalyzer:
             recommendations.append(
                 "Refactor to use event-driven architecture or introduce a mediator"
             )
-        
+
         if "spof_in_dependencies" in factors:
             recommendations.append(
                 "Add redundancy to critical dependencies that are single points of failure"
             )
-            recommendations.append(
-                "Implement circuit breakers and fallbacks for SPOF dependencies"
-            )
-        
+            recommendations.append("Implement circuit breakers and fallbacks for SPOF dependencies")
+
         if "deep_dependency_tree" in factors:
-            recommendations.append(
-                "Simplify dependency tree by introducing abstraction layers"
-            )
-            recommendations.append(
-                "Consider using service mesh for better dependency management"
-            )
-        
+            recommendations.append("Simplify dependency tree by introducing abstraction layers")
+            recommendations.append("Consider using service mesh for better dependency management")
+
         if not recommendations:
             recommendations.append("✅ Dependency health is good - maintain current practices")
-        
+
         return recommendations

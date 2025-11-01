@@ -96,20 +96,22 @@ class Cache:
                 "password": self.config.password,
                 "decode_responses": True,
             }
-            
+
             # Add SSL parameters if encryption is enabled
             if self.config.ssl:
                 import ssl
-                import ssl
+
                 if self.config.ssl_cert_reqs == "none":
                     connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
                 elif self.config.ssl_cert_reqs == "optional":
                     connection_params["ssl_cert_reqs"] = ssl.CERT_OPTIONAL
                 elif self.config.ssl_cert_reqs == "required":
                     connection_params["ssl_cert_reqs"] = ssl.CERT_REQUIRED
-                
-                logger.info(f"Connecting to Redis with SSL/TLS encryption at {self.config.host}:{self.config.port}")
-            
+
+                logger.info(
+                    f"Connecting to Redis with SSL/TLS encryption at {self.config.host}:{self.config.port}"
+                )
+
             self._client = aioredis.Redis(**connection_params)
             # Test connection
             await self._client.ping()

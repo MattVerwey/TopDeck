@@ -223,9 +223,7 @@ class GCPResourceMapper:
 
     @staticmethod
     def extract_connection_strings_from_properties(
-        resource_name: str,
-        resource_type: str,
-        properties: dict[str, Any]
+        resource_name: str, resource_type: str, properties: dict[str, Any]
     ) -> list[ResourceDependency]:
         """
         Extract connection string-based dependencies from resource properties.
@@ -258,7 +256,7 @@ class GCPResourceMapper:
                                 source_id=resource_name,
                                 target_id=target_id,
                                 conn_info=conn_info,
-                                description=f"Cloud Function environment: {var_name}"
+                                description=f"Cloud Function environment: {var_name}",
                             )
                             dependencies.append(dep)
 
@@ -271,8 +269,10 @@ class GCPResourceMapper:
                 for env_var in env_vars:
                     var_name = env_var.get("name", "")
                     var_value = env_var.get("value", "")
-                    if any(key in var_name.upper()
-                           for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]):
+                    if any(
+                        key in var_name.upper()
+                        for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]
+                    ):
                         conn_info = parser.parse_connection_string(var_value)
                         if conn_info and conn_info.host:
                             target_id = parser.extract_host_from_connection_info(conn_info)
@@ -281,7 +281,7 @@ class GCPResourceMapper:
                                     source_id=resource_name,
                                     target_id=target_id,
                                     conn_info=conn_info,
-                                    description=f"Cloud Run environment: {var_name}"
+                                    description=f"Cloud Run environment: {var_name}",
                                 )
                                 dependencies.append(dep)
 
@@ -292,8 +292,9 @@ class GCPResourceMapper:
             for item in items:
                 key = item.get("key", "")
                 value = item.get("value", "")
-                if any(pattern in key.lower()
-                       for pattern in ["connection", "database", "endpoint"]):
+                if any(
+                    pattern in key.lower() for pattern in ["connection", "database", "endpoint"]
+                ):
                     conn_info = parser.parse_connection_string(value)
                     if conn_info and conn_info.host:
                         target_id = parser.extract_host_from_connection_info(conn_info)
@@ -302,7 +303,7 @@ class GCPResourceMapper:
                                 source_id=resource_name,
                                 target_id=target_id,
                                 conn_info=conn_info,
-                                description=f"Instance metadata: {key}"
+                                description=f"Instance metadata: {key}",
                             )
                             dependencies.append(dep)
 

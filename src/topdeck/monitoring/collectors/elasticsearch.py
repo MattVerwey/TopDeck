@@ -7,7 +7,7 @@ error tracking, and correlation with resource topology.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class ElasticsearchEntry:
     """
     Represents a single log entry from Elasticsearch.
-    
+
     Attributes:
         timestamp: When the log entry was created
         message: The log message content
@@ -43,7 +43,7 @@ class ElasticsearchEntry:
 class TransactionTrace:
     """
     Represents a trace of a transaction through the system.
-    
+
     Attributes:
         transaction_id: Unique identifier for the transaction
         start_time: When the transaction started
@@ -170,7 +170,7 @@ class ElasticsearchCollector:
             List of log entries ordered by timestamp
         """
         # Build Elasticsearch query to find logs with correlation_id
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_time = now - duration
 
         query = {
@@ -217,9 +217,10 @@ class ElasticsearchCollector:
                     properties=self._extract_properties(result),
                     resource_id=self._extract_resource_id(result),
                     correlation_id=self._extract_correlation_id(result),
-                    operation_name=result.get("operation_name")
-                    or result.get("operation"),
-                    level=self._normalize_level(result.get("level", result.get("severity", "info"))),
+                    operation_name=result.get("operation_name") or result.get("operation"),
+                    level=self._normalize_level(
+                        result.get("level", result.get("severity", "info"))
+                    ),
                 )
             )
 
@@ -252,11 +253,7 @@ class ElasticsearchCollector:
                 seen_resources.add(entry.resource_id)
 
         # Count errors and warnings
-        error_count = sum(
-            1
-            for e in entries
-            if e.level in (self.LEVEL_ERROR, self.LEVEL_CRITICAL)
-        )
+        error_count = sum(1 for e in entries if e.level in (self.LEVEL_ERROR, self.LEVEL_CRITICAL))
         warning_count = sum(1 for e in entries if e.level == self.LEVEL_WARNING)
 
         # Calculate duration
@@ -289,7 +286,7 @@ class ElasticsearchCollector:
         Returns:
             List of log entries
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_time = now - duration
 
         must_clauses: list[dict[str, Any]] = [
@@ -328,9 +325,10 @@ class ElasticsearchCollector:
                     properties=self._extract_properties(result),
                     resource_id=self._extract_resource_id(result),
                     correlation_id=self._extract_correlation_id(result),
-                    operation_name=result.get("operation_name")
-                    or result.get("operation"),
-                    level=self._normalize_level(result.get("level", result.get("severity", "info"))),
+                    operation_name=result.get("operation_name") or result.get("operation"),
+                    level=self._normalize_level(
+                        result.get("level", result.get("severity", "info"))
+                    ),
                 )
             )
 
@@ -350,7 +348,7 @@ class ElasticsearchCollector:
         Returns:
             List of unique correlation IDs
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_time = now - duration
 
         query = {
@@ -360,7 +358,10 @@ class ElasticsearchCollector:
                     "must": [
                         {
                             "range": {
-                                "@timestamp": {"gte": start_time.isoformat(), "lte": now.isoformat()}
+                                "@timestamp": {
+                                    "gte": start_time.isoformat(),
+                                    "lte": now.isoformat(),
+                                }
                             }
                         },
                         {
@@ -380,9 +381,7 @@ class ElasticsearchCollector:
                 }
             },
             "aggs": {
-                "correlation_ids": {
-                    "terms": {"field": "correlation_id.keyword", "size": limit}
-                }
+                "correlation_ids": {"terms": {"field": "correlation_id.keyword", "size": limit}}
             },
         }
 
@@ -406,7 +405,7 @@ class ElasticsearchCollector:
     def _parse_timestamp(self, timestamp_str: str | None) -> datetime:
         """Parse timestamp string to datetime."""
         if not timestamp_str:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         try:
             # Handle ISO format with trailing 'Z' for UTC
@@ -417,7 +416,7 @@ class ElasticsearchCollector:
         except (ValueError, AttributeError):
             # Fallback to current time if parsing fails
             logger.warning(f"Failed to parse timestamp: {timestamp_str}")
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
     def _extract_resource_id(self, doc: dict[str, Any]) -> str:
         """Extract resource ID from document."""

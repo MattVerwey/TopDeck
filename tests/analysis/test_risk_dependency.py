@@ -269,18 +269,18 @@ def test_detect_circular_dependencies_for_resource(dependency_analyzer, mock_neo
     """Test detecting circular dependencies for a specific resource."""
     mock_session = MagicMock()
     mock_result = MagicMock()
-    
+
     # Mock a circular dependency: A -> B -> C -> A
     mock_result.__iter__.return_value = [
         {"cycle": ["resource-a", "resource-b", "resource-c", "resource-a"]},
         {"cycle": ["resource-a", "resource-d", "resource-a"]},
     ]
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     cycles = dependency_analyzer.detect_circular_dependencies("resource-a")
-    
+
     assert len(cycles) == 2
     assert mock_session.run.call_count == 1
 
@@ -289,18 +289,18 @@ def test_detect_circular_dependencies_all(dependency_analyzer, mock_neo4j_client
     """Test detecting all circular dependencies in graph."""
     mock_session = MagicMock()
     mock_result = MagicMock()
-    
+
     # Mock multiple cycles
     mock_result.__iter__.return_value = [
         {"cycle": ["res-1", "res-2", "res-3", "res-1"]},
         {"cycle": ["res-4", "res-5", "res-4"]},
     ]
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     cycles = dependency_analyzer.detect_circular_dependencies()
-    
+
     assert len(cycles) == 2
     assert mock_session.run.call_count == 1
 
@@ -310,12 +310,12 @@ def test_detect_circular_dependencies_none_found(dependency_analyzer, mock_neo4j
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_result.__iter__.return_value = []
-    
+
     mock_session.run.return_value = mock_result
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     cycles = dependency_analyzer.detect_circular_dependencies("resource-1")
-    
+
     assert len(cycles) == 0
 
 
@@ -323,25 +323,25 @@ def test_get_dependency_health_score_healthy(dependency_analyzer, mock_neo4j_cli
     """Test dependency health score for healthy resource."""
     # Mock minimal dependencies, no circular deps, no SPOFs
     mock_session = MagicMock()
-    
+
     # Mock get_dependency_counts
     mock_count_result_upstream = MagicMock()
     mock_count_result_upstream.single.return_value = {"count": 3}
     mock_count_result_downstream = MagicMock()
     mock_count_result_downstream.single.return_value = {"count": 2}
-    
+
     # Mock detect_circular_dependencies (no cycles)
     mock_circular_result = MagicMock()
     mock_circular_result.__iter__.return_value = []
-    
+
     # Mock get_dependency_tree
     mock_tree_result = MagicMock()
     mock_tree_result.__iter__.return_value = []
-    
+
     # Mock max depth query
     mock_depth_result = MagicMock()
     mock_depth_result.single.return_value = {"max_depth": 2}
-    
+
     mock_session.run.side_effect = [
         mock_count_result_upstream,
         mock_count_result_downstream,
@@ -350,9 +350,9 @@ def test_get_dependency_health_score_healthy(dependency_analyzer, mock_neo4j_cli
         mock_depth_result,
     ]
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     health = dependency_analyzer.get_dependency_health_score("resource-1")
-    
+
     assert health["health_score"] == 100.0
     assert health["health_level"] == "excellent"
     assert len(health["factors"]) == 0
@@ -362,27 +362,27 @@ def test_get_dependency_health_score_healthy(dependency_analyzer, mock_neo4j_cli
 def test_get_dependency_health_score_with_issues(dependency_analyzer, mock_neo4j_client):
     """Test dependency health score with various issues."""
     mock_session = MagicMock()
-    
+
     # Mock high dependency count
     mock_count_result_upstream = MagicMock()
     mock_count_result_upstream.single.return_value = {"count": 15}
     mock_count_result_downstream = MagicMock()
     mock_count_result_downstream.single.return_value = {"count": 2}
-    
+
     # Mock circular dependency
     mock_circular_result = MagicMock()
     mock_circular_result.__iter__.return_value = [
         {"cycle": ["res-1", "res-2", "res-1"]},
     ]
-    
+
     # Mock dependency tree
     mock_tree_result = MagicMock()
     mock_tree_result.__iter__.return_value = []
-    
+
     # Mock depth
     mock_depth_result = MagicMock()
     mock_depth_result.single.return_value = {"max_depth": 7}
-    
+
     mock_session.run.side_effect = [
         mock_count_result_upstream,
         mock_count_result_downstream,
@@ -391,9 +391,9 @@ def test_get_dependency_health_score_with_issues(dependency_analyzer, mock_neo4j
         mock_depth_result,
     ]
     mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
-    
+
     health = dependency_analyzer.get_dependency_health_score("resource-1")
-    
+
     assert health["health_score"] < 100.0
     assert "high_dependency_count" in health["factors"]
     assert "circular_dependencies" in health["factors"]

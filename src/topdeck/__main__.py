@@ -101,11 +101,11 @@ def main() -> None:
     print(f"   Log Level: {args.log_level}")
     print(f"   Auto-reload: {reload}")
     print(f"   Workers: {args.workers}")
-    
+
     # Security warnings
     if settings.app_env == "production" and not settings.ssl_enabled:
-        print(f"   ⚠️  WARNING: Running in production without SSL/TLS encryption!")
-    
+        print("   ⚠️  WARNING: Running in production without SSL/TLS encryption!")
+
     print()
 
     try:

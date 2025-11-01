@@ -3,7 +3,7 @@ Role-Based Access Control (RBAC) implementation.
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, status
 

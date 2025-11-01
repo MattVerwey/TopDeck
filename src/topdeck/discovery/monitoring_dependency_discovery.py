@@ -8,13 +8,13 @@ from Prometheus to identify actual communication patterns.
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ..monitoring.collectors.azure_log_analytics import AzureLogAnalyticsCollector
+from ..monitoring.collectors.elasticsearch import ElasticsearchCollector
 from ..monitoring.collectors.loki import LokiCollector
 from ..monitoring.collectors.prometheus import PrometheusCollector
-from ..monitoring.collectors.elasticsearch import ElasticsearchCollector
-from ..monitoring.collectors.azure_log_analytics import AzureLogAnalyticsCollector
 from .models import DependencyCategory, DependencyType, ResourceDependency
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class DependencyEvidence:
 class MonitoringDependencyDiscovery:
     """
     Discovers dependencies by analyzing monitoring data.
-    
+
     Uses:
     - Loki logs to identify service-to-service communication
     - Prometheus metrics to identify connection patterns
@@ -61,11 +61,11 @@ class MonitoringDependencyDiscovery:
         loki_collector: LokiCollector | None = None,
         prometheus_collector: PrometheusCollector | None = None,
         elasticsearch_collector: ElasticsearchCollector | None = None,
-        azure_log_analytics_collector: AzureLogAnalyticsCollector | None = None
+        azure_log_analytics_collector: AzureLogAnalyticsCollector | None = None,
     ):
         """
         Initialize monitoring-based dependency discovery.
-        
+
         Args:
             loki_collector: Loki collector for log analysis
             prometheus_collector: Prometheus collector for metrics analysis
@@ -78,73 +78,64 @@ class MonitoringDependencyDiscovery:
         self.azure_log_analytics_collector = azure_log_analytics_collector
 
     async def discover_dependencies_from_logs(
-        self,
-        resource_ids: list[str],
-        duration: timedelta = timedelta(hours=24)
+        self, resource_ids: list[str], duration: timedelta = timedelta(hours=24)
     ) -> list[DependencyEvidence]:
         """
         Discover dependencies by analyzing logs.
-        
+
         Looks for patterns in logs that indicate communication:
         - HTTP requests to other services
         - Database queries
         - Cache operations
         - Message queue operations
-        
+
         Supports multiple log platforms:
         - Loki
         - Elasticsearch
         - Azure Log Analytics
-        
+
         Args:
             resource_ids: List of resource IDs to analyze
             duration: Time range to analyze
-            
+
         Returns:
             List of dependency evidence
         """
         evidence_list = []
-        
+
         # Try Loki if available
         if self.loki_collector:
-            evidence_list.extend(
-                await self._discover_from_loki(resource_ids, duration)
-            )
-        
+            evidence_list.extend(await self._discover_from_loki(resource_ids, duration))
+
         # Try Elasticsearch if available
         if self.elasticsearch_collector:
-            evidence_list.extend(
-                await self._discover_from_elasticsearch(resource_ids, duration)
-            )
-        
+            evidence_list.extend(await self._discover_from_elasticsearch(resource_ids, duration))
+
         # Try Azure Log Analytics if available
         if self.azure_log_analytics_collector:
             evidence_list.extend(
                 await self._discover_from_azure_log_analytics(resource_ids, duration)
             )
-        
+
         # Aggregate evidence by source-target pairs
         return self._aggregate_evidence(evidence_list)
 
     async def _discover_from_loki(
-        self,
-        resource_ids: list[str],
-        duration: timedelta
+        self, resource_ids: list[str], duration: timedelta
     ) -> list[DependencyEvidence]:
         """Discover dependencies from Loki logs."""
         evidence_list = []
-        
+
         for resource_id in resource_ids:
             try:
                 streams = await self.loki_collector.get_resource_logs(
-                    resource_id=resource_id,
-                    duration=duration
+                    resource_id=resource_id, duration=duration
                 )
-                
+
                 for stream in streams:
                     for entry in stream.entries:
                         targets = self._extract_targets_from_log(entry.message)
-                        
+
                         for target in targets:
                             evidence_list.append(
                                 DependencyEvidence(
@@ -156,34 +147,31 @@ class MonitoringDependencyDiscovery:
                                         "protocol": target.get("protocol"),
                                         "endpoint": target.get("endpoint"),
                                         "log_timestamp": entry.timestamp.isoformat(),
-                                        "source": "loki"
+                                        "source": "loki",
                                     },
-                                    discovered_at=datetime.now(timezone.utc)
+                                    discovered_at=datetime.now(UTC),
                                 )
                             )
             except Exception:
                 continue
-        
+
         return evidence_list
 
     async def _discover_from_elasticsearch(
-        self,
-        resource_ids: list[str],
-        duration: timedelta
+        self, resource_ids: list[str], duration: timedelta
     ) -> list[DependencyEvidence]:
         """Discover dependencies from Elasticsearch logs."""
         evidence_list = []
-        
+
         for resource_id in resource_ids:
             try:
                 entries = await self.elasticsearch_collector.get_resource_logs(
-                    resource_id=resource_id,
-                    duration=duration
+                    resource_id=resource_id, duration=duration
                 )
-                
+
                 for entry in entries:
                     targets = self._extract_targets_from_log(entry.message)
-                    
+
                     for target in targets:
                         evidence_list.append(
                             DependencyEvidence(
@@ -195,9 +183,9 @@ class MonitoringDependencyDiscovery:
                                     "protocol": target.get("protocol"),
                                     "endpoint": target.get("endpoint"),
                                     "log_timestamp": entry.timestamp.isoformat(),
-                                    "source": "elasticsearch"
+                                    "source": "elasticsearch",
                                 },
-                                discovered_at=datetime.now(timezone.utc)
+                                discovered_at=datetime.now(UTC),
                             )
                         )
             except Exception as e:
@@ -206,27 +194,24 @@ class MonitoringDependencyDiscovery:
                     exc_info=True,
                 )
                 continue
-        
+
         return evidence_list
 
     async def _discover_from_azure_log_analytics(
-        self,
-        resource_ids: list[str],
-        duration: timedelta
+        self, resource_ids: list[str], duration: timedelta
     ) -> list[DependencyEvidence]:
         """Discover dependencies from Azure Log Analytics logs."""
         evidence_list = []
-        
+
         for resource_id in resource_ids:
             try:
                 entries = await self.azure_log_analytics_collector.get_resource_logs(
-                    resource_id=resource_id,
-                    duration=duration
+                    resource_id=resource_id, duration=duration
                 )
-                
+
                 for entry in entries:
                     targets = self._extract_targets_from_log(entry.message)
-                    
+
                     for target in targets:
                         evidence_list.append(
                             DependencyEvidence(
@@ -238,9 +223,9 @@ class MonitoringDependencyDiscovery:
                                     "protocol": target.get("protocol"),
                                     "endpoint": target.get("endpoint"),
                                     "log_timestamp": entry.timestamp.isoformat(),
-                                    "source": "azure_log_analytics"
+                                    "source": "azure_log_analytics",
                                 },
-                                discovered_at=datetime.now(timezone.utc)
+                                discovered_at=datetime.now(UTC),
                             )
                         )
             except Exception as e:
@@ -249,50 +234,48 @@ class MonitoringDependencyDiscovery:
                     exc_info=True,
                 )
                 continue
-        
+
         return evidence_list
 
     async def discover_dependencies_from_metrics(
-        self,
-        resource_ids: list[str],
-        duration: timedelta = timedelta(hours=24)
+        self, resource_ids: list[str], duration: timedelta = timedelta(hours=24)
     ) -> list[DependencyEvidence]:
         """
         Discover dependencies by analyzing metrics.
-        
+
         Looks for patterns in metrics that indicate communication:
         - HTTP request counts between services
         - Database connection counts
         - Cache hit/miss patterns
         - Network traffic patterns
-        
+
         Args:
             resource_ids: List of resource IDs to analyze
             duration: Time range to analyze
-            
+
         Returns:
             List of dependency evidence
         """
         if not self.prometheus_collector:
             return []
-        
+
         evidence_list = []
-        
+
         for resource_id in resource_ids:
             try:
                 # Get metrics for this resource
                 metrics = await self.prometheus_collector.get_resource_metrics(
-                    resource_id=resource_id,
-                    resource_type="service",
-                    duration=duration
+                    resource_id=resource_id, resource_type="service", duration=duration
                 )
-                
+
                 # Analyze request patterns
                 if "request_rate" in metrics.metrics:
                     series = metrics.metrics["request_rate"]
                     for value in series.values:
                         # Extract target from labels
-                        target_id = value.labels.get("target_service") or value.labels.get("destination")
+                        target_id = value.labels.get("target_service") or value.labels.get(
+                            "destination"
+                        )
                         if target_id and target_id != resource_id:
                             evidence_list.append(
                                 DependencyEvidence(
@@ -303,12 +286,12 @@ class MonitoringDependencyDiscovery:
                                     details={
                                         "metric": "request_rate",
                                         "avg_value": value.value,
-                                        "timestamp": value.timestamp.isoformat()
+                                        "timestamp": value.timestamp.isoformat(),
                                     },
-                                    discovered_at=datetime.now(timezone.utc)
+                                    discovered_at=datetime.now(UTC),
                                 )
                             )
-                
+
                 # Analyze connection metrics
                 if "connections" in metrics.metrics:
                     series = metrics.metrics["connections"]
@@ -324,43 +307,41 @@ class MonitoringDependencyDiscovery:
                                     details={
                                         "metric": "connections",
                                         "avg_value": value.value,
-                                        "timestamp": value.timestamp.isoformat()
+                                        "timestamp": value.timestamp.isoformat(),
                                     },
-                                    discovered_at=datetime.now(timezone.utc)
+                                    discovered_at=datetime.now(UTC),
                                 )
                             )
             except Exception:
                 continue
-        
+
         return self._aggregate_evidence(evidence_list)
 
     async def analyze_traffic_patterns(
-        self,
-        resource_ids: list[str],
-        duration: timedelta = timedelta(hours=24)
+        self, resource_ids: list[str], duration: timedelta = timedelta(hours=24)
     ) -> list[TrafficPattern]:
         """
         Analyze traffic patterns between resources.
-        
+
         Combines log and metric data to build a complete picture of
         resource communication patterns.
-        
+
         Args:
             resource_ids: List of resource IDs to analyze
             duration: Time range to analyze
-            
+
         Returns:
             List of traffic patterns
         """
         patterns = []
-        
+
         # Get evidence from both sources
         log_evidence = await self.discover_dependencies_from_logs(resource_ids, duration)
         metric_evidence = await self.discover_dependencies_from_metrics(resource_ids, duration)
-        
+
         # Combine evidence
         all_evidence = log_evidence + metric_evidence
-        
+
         # Group by source-target pairs
         evidence_by_pair: dict[tuple[str, str], list[DependencyEvidence]] = {}
         for evidence in all_evidence:
@@ -368,60 +349,53 @@ class MonitoringDependencyDiscovery:
             if key not in evidence_by_pair:
                 evidence_by_pair[key] = []
             evidence_by_pair[key].append(evidence)
-        
+
         # Create traffic patterns
         for (source_id, target_id), evidence_list in evidence_by_pair.items():
             # Calculate aggregate metrics
-            request_count = sum(
-                1 for e in evidence_list
-                if e.evidence_type in ("logs", "metrics")
-            )
-            
+            request_count = sum(1 for e in evidence_list if e.evidence_type in ("logs", "metrics"))
+
             # Average confidence across all evidence
             avg_confidence = sum(e.confidence for e in evidence_list) / len(evidence_list)
-            
+
             # Extract protocol if available
             protocols = [
-                e.details.get("protocol")
-                for e in evidence_list
-                if e.details.get("protocol")
+                e.details.get("protocol") for e in evidence_list if e.details.get("protocol")
             ]
             protocol = protocols[0] if protocols else None
-            
+
             patterns.append(
                 TrafficPattern(
                     source_id=source_id,
                     target_id=target_id,
                     protocol=protocol,
                     request_count=request_count,
-                    confidence=avg_confidence
+                    confidence=avg_confidence,
                 )
             )
-        
+
         return patterns
 
     def create_dependencies_from_traffic_patterns(
-        self,
-        patterns: list[TrafficPattern],
-        min_confidence: float = 0.5
+        self, patterns: list[TrafficPattern], min_confidence: float = 0.5
     ) -> list[ResourceDependency]:
         """
         Create ResourceDependency objects from traffic patterns.
-        
+
         Args:
             patterns: Traffic patterns to convert
             min_confidence: Minimum confidence threshold
-            
+
         Returns:
             List of ResourceDependency objects
         """
         dependencies = []
-        
+
         for pattern in patterns:
             # Skip low-confidence patterns
             if pattern.confidence < min_confidence:
                 continue
-            
+
             # Determine dependency type based on traffic characteristics
             if pattern.request_count > 100:
                 dep_type = DependencyType.REQUIRED
@@ -432,7 +406,7 @@ class MonitoringDependencyDiscovery:
             else:
                 dep_type = DependencyType.OPTIONAL
                 strength = 0.5
-            
+
             # Determine category based on protocol
             if pattern.protocol in ("http", "https"):
                 category = DependencyCategory.NETWORK
@@ -440,7 +414,7 @@ class MonitoringDependencyDiscovery:
                 category = DependencyCategory.DATA
             else:
                 category = DependencyCategory.COMPUTE
-            
+
             dependencies.append(
                 ResourceDependency(
                     source_id=pattern.source_id,
@@ -449,88 +423,83 @@ class MonitoringDependencyDiscovery:
                     dependency_type=dep_type,
                     strength=min(strength * pattern.confidence, 1.0),
                     discovered_method="traffic_analysis",
-                    description=f"Traffic pattern: {pattern.request_count} requests via {pattern.protocol or 'unknown'}"
+                    description=f"Traffic pattern: {pattern.request_count} requests via {pattern.protocol or 'unknown'}",
                 )
             )
-        
+
         return dependencies
 
     def _extract_targets_from_log(self, message: str) -> list[dict[str, Any]]:
         """
         Extract target service information from a log message.
-        
+
         Looks for patterns like:
         - HTTP requests: "GET https://api.example.com/endpoint"
         - Database queries: "Connecting to postgres://db.example.com:5432"
         - Service calls: "Calling service: order-service"
-        
+
         Args:
             message: Log message
-            
+
         Returns:
             List of target information dictionaries
         """
         targets = []
-        
+
         # HTTP/HTTPS URLs
         http_pattern = re.compile(
-            r'(https?://([a-zA-Z0-9\-\.]+(?:\:[0-9]+)?)[^\s]*)',
-            re.IGNORECASE
+            r"(https?://([a-zA-Z0-9\-\.]+(?:\:[0-9]+)?)[^\s]*)", re.IGNORECASE
         )
         for match in http_pattern.finditer(message):
             full_url = match.group(1)
             host = match.group(2)
-            targets.append({
-                "id": host,
-                "protocol": "https" if "https" in full_url else "http",
-                "endpoint": full_url,
-                "confidence": 0.8
-            })
-        
+            targets.append(
+                {
+                    "id": host,
+                    "protocol": "https" if "https" in full_url else "http",
+                    "endpoint": full_url,
+                    "confidence": 0.8,
+                }
+            )
+
         # Database connection patterns
-        db_pattern = re.compile(
-            r'(postgres|mysql|mongodb)://([a-zA-Z0-9\-\.]+)',
-            re.IGNORECASE
-        )
+        db_pattern = re.compile(r"(postgres|mysql|mongodb)://([a-zA-Z0-9\-\.]+)", re.IGNORECASE)
         for match in db_pattern.finditer(message):
             protocol = match.group(1).lower()
             host = match.group(2)
-            targets.append({
-                "id": host,
-                "protocol": protocol,
-                "endpoint": f"{protocol}://{host}",
-                "confidence": 0.85
-            })
-        
+            targets.append(
+                {
+                    "id": host,
+                    "protocol": protocol,
+                    "endpoint": f"{protocol}://{host}",
+                    "confidence": 0.85,
+                }
+            )
+
         # Service name patterns (e.g., "calling order-service")
         service_pattern = re.compile(
-            r'(?:calling|connecting to|requesting)\s+([a-zA-Z0-9\-]+(?:-service)?)',
-            re.IGNORECASE
+            r"(?:calling|connecting to|requesting)\s+([a-zA-Z0-9\-]+(?:-service)?)", re.IGNORECASE
         )
         for match in service_pattern.finditer(message):
             service_name = match.group(1)
-            targets.append({
-                "id": service_name,
-                "protocol": None,
-                "endpoint": service_name,
-                "confidence": 0.6
-            })
-        
+            targets.append(
+                {"id": service_name, "protocol": None, "endpoint": service_name, "confidence": 0.6}
+            )
+
         return targets
 
     def _aggregate_evidence(
-        self,
-        evidence_list: list[DependencyEvidence]
+        self, evidence_list: list[DependencyEvidence]
     ) -> list[DependencyEvidence]:
         """
         Aggregate evidence by source-target pairs.
-        
+
         Combines multiple pieces of evidence for the same dependency
         into a single higher-confidence evidence.
-        
+
         Args:
             evidence_list: List of evidence to aggregate
-            
+
         Returns:
             Aggregated evidence list
         """
@@ -541,24 +510,24 @@ class MonitoringDependencyDiscovery:
             if key not in evidence_by_pair:
                 evidence_by_pair[key] = []
             evidence_by_pair[key].append(evidence)
-        
+
         # Aggregate each group
         aggregated = []
         for (source_id, target_id), group in evidence_by_pair.items():
             # Calculate combined confidence (average)
             avg_confidence = sum(e.confidence for e in group) / len(group)
-            
+
             # Boost confidence if we have multiple types of evidence
-            evidence_types = set(e.evidence_type for e in group)
+            evidence_types = {e.evidence_type for e in group}
             if len(evidence_types) > 1:
                 avg_confidence = min(avg_confidence * 1.2, 1.0)
-            
+
             # Combine details
             combined_details = {
                 "occurrence_count": len(group),
-                "evidence_types": list(evidence_types)
+                "evidence_types": list(evidence_types),
             }
-            
+
             aggregated.append(
                 DependencyEvidence(
                     source_id=source_id,
@@ -566,8 +535,8 @@ class MonitoringDependencyDiscovery:
                     evidence_type="aggregated",
                     confidence=avg_confidence,
                     details=combined_details,
-                    discovered_at=datetime.now(timezone.utc)
+                    discovered_at=datetime.now(UTC),
                 )
             )
-        
+
         return aggregated

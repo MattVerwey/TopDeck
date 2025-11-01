@@ -6,11 +6,11 @@ change management systems like ServiceNow and Jira.
 """
 
 from topdeck.change_management.models import (
+    ChangeImpactAssessment,
     ChangeRequest,
+    ChangeRiskLevel,
     ChangeStatus,
     ChangeType,
-    ChangeRiskLevel,
-    ChangeImpactAssessment,
 )
 
 __all__ = [

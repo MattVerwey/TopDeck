@@ -86,16 +86,12 @@ class Settings(BaseSettings):
     )
 
     # Monitoring & Observability Configuration
-    prometheus_url: str = Field(
-        default="", description="Prometheus server URL"
-    )
+    prometheus_url: str = Field(default="", description="Prometheus server URL")
     loki_url: str = Field(default="", description="Loki server URL")
     grafana_url: str = Field(default="", description="Grafana server URL")
-    
+
     # Elasticsearch Configuration
-    elasticsearch_url: str = Field(
-        default="", description="Elasticsearch server URL"
-    )
+    elasticsearch_url: str = Field(default="", description="Elasticsearch server URL")
     elasticsearch_index_pattern: str = Field(
         default="logs-*", description="Elasticsearch index pattern for log search"
     )
@@ -108,7 +104,7 @@ class Settings(BaseSettings):
     elasticsearch_api_key: str = Field(
         default="", description="Elasticsearch API key (preferred over basic auth)"
     )
-    
+
     # Azure Log Analytics Configuration
     azure_log_analytics_workspace_id: str = Field(
         default="", description="Azure Log Analytics workspace ID"
@@ -180,7 +176,7 @@ class Settings(BaseSettings):
         default="/var/log/topdeck/audit.log",
         description="Path to audit log file",
     )
-    
+
     # TLS/SSL Configuration for API Server
     ssl_enabled: bool = Field(
         default=False,
@@ -205,16 +201,20 @@ class Settings(BaseSettings):
                     "Production environment detected with default secret_key. "
                     "Please set a secure SECRET_KEY environment variable."
                 )
-            
+
             # Warn about unencrypted connections in production
-            if not self.neo4j_encrypted and "bolt://" in self.neo4j_uri and "+s://" not in self.neo4j_uri:
+            if (
+                not self.neo4j_encrypted
+                and "bolt://" in self.neo4j_uri
+                and "+s://" not in self.neo4j_uri
+            ):
                 warnings.warn(
                     "Production environment using unencrypted Neo4j connection. "
                     "Consider setting NEO4J_ENCRYPTED=true or using bolt+s:// URI for security.",
                     UserWarning,
                     stacklevel=2,
                 )
-            
+
             if not self.redis_ssl:
                 warnings.warn(
                     "Production environment using unencrypted Redis connection. "
@@ -222,7 +222,7 @@ class Settings(BaseSettings):
                     UserWarning,
                     stacklevel=2,
                 )
-            
+
             if not self.ssl_enabled:
                 warnings.warn(
                     "Production environment with SSL disabled for API server. "
@@ -230,7 +230,7 @@ class Settings(BaseSettings):
                     UserWarning,
                     stacklevel=2,
                 )
-        
+
         # Validate SSL configuration if enabled
         if self.ssl_enabled:
             if not self.ssl_keyfile or not self.ssl_certfile:
@@ -238,7 +238,7 @@ class Settings(BaseSettings):
                     "SSL is enabled but ssl_keyfile and/or ssl_certfile are not configured. "
                     "Please provide valid SSL certificate paths."
                 )
-        
+
         return self
 
 

@@ -3,12 +3,13 @@ Tests for encryption configuration and security settings.
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
+import pytest
+
+from topdeck.common.cache import CacheConfig
 from topdeck.common.config import Settings
 from topdeck.storage.neo4j_client import Neo4jClient
-from topdeck.common.cache import CacheConfig
 
 
 class TestNeo4jEncryption:
@@ -21,7 +22,7 @@ class TestNeo4jEncryption:
             username="neo4j",
             password="password",
         )
-        
+
         assert client.uri == "bolt://localhost:7687"
         assert not client.encrypted
 
@@ -32,7 +33,7 @@ class TestNeo4jEncryption:
             username="neo4j",
             password="password",
         )
-        
+
         assert client.uri == "bolt+s://remote-host:7687"
 
     def test_encrypted_flag_upgrades_bolt_to_bolts(self):
@@ -43,7 +44,7 @@ class TestNeo4jEncryption:
             password="password",
             encrypted=True,
         )
-        
+
         assert client.uri == "bolt+s://remote-host:7687"
         assert client.encrypted
 
@@ -55,7 +56,7 @@ class TestNeo4jEncryption:
             password="password",
             encrypted=True,
         )
-        
+
         assert client.uri == "neo4j+s://remote-host:7687"
         assert client.encrypted
 
@@ -67,7 +68,7 @@ class TestNeo4jEncryption:
             password="password",
             encrypted=False,
         )
-        
+
         # Should keep the URI as-is since it's already encrypted
         assert client.uri == "bolt+s://remote-host:7687"
 
@@ -83,7 +84,7 @@ class TestRedisEncryption:
             password="password",
             ssl=False,
         )
-        
+
         assert not config.ssl
         assert config.port == 6379
 
@@ -96,7 +97,7 @@ class TestRedisEncryption:
             ssl=True,
             ssl_cert_reqs="required",
         )
-        
+
         assert config.ssl
         assert config.port == 6380
         assert config.ssl_cert_reqs == "required"
@@ -130,7 +131,7 @@ class TestProductionSecurityValidation:
             app_env="production",
             secret_key="my-very-secure-secret-key-that-is-long-enough-12345",
         )
-        
+
         assert settings.app_env == "production"
         assert settings.secret_key != "change-this-secret-key-in-production"
 
@@ -140,7 +141,7 @@ class TestProductionSecurityValidation:
             app_env="development",
             secret_key="change-this-secret-key-in-production",
         )
-        
+
         assert settings.app_env == "development"
 
     def test_production_warns_about_unencrypted_neo4j(self):
@@ -189,7 +190,7 @@ class TestProductionSecurityValidation:
             ssl_keyfile="/path/to/key.pem",
             ssl_certfile="/path/to/cert.pem",
         )
-        
+
         assert settings.ssl_enabled
         assert settings.ssl_keyfile == "/path/to/key.pem"
         assert settings.ssl_certfile == "/path/to/cert.pem"
@@ -201,7 +202,7 @@ class TestEncryptionDefaults:
     def test_development_defaults_to_unencrypted(self):
         """Test that development environment defaults to unencrypted."""
         settings = Settings(app_env="development")
-        
+
         assert not settings.neo4j_encrypted
         assert not settings.redis_ssl
         assert not settings.rabbitmq_ssl
@@ -231,18 +232,21 @@ class TestEncryptionDefaults:
 class TestConfigurationFromEnv:
     """Test loading encryption configuration from environment variables."""
 
-    @patch.dict(os.environ, {
-        "NEO4J_ENCRYPTED": "true",
-        "REDIS_SSL": "true",
-        "RABBITMQ_SSL": "true",
-        "SSL_ENABLED": "true",
-        "SSL_KEYFILE": "/path/to/key.pem",
-        "SSL_CERTFILE": "/path/to/cert.pem",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "NEO4J_ENCRYPTED": "true",
+            "REDIS_SSL": "true",
+            "RABBITMQ_SSL": "true",
+            "SSL_ENABLED": "true",
+            "SSL_KEYFILE": "/path/to/key.pem",
+            "SSL_CERTFILE": "/path/to/cert.pem",
+        },
+    )
     def test_load_encryption_settings_from_env(self):
         """Test loading encryption settings from environment variables."""
         settings = Settings()
-        
+
         assert settings.neo4j_encrypted
         assert settings.redis_ssl
         assert settings.rabbitmq_ssl
@@ -250,17 +254,23 @@ class TestConfigurationFromEnv:
         assert settings.ssl_keyfile == "/path/to/key.pem"
         assert settings.ssl_certfile == "/path/to/cert.pem"
 
-    @patch.dict(os.environ, {
-        "NEO4J_URI": "bolt+s://encrypted-host:7687",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "NEO4J_URI": "bolt+s://encrypted-host:7687",
+        },
+    )
     def test_load_encrypted_neo4j_uri_from_env(self):
         """Test loading encrypted Neo4j URI from environment."""
         settings = Settings()
         assert "bolt+s://" in settings.neo4j_uri
 
-    @patch.dict(os.environ, {
-        "REDIS_SSL_CERT_REQS": "optional",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "REDIS_SSL_CERT_REQS": "optional",
+        },
+    )
     def test_load_redis_ssl_cert_reqs_from_env(self):
         """Test loading Redis SSL certificate requirements from environment."""
         settings = Settings()

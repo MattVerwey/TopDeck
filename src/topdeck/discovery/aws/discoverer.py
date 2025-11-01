@@ -5,7 +5,6 @@ Main orchestrator for discovering AWS resources across accounts and regions.
 """
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from ..models import Application, DiscoveredResource, DiscoveryResult, ResourceDependency
@@ -294,7 +293,7 @@ class AWSDiscoverer:
 
             for db_instance in response.get("DBInstances", []):
                 # Extract basic info
-                db_instance_identifier = db_instance.get("DBInstanceIdentifier")
+                db_instance.get("DBInstanceIdentifier")
                 engine = db_instance.get("Engine")
                 engine_version = db_instance.get("EngineVersion")
                 status = db_instance.get("DBInstanceStatus")
@@ -392,7 +391,7 @@ class AWSDiscoverer:
 
             for function in response.get("Functions", []):
                 # Extract basic info
-                function_name = function.get("FunctionName")
+                function.get("FunctionName")
                 arn = function.get("FunctionArn")
                 runtime = function.get("Runtime")
                 handler = function.get("Handler")
@@ -581,9 +580,6 @@ class AWSDiscoverer:
             List of ResourceDependency objects
         """
         dependencies = []
-
-        # Create lookup maps
-        resource_by_id = {r.id: r for r in resources}
 
         # Analyze EC2 -> VPC dependencies
         for resource in resources:

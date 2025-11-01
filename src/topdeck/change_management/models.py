@@ -5,7 +5,7 @@ Represents change requests, approvals, and impact assessments.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -85,8 +85,8 @@ class ChangeRequest:
     external_url: str | None = None
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     tags: dict[str, str] = field(default_factory=dict)
     properties: dict[str, Any] = field(default_factory=dict)
 
@@ -127,31 +127,31 @@ class ChangeImpactAssessment:
     """
 
     change_id: str
-    
+
     # Direct and indirect impact
     directly_affected_resources: list[dict[str, Any]] = field(default_factory=list)
     indirectly_affected_resources: list[dict[str, Any]] = field(default_factory=list)
     total_affected_count: int = 0
-    
+
     # Risk assessment
     overall_risk_score: float = 0.0
     performance_degradation_pct: float = 0.0
     estimated_downtime_seconds: int = 0
-    
+
     # User impact
     user_impact_level: str = "low"  # low, medium, high
     critical_path_affected: bool = False
-    
+
     # Recommendations
     recommended_window: str = "standard"  # standard, maintenance, emergency
     rollback_plan_required: bool = False
     approval_required: bool = False
-    
+
     # Details
     breakdown: dict[str, Any] = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
-    
-    assessed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    assessed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses"""
