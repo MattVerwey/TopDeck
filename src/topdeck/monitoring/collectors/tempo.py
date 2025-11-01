@@ -144,17 +144,17 @@ class TempoCollector:
         # Build TraceQL query with proper escaping
         query_parts = []
         if service_name:
-            # Escape quotes to prevent TraceQL injection
-            escaped_service = service_name.replace('"', '\\"').replace("\\", "\\\\")
+            # Escape backslashes first, then quotes to prevent TraceQL injection
+            escaped_service = service_name.replace("\\", "\\\\").replace('"', '\\"')
             query_parts.append(f'resource.service.name="{escaped_service}"')
         if operation_name:
-            escaped_operation = operation_name.replace('"', '\\"').replace("\\", "\\\\")
+            escaped_operation = operation_name.replace("\\", "\\\\").replace('"', '\\"')
             query_parts.append(f'name="{escaped_operation}"')
         if tags:
             for key, value in tags.items():
-                # Sanitize both key and value
-                escaped_key = key.replace('"', '\\"').replace("\\", "\\\\")
-                escaped_value = str(value).replace('"', '\\"').replace("\\", "\\\\")
+                # Sanitize both key and value - backslashes first, then quotes
+                escaped_key = key.replace("\\", "\\\\").replace('"', '\\"')
+                escaped_value = str(value).replace("\\", "\\\\").replace('"', '\\"')
                 query_parts.append(f'{escaped_key}="{escaped_value}"')
         
         if query_parts:
@@ -278,14 +278,10 @@ class TempoCollector:
                     if trace_span.status == "error":
                         error_count += 1
 
-        # Calculate trace timing
+        # Calculate trace timing using consistent datetime arithmetic
         if spans:
-            start_times = [s.start_time for s in spans]
-            end_times = [
-                s.start_time.timestamp() + s.duration_ms / 1000 for s in spans
-            ]
-            start_time = min(start_times)
-            end_time = datetime.fromtimestamp(max(end_times), tz=UTC)
+            start_time = min(s.start_time for s in spans)
+            end_time = max(s.start_time + timedelta(milliseconds=s.duration_ms) for s in spans)
             duration_ms = (end_time - start_time).total_seconds() * 1000
         else:
             start_time = datetime.now(UTC)
