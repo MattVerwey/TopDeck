@@ -293,6 +293,8 @@ class Predictor:
             Tuple of (PredictionConfidence, ConfidenceMetrics)
         """
         # Factor 1: Feature completeness (0-1 scale)
+        # Count features with non-None values (extracted features may not include
+        # all possible features, only those that were available from data sources)
         feature_count = sum(1 for v in features.values() if v is not None)
         total_possible_features = len(self.feature_extractor.get_feature_names())
         
