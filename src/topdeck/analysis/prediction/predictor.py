@@ -306,6 +306,11 @@ class Predictor:
             + consistency_score * weights["consistency"]
         )
 
+        # Apply penalty for very low feature counts (< 10% completeness)
+        # This ensures we don't have high confidence with minimal data
+        if completeness_score < 0.1:
+            confidence_score *= 0.5  # Halve the confidence score
+
         # Map to confidence levels
         if confidence_score >= 0.8:
             confidence_level = PredictionConfidence.HIGH
