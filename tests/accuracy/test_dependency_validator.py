@@ -190,7 +190,7 @@ async def test_confidence_decay_with_zero_rate(validator, mock_neo4j_client):
     mock_neo4j_client.execute_query.return_value = [{"updated_count": 0}]
     
     # Act
-    updated_count = await validator.apply_confidence_decay(
+    await validator.apply_confidence_decay(
         decay_rate=0.0, days_threshold=3
     )
     

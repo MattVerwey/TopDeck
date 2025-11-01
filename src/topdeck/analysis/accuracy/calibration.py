@@ -11,7 +11,7 @@ from typing import Any
 import structlog
 
 from topdeck.storage.neo4j_client import Neo4jClient
-from .models import AccuracyMetrics, PredictionOutcome
+from .models import PredictionOutcome
 from .prediction_tracker import PredictionTracker
 
 logger = structlog.get_logger(__name__)

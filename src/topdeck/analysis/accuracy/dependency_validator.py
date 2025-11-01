@@ -3,7 +3,6 @@ Validate dependency detection accuracy.
 """
 
 from datetime import datetime, timezone, timedelta
-from typing import Any
 
 import structlog
 

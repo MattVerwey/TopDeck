@@ -4,7 +4,7 @@ Tests for prediction accuracy tracking.
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from topdeck.analysis.accuracy.prediction_tracker import PredictionTracker
 from topdeck.analysis.accuracy.models import PredictionOutcome

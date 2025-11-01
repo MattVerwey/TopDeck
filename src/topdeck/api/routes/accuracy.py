@@ -2,10 +2,10 @@
 API endpoints for accuracy tracking and validation.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from topdeck.analysis.accuracy import (
@@ -79,10 +79,14 @@ class DependencyValidationResponse(BaseModel):
 def get_neo4j_client() -> Neo4jClient:
     """Get Neo4j client instance."""
     # This would be properly injected in production
-    # For now, return a configured instance
-    from topdeck.storage.neo4j_client import Neo4jClient
+    # For now, return a configured instance with default test values
+    import os
     
-    return Neo4jClient()
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    username = os.getenv("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+    
+    return Neo4jClient(uri, username, password)
 
 
 def get_prediction_tracker(
@@ -182,7 +186,7 @@ async def get_prediction_metrics(
         Accuracy metrics and validation results
     """
     result = await tracker.get_accuracy_metrics(
-        start_date=datetime.now() - datetime.timedelta(days=days),
+        start_date=datetime.now(timezone.utc) - timedelta(days=days),
         resource_id=resource_id,
     )
     

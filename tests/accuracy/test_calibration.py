@@ -3,11 +3,9 @@ Tests for prediction calibration.
 """
 
 import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from topdeck.analysis.accuracy.calibration import PredictionCalibrator
-from topdeck.analysis.accuracy.models import AccuracyMetrics, PredictionOutcome, ValidationResult
 
 
 @pytest.fixture
@@ -265,10 +263,5 @@ async def test_calibrate_confidence_with_high_confidence_errors(calibrator, mock
     
     # Assert
     assert result["errors_by_confidence"]["high"] == 10
-    # Should recommend reviewing confidence calculation
-    any_high_conf_recommendation = any(
-        "high-confidence" in rec.lower() or "confidence calculation" in rec.lower()
-        for rec in result["recommendations"]
-    )
     # Note: This depends on threshold in the code (>5 errors)
     assert result["errors_by_confidence"]["high"] > 5
