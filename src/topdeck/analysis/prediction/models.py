@@ -25,6 +25,29 @@ class PredictionConfidence(str, Enum):
 
 
 @dataclass
+class ConfidenceMetrics:
+    """
+    Detailed confidence metrics for a prediction.
+
+    Provides breakdown of confidence factors for transparency and debugging.
+    """
+
+    overall_score: float  # 0.0 to 1.0
+    confidence_level: PredictionConfidence
+
+    # Individual factor scores (0.0 to 1.0)
+    feature_completeness: float
+    feature_quality: float
+    data_recency: float
+    prediction_consistency: float
+
+    # Metadata
+    total_features: int
+    valid_features: int
+    missing_features: int
+
+
+@dataclass
 class ContributingFactor:
     """A factor contributing to a prediction."""
 
@@ -66,6 +89,9 @@ class FailurePrediction:
 
     # Similar historical incidents
     similar_incidents: list[dict[str, any]] = None
+
+    # Detailed confidence metrics (optional)
+    confidence_metrics: ConfidenceMetrics | None = None
 
 
 @dataclass
