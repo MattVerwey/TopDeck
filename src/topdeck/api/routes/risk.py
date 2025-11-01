@@ -571,3 +571,135 @@ async def get_comprehensive_risk_analysis(
         raise HTTPException(
             status_code=500, detail=f"Failed to get comprehensive risk analysis: {str(e)}"
         ) from e
+
+
+@router.get("/dependencies/circular")
+async def detect_circular_dependencies(
+    resource_id: str | None = Query(None, description="Specific resource to check, or all if omitted")
+) -> dict:
+    """
+    Detect circular dependencies in infrastructure.
+
+    Circular dependencies can cause cascading failures and deployment deadlocks.
+    This endpoint finds all cycles in the dependency graph.
+
+    Args:
+        resource_id: Optional resource ID to check. If omitted, checks entire graph.
+
+    Returns:
+        Dictionary with detected circular dependency paths
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        cycles = analyzer.dependency_analyzer.detect_circular_dependencies(resource_id)
+
+        return {
+            "resource_id": resource_id,
+            "circular_dependencies_found": len(cycles),
+            "cycles": cycles,
+            "severity": "critical" if len(cycles) > 0 else "none",
+            "recommendations": [
+                "Break circular dependencies by introducing event-driven architecture",
+                "Use dependency injection to decouple components",
+                "Consider using mediator pattern to manage complex interactions",
+                "Refactor to establish clear dependency hierarchy"
+            ] if cycles else ["No circular dependencies detected - dependency graph is healthy"]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to detect circular dependencies: {str(e)}"
+        ) from e
+
+
+@router.get("/dependencies/{resource_id}/health")
+async def get_dependency_health(resource_id: str) -> dict:
+    """
+    Get health score for a resource's dependencies.
+
+    Analyzes dependency quality considering:
+    - Number of dependencies (coupling)
+    - Circular dependencies
+    - Single points of failure in dependency chain
+    - Depth of dependency tree
+
+    Args:
+        resource_id: Resource to analyze
+
+    Returns:
+        Dictionary with health score (0-100) and recommendations
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        health_data = analyzer.dependency_analyzer.get_dependency_health_score(resource_id)
+        return health_data
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate dependency health: {str(e)}"
+        ) from e
+
+
+@router.get("/compare")
+async def compare_risk_scores(
+    resource_ids: str = Query(..., description="Comma-separated list of resource IDs")
+) -> dict:
+    """
+    Compare risk scores across multiple resources.
+
+    Useful for:
+    - Prioritizing which resources need attention
+    - Comparing similar resources (e.g., multiple database instances)
+    - Identifying patterns in high-risk resources
+
+    Args:
+        resource_ids: Comma-separated resource IDs (e.g., "id1,id2,id3")
+
+    Returns:
+        Dictionary with comparison analysis and insights
+    """
+    try:
+        ids = [rid.strip() for rid in resource_ids.split(",") if rid.strip()]
+        if not ids:
+            raise HTTPException(status_code=400, detail="At least one resource ID required")
+
+        analyzer = get_risk_analyzer()
+        comparison = analyzer.compare_risk_scores(ids)
+        return comparison
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to compare risk scores: {str(e)}"
+        ) from e
+
+
+@router.get("/cascading-failure/{resource_id}")
+async def analyze_cascading_failure(
+    resource_id: str,
+    initial_probability: float = Query(
+        1.0, ge=0.0, le=1.0, description="Initial failure probability (0-1)"
+    )
+) -> dict:
+    """
+    Calculate cascading failure probability.
+
+    Models how a failure propagates through dependencies with
+    decreasing probability at each level (accounting for circuit
+    breakers, retries, and fallbacks).
+
+    Args:
+        resource_id: Starting resource
+        initial_probability: Probability of initial failure (0-1)
+
+    Returns:
+        Dictionary with cascading failure analysis
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        analysis = analyzer.calculate_cascading_failure_probability(
+            resource_id, initial_probability
+        )
+        return analysis
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze cascading failure: {str(e)}"
+        ) from e

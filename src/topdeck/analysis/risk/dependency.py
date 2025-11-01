@@ -311,3 +311,217 @@ class DependencyAnalyzer:
                     )
 
         return directly_affected, indirectly_affected
+
+    def detect_circular_dependencies(self, resource_id: str = None) -> list[list[str]]:
+        """
+        Detect circular dependencies in the infrastructure graph.
+
+        Circular dependencies can cause cascading failures and make it difficult
+        to reason about system behavior. This method finds all cycles involving
+        the specified resource, or all cycles in the graph if no resource is specified.
+
+        Args:
+            resource_id: Optional resource to check for circular dependencies.
+                        If None, detects all circular dependencies in the graph.
+
+        Returns:
+            List of circular dependency paths, where each path is a list of resource IDs
+            forming a cycle (last element connects back to first)
+        """
+        if resource_id:
+            # Find cycles involving a specific resource
+            query = """
+            MATCH path = (r {id: $id})-[*1..10]->(r)
+            WHERE ALL(rel in relationships(path) WHERE type(rel) IN [
+                'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO',
+                'ACCESSES', 'AUTHENTICATES_WITH', 'READS_FROM', 'WRITES_TO'
+            ])
+            WITH path, [node in nodes(path) | node.id] as cycle
+            WHERE size(cycle) > 2
+            RETURN DISTINCT cycle
+            ORDER BY size(cycle)
+            """
+            params = {"id": resource_id}
+        else:
+            # Find all cycles in the graph
+            query = """
+            MATCH path = (r)-[*2..10]->(r)
+            WHERE r.id IS NOT NULL
+            AND ALL(rel in relationships(path) WHERE type(rel) IN [
+                'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO',
+                'ACCESSES', 'AUTHENTICATES_WITH', 'READS_FROM', 'WRITES_TO'
+            ])
+            WITH path, [node in nodes(path) | node.id] as cycle
+            WHERE size(cycle) > 2
+            WITH cycle
+            ORDER BY size(cycle), cycle[0]
+            RETURN DISTINCT cycle
+            LIMIT 50
+            """
+            params = {}
+
+        cycles = []
+        with self.neo4j_client.session() as session:
+            result = session.run(query, **params)
+            for record in result:
+                cycle = record["cycle"]
+                # Normalize cycle to start with smallest ID (for deduplication)
+                min_idx = cycle.index(min(cycle))
+                normalized = cycle[min_idx:] + cycle[:min_idx]
+                
+                # Only add if not already present (avoid duplicates)
+                if normalized not in cycles:
+                    cycles.append(normalized)
+
+        return cycles
+
+    def get_dependency_health_score(self, resource_id: str) -> dict:
+        """
+        Calculate a health score for a resource's dependencies.
+
+        This score considers:
+        - Number of dependencies (too many = tight coupling)
+        - Circular dependencies (bad)
+        - Single points of failure in dependency chain
+        - Depth of dependency tree (deep = complex)
+
+        Args:
+            resource_id: Resource to analyze
+
+        Returns:
+            Dictionary with health score (0-100) and contributing factors
+        """
+        score = 100.0
+        factors = {}
+
+        # Factor 1: Dependency count (penalize high coupling)
+        dependencies_count, dependents_count = self.get_dependency_counts(resource_id)
+        if dependencies_count > 10:
+            dependency_penalty = min(30, (dependencies_count - 10) * 3)
+            score -= dependency_penalty
+            factors["high_dependency_count"] = {
+                "count": dependencies_count,
+                "penalty": dependency_penalty,
+                "reason": f"Resource depends on {dependencies_count} other resources (high coupling)"
+            }
+
+        # Factor 2: Circular dependencies (severe penalty)
+        circular_deps = self.detect_circular_dependencies(resource_id)
+        if circular_deps:
+            circular_penalty = min(40, len(circular_deps) * 20)
+            score -= circular_penalty
+            factors["circular_dependencies"] = {
+                "count": len(circular_deps),
+                "penalty": circular_penalty,
+                "cycles": circular_deps,
+                "reason": f"Found {len(circular_deps)} circular dependency path(s)"
+            }
+
+        # Factor 3: Single points of failure in dependency chain
+        dependency_tree = self.get_dependency_tree(resource_id, direction="upstream", max_depth=3)
+        spof_in_deps = []
+        for dep_id in dependency_tree.keys():
+            if self.is_single_point_of_failure(dep_id):
+                spof_in_deps.append(dep_id)
+        
+        if spof_in_deps:
+            spof_penalty = min(20, len(spof_in_deps) * 5)
+            score -= spof_penalty
+            factors["spof_in_dependencies"] = {
+                "count": len(spof_in_deps),
+                "penalty": spof_penalty,
+                "resources": spof_in_deps,
+                "reason": f"Depends on {len(spof_in_deps)} single point(s) of failure"
+            }
+
+        # Factor 4: Dependency depth (penalize deep trees)
+        max_depth = self._calculate_max_dependency_depth(resource_id)
+        if max_depth > 5:
+            depth_penalty = min(15, (max_depth - 5) * 3)
+            score -= depth_penalty
+            factors["deep_dependency_tree"] = {
+                "max_depth": max_depth,
+                "penalty": depth_penalty,
+                "reason": f"Dependency tree is {max_depth} levels deep (complex)"
+            }
+
+        # Ensure score is in valid range
+        score = max(0.0, min(100.0, score))
+
+        return {
+            "resource_id": resource_id,
+            "health_score": round(score, 2),
+            "health_level": self._get_health_level(score),
+            "factors": factors,
+            "recommendations": self._generate_health_recommendations(factors)
+        }
+
+    def _calculate_max_dependency_depth(self, resource_id: str, max_depth: int = 10) -> int:
+        """Calculate maximum depth of dependency tree."""
+        query = f"""
+        MATCH path = (r {{id: $id}})-[*1..{max_depth}]->(dep)
+        WHERE dep.id IS NOT NULL
+        AND ALL(rel in relationships(path) WHERE type(rel) IN [
+            'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO'
+        ])
+        RETURN max(length(path)) as max_depth
+        """
+        
+        with self.neo4j_client.session() as session:
+            result = session.run(query, id=resource_id)
+            record = result.single()
+            return record["max_depth"] if record and record["max_depth"] else 0
+
+    def _get_health_level(self, score: float) -> str:
+        """Convert health score to categorical level."""
+        if score >= 80:
+            return "excellent"
+        elif score >= 60:
+            return "good"
+        elif score >= 40:
+            return "fair"
+        elif score >= 20:
+            return "poor"
+        else:
+            return "critical"
+
+    def _generate_health_recommendations(self, factors: dict) -> list[str]:
+        """Generate recommendations based on health factors."""
+        recommendations = []
+        
+        if "high_dependency_count" in factors:
+            recommendations.append(
+                "⚠️ Reduce coupling by consolidating dependencies or using facade pattern"
+            )
+            recommendations.append(
+                "Consider implementing dependency injection to manage complexity"
+            )
+        
+        if "circular_dependencies" in factors:
+            recommendations.append(
+                "🔴 CRITICAL: Break circular dependencies immediately - they can cause deadlocks"
+            )
+            recommendations.append(
+                "Refactor to use event-driven architecture or introduce a mediator"
+            )
+        
+        if "spof_in_dependencies" in factors:
+            recommendations.append(
+                "Add redundancy to critical dependencies that are single points of failure"
+            )
+            recommendations.append(
+                "Implement circuit breakers and fallbacks for SPOF dependencies"
+            )
+        
+        if "deep_dependency_tree" in factors:
+            recommendations.append(
+                "Simplify dependency tree by introducing abstraction layers"
+            )
+            recommendations.append(
+                "Consider using service mesh for better dependency management"
+            )
+        
+        if not recommendations:
+            recommendations.append("✅ Dependency health is good - maintain current practices")
+        
+        return recommendations

@@ -541,3 +541,220 @@ class RiskAnalyzer:
             all_recommendations.update(vuln_recs[:3])
 
         return sorted(all_recommendations)
+
+    def compare_risk_scores(self, resource_ids: list[str]) -> dict[str, Any]:
+        """
+        Compare risk scores across multiple resources.
+
+        Useful for prioritizing which resources need attention or
+        comparing similar resources (e.g., multiple database instances).
+
+        Args:
+            resource_ids: List of resource IDs to compare
+
+        Returns:
+            Dictionary with comparison data and insights
+        """
+        assessments = []
+        for resource_id in resource_ids:
+            try:
+                assessment = self.analyze_resource(resource_id)
+                assessments.append(assessment)
+            except ValueError:
+                # Skip resources that don't exist
+                continue
+
+        if not assessments:
+            return {
+                "resources_compared": 0,
+                "error": "No valid resources found"
+            }
+
+        # Sort by risk score descending
+        assessments.sort(key=lambda a: a.risk_score, reverse=True)
+
+        # Find highest and lowest risk
+        highest_risk = assessments[0]
+        lowest_risk = assessments[-1]
+
+        # Calculate average risk
+        avg_risk = sum(a.risk_score for a in assessments) / len(assessments)
+
+        # Count by risk level
+        risk_distribution = {
+            "critical": sum(1 for a in assessments if a.risk_level.value == "critical"),
+            "high": sum(1 for a in assessments if a.risk_level.value == "high"),
+            "medium": sum(1 for a in assessments if a.risk_level.value == "medium"),
+            "low": sum(1 for a in assessments if a.risk_level.value == "low")
+        }
+
+        # Find common risk factors
+        common_factors = self._identify_common_risk_factors(assessments)
+
+        return {
+            "resources_compared": len(assessments),
+            "average_risk_score": round(avg_risk, 2),
+            "highest_risk": {
+                "resource_id": highest_risk.resource_id,
+                "resource_name": highest_risk.resource_name,
+                "risk_score": highest_risk.risk_score,
+                "risk_level": highest_risk.risk_level.value
+            },
+            "lowest_risk": {
+                "resource_id": lowest_risk.resource_id,
+                "resource_name": lowest_risk.resource_name,
+                "risk_score": lowest_risk.risk_score,
+                "risk_level": lowest_risk.risk_level.value
+            },
+            "risk_distribution": risk_distribution,
+            "common_risk_factors": common_factors,
+            "all_assessments": [
+                {
+                    "resource_id": a.resource_id,
+                    "resource_name": a.resource_name,
+                    "risk_score": a.risk_score,
+                    "risk_level": a.risk_level.value,
+                    "is_spof": a.single_point_of_failure
+                }
+                for a in assessments
+            ]
+        }
+
+    def _identify_common_risk_factors(self, assessments: list[RiskAssessment]) -> list[str]:
+        """Identify risk factors common across resources."""
+        factors = []
+        
+        # Check if many are SPOFs
+        spof_count = sum(1 for a in assessments if a.single_point_of_failure)
+        if spof_count > len(assessments) * 0.5:
+            factors.append(
+                f"{spof_count}/{len(assessments)} resources are single points of failure"
+            )
+        
+        # Check if many have high dependency counts
+        high_dep_count = sum(1 for a in assessments if a.dependents_count > 5)
+        if high_dep_count > len(assessments) * 0.5:
+            factors.append(
+                f"{high_dep_count}/{len(assessments)} resources have high dependent counts"
+            )
+        
+        # Check if many lack redundancy
+        no_redundancy = sum(1 for a in assessments if a.factors.get("has_redundancy") is False)
+        if no_redundancy > len(assessments) * 0.5:
+            factors.append(
+                f"{no_redundancy}/{len(assessments)} resources lack redundancy"
+            )
+        
+        return factors
+
+    def calculate_cascading_failure_probability(
+        self, resource_id: str, initial_failure_probability: float = 1.0
+    ) -> dict[str, Any]:
+        """
+        Calculate the probability of cascading failures.
+
+        Models how a failure in one resource propagates through dependencies
+        with decreasing probability at each level.
+
+        Args:
+            resource_id: Starting resource
+            initial_failure_probability: Probability of initial failure (0-1)
+
+        Returns:
+            Dictionary with cascading failure analysis
+        """
+        # Get dependency tree
+        tree = self.dependency_analyzer.get_dependency_tree(
+            resource_id, direction="downstream", max_depth=5
+        )
+
+        # Calculate cascading probabilities
+        # Each level has reduced probability based on:
+        # - Circuit breakers (assume 80% effectiveness)
+        # - Retries (assume 90% success after retry)
+        # - Fallbacks (assume 70% have fallbacks)
+        propagation_factor = 0.3  # 30% chance failure propagates to next level
+
+        cascading_analysis = {
+            "initial_resource": resource_id,
+            "initial_failure_probability": initial_failure_probability,
+            "levels": []
+        }
+
+        # Analyze each level of cascading
+        current_level_resources = {resource_id}
+        visited = set()
+        level = 0
+        current_probability = initial_failure_probability
+
+        while current_level_resources and level < 5 and current_probability > 0.01:
+            level += 1
+            next_level_resources = set()
+            level_data = {
+                "level": level,
+                "failure_probability": round(current_probability, 3),
+                "affected_resources": []
+            }
+
+            for res_id in current_level_resources:
+                if res_id in visited:
+                    continue
+                visited.add(res_id)
+
+                # Get downstream dependencies
+                if res_id in tree:
+                    for dep in tree[res_id]:
+                        dep_id = dep["id"]
+                        if dep_id not in visited:
+                            next_level_resources.add(dep_id)
+                            level_data["affected_resources"].append({
+                                "resource_id": dep_id,
+                                "resource_name": dep.get("name", "unknown"),
+                                "resource_type": dep.get("type", "unknown"),
+                                "failure_probability": round(current_probability, 3)
+                            })
+
+            if level_data["affected_resources"]:
+                cascading_analysis["levels"].append(level_data)
+
+            # Reduce probability for next level
+            current_probability *= propagation_factor
+            current_level_resources = next_level_resources
+
+        # Calculate total expected impact
+        total_at_risk = sum(len(lvl["affected_resources"]) for lvl in cascading_analysis["levels"])
+        
+        cascading_analysis["summary"] = {
+            "max_cascade_depth": level,
+            "total_resources_at_risk": total_at_risk,
+            "expected_failures": sum(
+                len(lvl["affected_resources"]) * lvl["failure_probability"]
+                for lvl in cascading_analysis["levels"]
+            ),
+            "recommendations": self._generate_cascade_recommendations(level, total_at_risk)
+        }
+
+        return cascading_analysis
+
+    def _generate_cascade_recommendations(self, depth: int, resources_at_risk: int) -> list[str]:
+        """Generate recommendations for cascading failure prevention."""
+        recommendations = []
+        
+        if depth >= 4:
+            recommendations.append(
+                "⚠️ Deep cascade potential detected - implement circuit breakers at each level"
+            )
+        
+        if resources_at_risk > 10:
+            recommendations.append(
+                f"High cascade impact ({resources_at_risk} resources at risk) - add bulkheads to isolate failures"
+            )
+        
+        recommendations.extend([
+            "Implement retry with exponential backoff",
+            "Add fallback mechanisms for critical dependencies",
+            "Set up monitoring for cascade detection (correlated failures)",
+            "Consider implementing timeout policies to prevent cascade propagation"
+        ])
+        
+        return recommendations
