@@ -45,7 +45,9 @@ def test_get_integrations_includes_azure_devops(client):
     if response.status_code == 200:
         data = response.json()
         # Check if Azure DevOps integration is in the list
-        azure_devops_integration = next((item for item in data if item["id"] == "azure-devops"), None)
+        azure_devops_integration = next(
+            (item for item in data if item["id"] == "azure-devops"), None
+        )
         assert azure_devops_integration is not None
         assert azure_devops_integration["name"] == "Azure DevOps"
 
