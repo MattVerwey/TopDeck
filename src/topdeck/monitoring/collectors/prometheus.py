@@ -6,7 +6,7 @@ bottleneck detection, and failure analysis.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -132,7 +132,7 @@ class PrometheusCollector:
         Returns:
             ResourceMetrics with collected metrics and analysis
         """
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - duration
 
         metrics = {}

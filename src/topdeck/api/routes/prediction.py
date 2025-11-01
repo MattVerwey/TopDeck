@@ -2,7 +2,7 @@
 API routes for ML-based predictions.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
@@ -274,7 +274,7 @@ async def list_recent_anomalies(
             "anomalies": [],
             "total_count": 0,
             "time_range_hours": time_range_hours,
-            "scanned_at": datetime.now(timezone.utc).isoformat(),
+            "scanned_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:

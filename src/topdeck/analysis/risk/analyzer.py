@@ -565,10 +565,7 @@ class RiskAnalyzer:
                 continue
 
         if not assessments:
-            return {
-                "resources_compared": 0,
-                "error": "No valid resources found"
-            }
+            return {"resources_compared": 0, "error": "No valid resources found"}
 
         # Sort by risk score descending
         assessments.sort(key=lambda a: a.risk_score, reverse=True)
@@ -597,13 +594,13 @@ class RiskAnalyzer:
                 "resource_id": highest_risk.resource_id,
                 "resource_name": highest_risk.resource_name,
                 "risk_score": highest_risk.risk_score,
-                "risk_level": highest_risk.risk_level.value
+                "risk_level": highest_risk.risk_level.value,
             },
             "lowest_risk": {
                 "resource_id": lowest_risk.resource_id,
                 "resource_name": lowest_risk.resource_name,
                 "risk_score": lowest_risk.risk_score,
-                "risk_level": lowest_risk.risk_level.value
+                "risk_level": lowest_risk.risk_level.value,
             },
             "risk_distribution": risk_distribution,
             "common_risk_factors": common_factors,
@@ -613,37 +610,35 @@ class RiskAnalyzer:
                     "resource_name": a.resource_name,
                     "risk_score": a.risk_score,
                     "risk_level": a.risk_level.value,
-                    "is_spof": a.single_point_of_failure
+                    "is_spof": a.single_point_of_failure,
                 }
                 for a in assessments
-            ]
+            ],
         }
 
     def _identify_common_risk_factors(self, assessments: list[RiskAssessment]) -> list[str]:
         """Identify risk factors common across resources."""
         factors = []
-        
+
         # Check if many are SPOFs
         spof_count = sum(1 for a in assessments if a.single_point_of_failure)
         if spof_count > len(assessments) * 0.5:
             factors.append(
                 f"{spof_count}/{len(assessments)} resources are single points of failure"
             )
-        
+
         # Check if many have high dependency counts
         high_dep_count = sum(1 for a in assessments if a.dependents_count > 5)
         if high_dep_count > len(assessments) * 0.5:
             factors.append(
                 f"{high_dep_count}/{len(assessments)} resources have high dependent counts"
             )
-        
+
         # Check if many lack redundancy
         no_redundancy = sum(1 for a in assessments if a.factors.get("has_redundancy") is False)
         if no_redundancy > len(assessments) * 0.5:
-            factors.append(
-                f"{no_redundancy}/{len(assessments)} resources lack redundancy"
-            )
-        
+            factors.append(f"{no_redundancy}/{len(assessments)} resources lack redundancy")
+
         return factors
 
     def calculate_cascading_failure_probability(
@@ -677,7 +672,7 @@ class RiskAnalyzer:
         cascading_analysis = {
             "initial_resource": resource_id,
             "initial_failure_probability": initial_failure_probability,
-            "levels": []
+            "levels": [],
         }
 
         # Analyze each level of cascading
@@ -692,7 +687,7 @@ class RiskAnalyzer:
             level_data = {
                 "level": level,
                 "failure_probability": round(current_probability, 3),
-                "affected_resources": []
+                "affected_resources": [],
             }
 
             for res_id in current_level_resources:
@@ -706,12 +701,14 @@ class RiskAnalyzer:
                         dep_id = dep["id"]
                         if dep_id not in visited:
                             next_level_resources.add(dep_id)
-                            level_data["affected_resources"].append({
-                                "resource_id": dep_id,
-                                "resource_name": dep.get("name", "unknown"),
-                                "resource_type": dep.get("type", "unknown"),
-                                "failure_probability": round(current_probability, 3)
-                            })
+                            level_data["affected_resources"].append(
+                                {
+                                    "resource_id": dep_id,
+                                    "resource_name": dep.get("name", "unknown"),
+                                    "resource_type": dep.get("type", "unknown"),
+                                    "failure_probability": round(current_probability, 3),
+                                }
+                            )
 
             if level_data["affected_resources"]:
                 cascading_analysis["levels"].append(level_data)
@@ -722,7 +719,7 @@ class RiskAnalyzer:
 
         # Calculate total expected impact
         total_at_risk = sum(len(lvl["affected_resources"]) for lvl in cascading_analysis["levels"])
-        
+
         cascading_analysis["summary"] = {
             "max_cascade_depth": level,
             "total_resources_at_risk": total_at_risk,
@@ -731,9 +728,9 @@ class RiskAnalyzer:
                     len(lvl["affected_resources"]) * lvl["failure_probability"]
                     for lvl in cascading_analysis["levels"]
                 ),
-                3
+                3,
             ),
-            "recommendations": self._generate_cascade_recommendations(level, total_at_risk)
+            "recommendations": self._generate_cascade_recommendations(level, total_at_risk),
         }
 
         return cascading_analysis
@@ -741,22 +738,24 @@ class RiskAnalyzer:
     def _generate_cascade_recommendations(self, depth: int, resources_at_risk: int) -> list[str]:
         """Generate recommendations for cascading failure prevention."""
         recommendations = []
-        
+
         if depth >= 4:
             recommendations.append(
                 "⚠️ Deep cascade potential detected - implement circuit breakers at each level"
             )
-        
+
         if resources_at_risk > 10:
             recommendations.append(
                 f"High cascade impact ({resources_at_risk} resources at risk) - add bulkheads to isolate failures"
             )
-        
-        recommendations.extend([
-            "Implement retry with exponential backoff",
-            "Add fallback mechanisms for critical dependencies",
-            "Set up monitoring for cascade detection (correlated failures)",
-            "Consider implementing timeout policies to prevent cascade propagation"
-        ])
-        
+
+        recommendations.extend(
+            [
+                "Implement retry with exponential backoff",
+                "Add fallback mechanisms for critical dependencies",
+                "Set up monitoring for cascade detection (correlated failures)",
+                "Consider implementing timeout policies to prevent cascade propagation",
+            ]
+        )
+
         return recommendations

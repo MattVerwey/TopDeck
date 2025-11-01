@@ -1,6 +1,6 @@
 """Tests for Elasticsearch collector."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -345,7 +345,7 @@ async def test_trace_transaction_flow_no_logs(collector):
 
 def test_elasticsearch_entry_creation():
     """Test ElasticsearchEntry creation."""
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     entry = ElasticsearchEntry(
         timestamp=timestamp,
         message="Test message",
@@ -367,7 +367,7 @@ def test_elasticsearch_entry_creation():
 
 def test_transaction_trace_creation():
     """Test TransactionTrace creation."""
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     entries = [
         ElasticsearchEntry(
             timestamp=timestamp,

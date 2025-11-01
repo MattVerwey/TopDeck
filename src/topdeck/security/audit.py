@@ -5,7 +5,7 @@ Tracks all security-relevant events and user actions.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -77,10 +77,10 @@ class AuditLevel(str, Enum):
 class AuditEvent(BaseModel):
     """Audit event model."""
 
-    event_id: str = Field(default_factory=lambda: f"audit-{datetime.now(timezone.utc).timestamp()}")
+    event_id: str = Field(default_factory=lambda: f"audit-{datetime.now(UTC).timestamp()}")
     event_type: AuditEventType
     level: AuditLevel = AuditLevel.INFO
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     username: str | None = None
     user_id: str | None = None
     ip_address: str | None = None
@@ -169,9 +169,7 @@ class AuditLogger:
         """Log a permission check."""
         event = AuditEvent(
             event_type=(
-                AuditEventType.PERMISSION_GRANTED
-                if granted
-                else AuditEventType.PERMISSION_DENIED
+                AuditEventType.PERMISSION_GRANTED if granted else AuditEventType.PERMISSION_DENIED
             ),
             level=AuditLevel.INFO if granted else AuditLevel.WARNING,
             username=username,
@@ -254,9 +252,7 @@ def log_permission_check(
     audit_logger.log_permission_check(username, permission, granted, resource_id)
 
 
-def log_resource_access(
-    username: str, resource_type: str, resource_id: str, action: str
-) -> None:
+def log_resource_access(username: str, resource_type: str, resource_id: str, action: str) -> None:
     """Log resource access."""
     audit_logger.log_resource_access(username, resource_type, resource_id, action)
 

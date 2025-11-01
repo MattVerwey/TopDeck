@@ -5,7 +5,7 @@ Tracks and reports on change management KPIs and effectiveness.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -23,7 +23,7 @@ class ChangeMetrics:
     # By type
     emergency_changes: int = 0
     standard_changes: int = 0
-    
+
     # Risk distribution
     low_risk_changes: int = 0
     medium_risk_changes: int = 0
@@ -120,9 +120,7 @@ class ChangeMetricsCalculator:
             metrics.emergency_change_rate = (
                 metrics.emergency_changes / metrics.total_changes
             ) * 100
-            metrics.rollback_rate = (
-                metrics.rolled_back_changes / metrics.total_changes
-            ) * 100
+            metrics.rollback_rate = (metrics.rolled_back_changes / metrics.total_changes) * 100
 
         # Calculate averages
         lead_times = []
@@ -183,7 +181,7 @@ class ChangeMetricsCalculator:
             }
 
         # Group by week
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_date = now - timedelta(days=period_days)
 
         changes_by_week: dict[int, list[dict[str, Any]]] = {}
@@ -209,12 +207,14 @@ class ChangeMetricsCalculator:
         for week in sorted(changes_by_week.keys()):
             week_changes = changes_by_week[week]
             week_metrics = self.calculate_metrics(week_changes)
-            weekly_data.append({
-                "week": week,
-                "total": len(week_changes),
-                "success_rate": week_metrics.success_rate,
-                "emergency_rate": week_metrics.emergency_change_rate,
-            })
+            weekly_data.append(
+                {
+                    "week": week,
+                    "total": len(week_changes),
+                    "success_rate": week_metrics.success_rate,
+                    "emergency_rate": week_metrics.emergency_change_rate,
+                }
+            )
 
         return {
             "period_days": period_days,

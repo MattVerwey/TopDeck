@@ -14,7 +14,7 @@ from neo4j import Driver, GraphDatabase, Session
 class Neo4jClient:
     """
     Client for interacting with Neo4j database.
-    
+
     Supports both encrypted and unencrypted connections:
     - bolt://     - Unencrypted (development only)
     - bolt+s://   - Encrypted with TLS
@@ -37,7 +37,7 @@ class Neo4jClient:
         self.password = password
         self.encrypted = encrypted
         self.driver: Driver | None = None
-        
+
         # Auto-upgrade to encrypted connection if requested and not already encrypted
         if encrypted and not ("+s://" in uri or "+ssc://" in uri):
             if uri.startswith("bolt://"):

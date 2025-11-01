@@ -5,8 +5,6 @@ Main orchestrator for discovering GCP resources across projects and regions.
 """
 
 import logging
-from datetime import datetime
-from typing import Any
 
 from ..models import Application, DiscoveredResource, DiscoveryResult, ResourceDependency
 from .mapper import GCPResourceMapper
@@ -357,7 +355,7 @@ class GCPDiscoverer:
         """Discover VPC networks (global but listed per region)."""
         resources = []
         seen_resource_ids = set()  # O(1) lookup for deduplication
-        
+
         try:
             networks_client = compute_v1.NetworksClient(credentials=self.credentials)
 
@@ -371,7 +369,7 @@ class GCPDiscoverer:
                 # Skip if already seen (avoid duplicates across regions)
                 if resource_name in seen_resource_ids:
                     continue
-                
+
                 seen_resource_ids.add(resource_name)
 
                 # Map to DiscoveredResource (VPCs are global)
@@ -416,7 +414,7 @@ class GCPDiscoverer:
         dependencies = []
 
         # Create lookup maps
-        resource_by_id = {r.id: r for r in resources}
+        {r.id: r for r in resources}
 
         # Analyze Compute -> VPC dependencies
         for resource in resources:

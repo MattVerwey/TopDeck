@@ -75,7 +75,9 @@ class TestServiceBusDependencies:
 
         # Should find namespace -> topic dependency
         assert len(dependencies) > 0
-        ns_to_topic = [d for d in dependencies if d.source_id == namespace.id and d.target_id == topic.id]
+        ns_to_topic = [
+            d for d in dependencies if d.source_id == namespace.id and d.target_id == topic.id
+        ]
         assert len(ns_to_topic) == 1
         assert ns_to_topic[0].category == DependencyCategory.CONFIGURATION
         assert ns_to_topic[0].strength == 1.0
@@ -109,7 +111,9 @@ class TestServiceBusDependencies:
 
         # Should find namespace -> queue dependency
         assert len(dependencies) > 0
-        ns_to_queue = [d for d in dependencies if d.source_id == namespace.id and d.target_id == queue.id]
+        ns_to_queue = [
+            d for d in dependencies if d.source_id == namespace.id and d.target_id == queue.id
+        ]
         assert len(ns_to_queue) == 1
         assert ns_to_queue[0].category == DependencyCategory.CONFIGURATION
 
@@ -152,7 +156,9 @@ class TestServiceBusDependencies:
         dependencies = await detect_servicebus_dependencies(resources)
 
         # Should find topic -> subscription dependency
-        topic_to_sub = [d for d in dependencies if d.source_id == topic.id and d.target_id == subscription.id]
+        topic_to_sub = [
+            d for d in dependencies if d.source_id == topic.id and d.target_id == subscription.id
+        ]
         assert len(topic_to_sub) == 1
         assert topic_to_sub[0].category == DependencyCategory.CONFIGURATION
         assert topic_to_sub[0].strength == 1.0
@@ -184,7 +190,9 @@ class TestServiceBusDependencies:
         dependencies = await detect_servicebus_dependencies(resources)
 
         # Should find heuristic app -> namespace dependency
-        app_to_ns = [d for d in dependencies if d.source_id == app_service.id and d.target_id == namespace.id]
+        app_to_ns = [
+            d for d in dependencies if d.source_id == app_service.id and d.target_id == namespace.id
+        ]
         assert len(app_to_ns) == 1
         assert app_to_ns[0].category == DependencyCategory.DATA
         assert app_to_ns[0].discovered_method == "heuristic_colocation"
@@ -245,13 +253,19 @@ class TestServiceBusDependencies:
         assert len(dependencies) == 3
 
         # Verify each dependency type
-        ns_to_topic = [d for d in dependencies if d.source_id == namespace.id and d.target_id == topic1.id]
+        ns_to_topic = [
+            d for d in dependencies if d.source_id == namespace.id and d.target_id == topic1.id
+        ]
         assert len(ns_to_topic) == 1
 
-        ns_to_queue = [d for d in dependencies if d.source_id == namespace.id and d.target_id == queue1.id]
+        ns_to_queue = [
+            d for d in dependencies if d.source_id == namespace.id and d.target_id == queue1.id
+        ]
         assert len(ns_to_queue) == 1
 
-        topic_to_sub = [d for d in dependencies if d.source_id == topic1.id and d.target_id == subscription1.id]
+        topic_to_sub = [
+            d for d in dependencies if d.source_id == topic1.id and d.target_id == subscription1.id
+        ]
         assert len(topic_to_sub) == 1
 
 
@@ -262,7 +276,7 @@ class TestServiceBusConnectionParsing:
         """Test parsing a valid Service Bus connection string"""
         conn_str = "Endpoint=sb://myns.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123"
         result = parse_servicebus_connection_string(conn_str)
-        
+
         assert result is not None
         assert result["namespace"] == "myns"
         assert "sb://myns.servicebus.windows.net/" in result["endpoint"]
@@ -271,7 +285,7 @@ class TestServiceBusConnectionParsing:
         """Test parsing connection string with entity path"""
         conn_str = "Endpoint=sb://prodns.servicebus.windows.net/;SharedAccessKeyName=SendPolicy;SharedAccessKey=xyz789;EntityPath=mytopic"
         result = parse_servicebus_connection_string(conn_str)
-        
+
         assert result is not None
         assert result["namespace"] == "prodns"
 
@@ -279,7 +293,7 @@ class TestServiceBusConnectionParsing:
         """Test that non-Service Bus connection strings return None"""
         conn_str = "Server=tcp:myserver.database.windows.net,1433;Database=mydb"
         result = parse_servicebus_connection_string(conn_str)
-        
+
         assert result is None
 
     def test_parse_empty_connection_string(self):
@@ -295,6 +309,6 @@ class TestServiceBusConnectionParsing:
     def test_parse_malformed_connection_string(self):
         """Test parsing malformed connection string"""
         conn_str = "Endpoint=sb://;something=wrong"
-        result = parse_servicebus_connection_string(conn_str)
+        parse_servicebus_connection_string(conn_str)
         # Should handle gracefully and return None or partial result
         # Implementation handles this, just ensure no exception

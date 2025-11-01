@@ -6,7 +6,7 @@ Provides webhook receivers for ServiceNow, Jira, and other systems.
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from topdeck.change_management.service import ChangeManagementService
@@ -14,7 +14,6 @@ from topdeck.common.config import settings
 from topdeck.integration.jira import JiraWebhookHandler
 from topdeck.integration.servicenow import ServiceNowWebhookHandler
 from topdeck.storage.neo4j_client import Neo4jClient
-
 
 # Create router
 router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
@@ -48,7 +47,7 @@ async def servicenow_webhook(
 
     Receives change request notifications from ServiceNow and creates
     or updates change requests in TopDeck.
-    
+
     Args:
         payload: ServiceNow webhook payload
         x_servicenow_signature: Optional signature for webhook verification
@@ -59,10 +58,10 @@ async def servicenow_webhook(
 
         service = get_change_service()
         handler = ServiceNowWebhookHandler(service)
-        
+
         # Process webhook
         change_request = handler.process_webhook(payload)
-        
+
         return WebhookResponse(
             success=True,
             message="ServiceNow change request processed successfully",
@@ -86,7 +85,7 @@ async def jira_webhook(
 
     Receives issue notifications from Jira and creates or updates
     change requests in TopDeck.
-    
+
     Args:
         payload: Jira webhook payload
         x_hub_signature: Optional signature for webhook verification
@@ -97,10 +96,10 @@ async def jira_webhook(
 
         service = get_change_service()
         handler = JiraWebhookHandler(service)
-        
+
         # Process webhook
         change_request = handler.process_webhook(payload)
-        
+
         return WebhookResponse(
             success=True,
             message="Jira issue processed successfully",

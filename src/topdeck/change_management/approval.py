@@ -5,7 +5,7 @@ Manages approval workflows for change requests based on risk level.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -40,7 +40,7 @@ class Approval:
     status: ApprovalStatus = ApprovalStatus.PENDING
     comments: str | None = None
     approved_at: datetime | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class ApprovalWorkflow:
@@ -147,14 +147,12 @@ class ApprovalWorkflow:
             if approval.approver == approver and approval.status == ApprovalStatus.PENDING:
                 approval.status = ApprovalStatus.APPROVED
                 approval.comments = comments
-                approval.approved_at = datetime.now(timezone.utc)
+                approval.approved_at = datetime.now(UTC)
                 return approval
 
         return None
 
-    def reject_change(
-        self, change_id: str, approver: str, reason: str
-    ) -> Approval | None:
+    def reject_change(self, change_id: str, approver: str, reason: str) -> Approval | None:
         """
         Reject a change request.
 
@@ -173,7 +171,7 @@ class ApprovalWorkflow:
             if approval.approver == approver and approval.status == ApprovalStatus.PENDING:
                 approval.status = ApprovalStatus.REJECTED
                 approval.comments = reason
-                approval.approved_at = datetime.now(timezone.utc)
+                approval.approved_at = datetime.now(UTC)
                 return approval
 
         return None

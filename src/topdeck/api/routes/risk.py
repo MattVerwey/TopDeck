@@ -575,7 +575,9 @@ async def get_comprehensive_risk_analysis(
 
 @router.get("/dependencies/circular")
 async def detect_circular_dependencies(
-    resource_id: str | None = Query(None, description="Specific resource to check, or all if omitted")
+    resource_id: str | None = Query(
+        None, description="Specific resource to check, or all if omitted"
+    )
 ) -> dict:
     """
     Detect circular dependencies in infrastructure.
@@ -598,12 +600,16 @@ async def detect_circular_dependencies(
             "circular_dependencies_found": len(cycles),
             "cycles": cycles,
             "severity": "critical" if len(cycles) > 0 else "none",
-            "recommendations": [
-                "Break circular dependencies by introducing event-driven architecture",
-                "Use dependency injection to decouple components",
-                "Consider using mediator pattern to manage complex interactions",
-                "Refactor to establish clear dependency hierarchy"
-            ] if cycles else ["No circular dependencies detected - dependency graph is healthy"]
+            "recommendations": (
+                [
+                    "Break circular dependencies by introducing event-driven architecture",
+                    "Use dependency injection to decouple components",
+                    "Consider using mediator pattern to manage complex interactions",
+                    "Refactor to establish clear dependency hierarchy",
+                ]
+                if cycles
+                else ["No circular dependencies detected - dependency graph is healthy"]
+            ),
         }
     except Exception as e:
         raise HTTPException(
@@ -660,12 +666,11 @@ async def compare_risk_scores(
         ids = [rid.strip() for rid in resource_ids.split(",") if rid.strip()]
         if not ids:
             raise HTTPException(status_code=400, detail="At least one resource ID required")
-        
+
         # Limit to 50 resources to prevent performance issues
         if len(ids) > 50:
             raise HTTPException(
-                status_code=400,
-                detail=f"Too many resources requested ({len(ids)}). Maximum is 50."
+                status_code=400, detail=f"Too many resources requested ({len(ids)}). Maximum is 50."
             )
 
         analyzer = get_risk_analyzer()
@@ -684,7 +689,7 @@ async def analyze_cascading_failure(
     resource_id: str,
     initial_probability: float = Query(
         1.0, ge=0.0, le=1.0, description="Initial failure probability (0-1)"
-    )
+    ),
 ) -> dict:
     """
     Calculate cascading failure probability.

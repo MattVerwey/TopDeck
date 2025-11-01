@@ -4,7 +4,7 @@ Main prediction orchestrator.
 Coordinates feature extraction, model loading, and prediction generation.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -36,11 +36,11 @@ class Predictor:
         "recency": 0.2,
         "consistency": 0.2,
     }
-    
+
     # Confidence thresholds
     CONFIDENCE_HIGH_THRESHOLD = 0.8
     CONFIDENCE_MEDIUM_THRESHOLD = 0.6
-    
+
     # Minimal data penalty
     MIN_COMPLETENESS_THRESHOLD = 0.1
     LOW_DATA_PENALTY_FACTOR = 0.5
@@ -107,7 +107,7 @@ class Predictor:
             confidence=confidence,
             contributing_factors=contributing_factors,
             recommendations=recommendations,
-            predicted_at=datetime.now(timezone.utc),
+            predicted_at=datetime.now(UTC),
             model_version="1.0.0-rule-based",
             similar_incidents=[],
             confidence_metrics=confidence_metrics,
@@ -153,7 +153,7 @@ class Predictor:
         # Simple linear trend for demonstration
         predictions = []
         for i in range(horizon_hours):
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
             predicted = current_value + (i * 5.0)  # Increasing trend
             predictions.append(
                 TimeSeriesPoint(
@@ -179,7 +179,7 @@ class Predictor:
             seasonality_detected=False,
             anomalies_detected=0,
             recommendations=self._generate_performance_recommendations(current_value, baseline),
-            predicted_at=datetime.now(timezone.utc),
+            predicted_at=datetime.now(UTC),
             prediction_horizon_hours=horizon_hours,
             model_version="1.0.0-rule-based",
         )
@@ -220,7 +220,7 @@ class Predictor:
             similar_historical_incidents=[],
             correlated_resources=[],
             recommendations=["Continue monitoring", "No immediate action required"],
-            detected_at=datetime.now(timezone.utc),
+            detected_at=datetime.now(UTC),
             detection_window_hours=window_hours,
             model_version="1.0.0-rule-based",
         )
@@ -297,7 +297,7 @@ class Predictor:
         # all possible features, only those that were available from data sources)
         feature_count = sum(1 for v in features.values() if v is not None)
         total_possible_features = len(self.feature_extractor.get_feature_names())
-        
+
         if total_possible_features == 0:
             completeness_score = 0.0
         else:
@@ -335,9 +335,7 @@ class Predictor:
 
         # Count valid features
         valid_features = sum(
-            1
-            for k, v in features.items()
-            if v is not None and self._is_feature_valid(k, v)
+            1 for k, v in features.items() if v is not None and self._is_feature_valid(k, v)
         )
         missing_features = total_possible_features - feature_count
 

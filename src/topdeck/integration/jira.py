@@ -9,9 +9,9 @@ from datetime import datetime
 from typing import Any
 
 from topdeck.change_management.models import ChangeRequest, ChangeStatus, ChangeType
+from topdeck.change_management.service import ChangeManagementService
 
 logger = logging.getLogger(__name__)
-from topdeck.change_management.service import ChangeManagementService
 
 
 class JiraWebhookHandler:
@@ -24,29 +24,29 @@ class JiraWebhookHandler:
     def process_webhook(self, payload: dict[str, Any]) -> ChangeRequest:
         """
         Process incoming Jira webhook.
-        
+
         Args:
             payload: Webhook payload from Jira
-            
+
         Returns:
             Created or updated ChangeRequest
         """
         # Extract issue data from Jira webhook payload
         issue = payload.get("issue", {})
         fields = issue.get("fields", {})
-        
+
         issue_key = issue.get("key", "")
         summary = fields.get("summary", "")
         description = fields.get("description", "")
         issue_type = fields.get("issuetype", {}).get("name", "")
-        
+
         # Map Jira issue type to our change type
         mapped_change_type = self._map_jira_issue_type(issue_type)
-        
+
         # Parse scheduled times from custom fields or labels
         scheduled_start = None
         scheduled_end = None
-        
+
         # Jira custom fields for change management
         # These would be configured based on your Jira setup
         if fields.get("customfield_10100"):  # Example: Start date field
@@ -57,7 +57,7 @@ class JiraWebhookHandler:
             except (ValueError, AttributeError, KeyError) as e:
                 logger.warning(f"Failed to parse start date from Jira custom field: {e}")
                 pass
-                
+
         if fields.get("customfield_10101"):  # Example: End date field
             try:
                 scheduled_end = datetime.fromisoformat(

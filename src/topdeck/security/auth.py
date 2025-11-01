@@ -3,7 +3,7 @@ Authentication and JWT token handling.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -25,7 +25,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # JWT settings (from config)
 if not settings.secret_key:
-    raise RuntimeError("SECRET_KEY is not configured. Please set settings.secret_key in your configuration.")
+    raise RuntimeError(
+        "SECRET_KEY is not configured. Please set settings.secret_key in your configuration."
+    )
 SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes or 60
@@ -72,9 +74,9 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -189,15 +191,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             raise credentials_exception
 
         token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
+    except JWTError as e:
+        raise credentials_exception from e
 
     user = await get_user_from_db(token_data.username)
     if user is None:
         raise credentials_exception
 
     # Update last login
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
 
     return User(**user.model_dump())
 

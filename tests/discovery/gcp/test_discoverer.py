@@ -2,8 +2,9 @@
 Tests for GCP Resource Discoverer.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from topdeck.discovery.gcp.discoverer import GCPDiscoverer
 from topdeck.discovery.models import DiscoveredResource
@@ -51,7 +52,9 @@ class TestGCPDiscoverer:
         mock_instances_client = MagicMock()
         mock_instances_client.list.return_value = [mock_instance]
 
-        with patch("topdeck.discovery.gcp.discoverer.compute_v1.InstancesClient") as mock_client_class:
+        with patch(
+            "topdeck.discovery.gcp.discoverer.compute_v1.InstancesClient"
+        ) as mock_client_class:
             mock_client_class.return_value = mock_instances_client
             resources = await discoverer._discover_compute_instances("us-central1")
 
@@ -78,7 +81,9 @@ class TestGCPDiscoverer:
         mock_cluster_client = MagicMock()
         mock_cluster_client.list_clusters.return_value = mock_response
 
-        with patch("topdeck.discovery.gcp.discoverer.container_v1.ClusterManagerClient") as mock_client_class:
+        with patch(
+            "topdeck.discovery.gcp.discoverer.container_v1.ClusterManagerClient"
+        ) as mock_client_class:
             mock_client_class.return_value = mock_cluster_client
             resources = await discoverer._discover_gke_clusters("us-central1")
 
@@ -93,7 +98,7 @@ class TestGCPDiscoverer:
         """Test Cloud SQL instance discovery."""
         # Cloud SQL discovery is a placeholder for now
         resources = await discoverer._discover_cloud_sql_instances("us-central1")
-        
+
         # Should return empty list for now (placeholder implementation)
         assert isinstance(resources, list)
 
@@ -125,7 +130,7 @@ class TestGCPDiscoverer:
         """Test Cloud Functions discovery."""
         # Cloud Functions discovery is a placeholder for now
         resources = await discoverer._discover_cloud_functions("us-central1")
-        
+
         # Should return empty list for now (placeholder implementation)
         assert isinstance(resources, list)
 
@@ -134,7 +139,7 @@ class TestGCPDiscoverer:
         """Test Cloud Run service discovery."""
         # Cloud Run discovery is a placeholder for now
         resources = await discoverer._discover_cloud_run_services("us-central1")
-        
+
         # Should return empty list for now (placeholder implementation)
         assert isinstance(resources, list)
 
@@ -151,7 +156,9 @@ class TestGCPDiscoverer:
         mock_networks_client = MagicMock()
         mock_networks_client.list.return_value = [mock_network]
 
-        with patch("topdeck.discovery.gcp.discoverer.compute_v1.NetworksClient") as mock_client_class:
+        with patch(
+            "topdeck.discovery.gcp.discoverer.compute_v1.NetworksClient"
+        ) as mock_client_class:
             mock_client_class.return_value = mock_networks_client
             resources = await discoverer._discover_vpcs("us-central1")
 

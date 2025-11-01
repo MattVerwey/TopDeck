@@ -213,9 +213,7 @@ class AWSResourceMapper:
 
     @staticmethod
     def extract_connection_strings_from_properties(
-        arn: str,
-        resource_type: str,
-        properties: dict[str, Any]
+        arn: str, resource_type: str, properties: dict[str, Any]
     ) -> list[ResourceDependency]:
         """
         Extract connection string-based dependencies from resource properties.
@@ -249,7 +247,7 @@ class AWSResourceMapper:
                                 source_id=arn,
                                 target_id=target_id,
                                 conn_info=conn_info,
-                                description=f"Lambda environment variable: {var_name}"
+                                description=f"Lambda environment variable: {var_name}",
                             )
                             dependencies.append(dep)
 
@@ -262,8 +260,10 @@ class AWSResourceMapper:
                 for env_var in env_vars:
                     var_name = env_var.get("Name", "")
                     var_value = env_var.get("Value", "")
-                    if any(key in var_name.upper()
-                           for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]):
+                    if any(
+                        key in var_name.upper()
+                        for key in ["CONNECTION", "DATABASE", "DB", "ENDPOINT", "URL"]
+                    ):
                         conn_info = parser.parse_connection_string(var_value)
                         if conn_info and conn_info.host:
                             target_id = parser.extract_host_from_connection_info(conn_info)
@@ -272,7 +272,7 @@ class AWSResourceMapper:
                                     source_id=arn,
                                     target_id=target_id,
                                     conn_info=conn_info,
-                                    description=f"ECS container environment: {var_name}"
+                                    description=f"ECS container environment: {var_name}",
                                 )
                                 dependencies.append(dep)
 
@@ -289,7 +289,7 @@ class AWSResourceMapper:
                             source_id=arn,
                             target_id=target_id,
                             conn_info=conn_info,
-                            description="EC2 user data connection"
+                            description="EC2 user data connection",
                         )
                         dependencies.append(dep)
 

@@ -2,8 +2,9 @@
 Tests for AWS Resource Discoverer.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from topdeck.discovery.aws.discoverer import AWSDiscoverer
 from topdeck.discovery.models import DiscoveredResource
@@ -118,7 +119,10 @@ class TestAWSDiscoverer:
                     "Engine": "postgres",
                     "EngineVersion": "14.2",
                     "DBInstanceStatus": "available",
-                    "Endpoint": {"Address": "test-db.abc123.us-east-1.rds.amazonaws.com", "Port": 5432},
+                    "Endpoint": {
+                        "Address": "test-db.abc123.us-east-1.rds.amazonaws.com",
+                        "Port": 5432,
+                    },
                     "TagList": [{"Key": "Environment", "Value": "prod"}],
                 }
             ]
@@ -133,7 +137,10 @@ class TestAWSDiscoverer:
                 resource = resources[0]
                 assert resource.resource_type == "rds"
                 assert resource.properties["engine"] == "postgres"
-                assert resource.properties["endpoint_address"] == "test-db.abc123.us-east-1.rds.amazonaws.com"
+                assert (
+                    resource.properties["endpoint_address"]
+                    == "test-db.abc123.us-east-1.rds.amazonaws.com"
+                )
 
     @pytest.mark.asyncio
     async def test_discover_s3_buckets(self, discoverer):
@@ -147,9 +154,7 @@ class TestAWSDiscoverer:
             ]
         }
         mock_s3.get_bucket_location.return_value = {"LocationConstraint": "us-east-1"}
-        mock_s3.get_bucket_tagging.return_value = {
-            "TagSet": [{"Key": "Project", "Value": "test"}]
-        }
+        mock_s3.get_bucket_tagging.return_value = {"TagSet": [{"Key": "Project", "Value": "test"}]}
 
         with patch.object(discoverer, "session") as mock_session:
             mock_session.client.return_value = mock_s3
@@ -256,9 +261,7 @@ class TestAWSDiscoverer:
             ]
         }
         mock_elbv2.describe_tags.return_value = {
-            "TagDescriptions": [
-                {"Tags": [{"Key": "Environment", "Value": "prod"}]}
-            ]
+            "TagDescriptions": [{"Tags": [{"Key": "Environment", "Value": "prod"}]}]
         }
 
         with patch.object(discoverer, "session") as mock_session:

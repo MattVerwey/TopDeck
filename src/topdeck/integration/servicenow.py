@@ -9,9 +9,9 @@ from datetime import datetime
 from typing import Any
 
 from topdeck.change_management.models import ChangeRequest, ChangeStatus, ChangeType
+from topdeck.change_management.service import ChangeManagementService
 
 logger = logging.getLogger(__name__)
-from topdeck.change_management.service import ChangeManagementService
 
 
 class ServiceNowWebhookHandler:
@@ -24,10 +24,10 @@ class ServiceNowWebhookHandler:
     def process_webhook(self, payload: dict[str, Any]) -> ChangeRequest:
         """
         Process incoming ServiceNow webhook.
-        
+
         Args:
             payload: Webhook payload from ServiceNow
-            
+
         Returns:
             Created or updated ChangeRequest
         """
@@ -38,29 +38,25 @@ class ServiceNowWebhookHandler:
         description = payload.get("description", "")
         state = payload.get("state", "")
         change_type = payload.get("type", "")
-        
+
         # Map ServiceNow state to our status and change type to our type
-        mapped_status = self._map_servicenow_state(state)
+        self._map_servicenow_state(state)
         mapped_change_type = self._map_servicenow_type(change_type)
-        
+
         # Parse scheduled times
         scheduled_start = None
         scheduled_end = None
-        
+
         if payload.get("start_date"):
             try:
-                scheduled_start = datetime.fromisoformat(
-                    payload["start_date"].replace(" ", "T")
-                )
+                scheduled_start = datetime.fromisoformat(payload["start_date"].replace(" ", "T"))
             except (ValueError, AttributeError) as e:
                 logger.warning(f"Failed to parse start_date from ServiceNow: {e}")
                 pass
-                
+
         if payload.get("end_date"):
             try:
-                scheduled_end = datetime.fromisoformat(
-                    payload["end_date"].replace(" ", "T")
-                )
+                scheduled_end = datetime.fromisoformat(payload["end_date"].replace(" ", "T"))
             except (ValueError, AttributeError) as e:
                 logger.warning(f"Failed to parse end_date from ServiceNow: {e}")
                 pass

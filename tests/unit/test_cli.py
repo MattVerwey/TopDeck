@@ -5,8 +5,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 # Dynamically determine project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 SRC_PATH = PROJECT_ROOT / "src"

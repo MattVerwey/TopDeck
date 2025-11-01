@@ -6,7 +6,7 @@ and correlation with resource topology.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -80,9 +80,9 @@ class LokiCollector:
             List of log streams
         """
         if not start:
-            start = datetime.now(timezone.utc) - timedelta(hours=1)
+            start = datetime.now(UTC) - timedelta(hours=1)
         if not end:
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
 
         url = f"{self.loki_url}/loki/api/v1/query_range"
         params = {
@@ -125,7 +125,7 @@ class LokiCollector:
 
         query = "".join(query_parts)
 
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - duration
 
         return await self.query(query, start, end)
@@ -149,7 +149,7 @@ class LokiCollector:
         else:
             query = '{job=~".+"} |~ "(?i)(error|exception|fatal|critical)"'
 
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - duration
 
         return await self.query(query, start, end)
@@ -352,7 +352,7 @@ class LokiCollector:
         # Build LogQL query to find logs with correlation_id
         query = f'{{job=~".+"}} |~ "(?i)(correlation_id|transaction_id|trace_id).*{correlation_id}"'
 
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - duration
 
         return await self.query(query, start, end, limit=5000)
