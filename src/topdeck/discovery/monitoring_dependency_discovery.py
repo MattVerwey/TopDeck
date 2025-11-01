@@ -201,7 +201,10 @@ class MonitoringDependencyDiscovery:
                             )
                         )
             except Exception as e:
-                logger.warning(f"Failed to get Elasticsearch logs for resource {resource_id}: {e}")
+                logger.warning(
+                    f"Failed to get Elasticsearch logs for resource {resource_id}: {e}",
+                    exc_info=True,
+                )
                 continue
         
         return evidence_list
@@ -242,7 +245,8 @@ class MonitoringDependencyDiscovery:
                         )
             except Exception as e:
                 logger.warning(
-                    f"Failed to get Azure Log Analytics logs for resource {resource_id}: {e}"
+                    f"Failed to get Azure Log Analytics logs for resource {resource_id}: {e}",
+                    exc_info=True,
                 )
                 continue
         

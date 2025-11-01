@@ -68,6 +68,30 @@ class TransactionTrace:
 class ElasticsearchCollector:
     """Collector for Elasticsearch logs."""
 
+    # Log level constants
+    LEVEL_DEBUG = "debug"
+    LEVEL_INFO = "info"
+    LEVEL_WARNING = "warning"
+    LEVEL_ERROR = "error"
+    LEVEL_CRITICAL = "critical"
+
+    # Fields to exclude from properties extraction
+    EXCLUDED_PROPERTY_FIELDS = {
+        "@timestamp",
+        "message",
+        "level",
+        "severity",
+        "correlation_id",
+        "correlationId",
+        "transaction_id",
+        "transactionId",
+        "trace_id",
+        "traceId",
+        "resource_id",
+        "operation_name",
+        "operation",
+    }
+
     def __init__(
         self,
         url: str,
@@ -228,8 +252,12 @@ class ElasticsearchCollector:
                 seen_resources.add(entry.resource_id)
 
         # Count errors and warnings
-        error_count = sum(1 for e in entries if e.level in ("error", "critical", "fatal"))
-        warning_count = sum(1 for e in entries if e.level == "warning")
+        error_count = sum(
+            1
+            for e in entries
+            if e.level in (self.LEVEL_ERROR, self.LEVEL_CRITICAL)
+        )
+        warning_count = sum(1 for e in entries if e.level == self.LEVEL_WARNING)
 
         # Calculate duration
         start_time = entries[0].timestamp
@@ -381,10 +409,14 @@ class ElasticsearchCollector:
             return datetime.now(timezone.utc)
 
         try:
-            # Try ISO format
-            return datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+            # Handle ISO format with trailing 'Z' for UTC
+            # Only replace 'Z' if it's at the end of the string
+            if timestamp_str.endswith("Z"):
+                timestamp_str = timestamp_str[:-1] + "+00:00"
+            return datetime.fromisoformat(timestamp_str)
         except (ValueError, AttributeError):
-            # Fallback to current time
+            # Fallback to current time if parsing fails
+            logger.warning(f"Failed to parse timestamp: {timestamp_str}")
             return datetime.now(timezone.utc)
 
     def _extract_resource_id(self, doc: dict[str, Any]) -> str:
@@ -413,50 +445,34 @@ class ElasticsearchCollector:
     def _extract_properties(self, doc: dict[str, Any]) -> dict[str, Any]:
         """Extract additional properties from document."""
         # Exclude common fields to avoid duplication
-        exclude_fields = {
-            "@timestamp",
-            "message",
-            "level",
-            "severity",
-            "correlation_id",
-            "correlationId",
-            "transaction_id",
-            "transactionId",
-            "trace_id",
-            "traceId",
-            "resource_id",
-            "operation_name",
-            "operation",
-        }
-
-        return {k: v for k, v in doc.items() if k not in exclude_fields}
+        return {k: v for k, v in doc.items() if k not in self.EXCLUDED_PROPERTY_FIELDS}
 
     def _normalize_level(self, level: str | int) -> str:
         """Normalize log level to standard format."""
         if isinstance(level, int):
             # Syslog severity levels
             if level <= 1:
-                return "critical"
+                return self.LEVEL_CRITICAL
             elif level <= 3:
-                return "error"
+                return self.LEVEL_ERROR
             elif level == 4:
-                return "warning"
+                return self.LEVEL_WARNING
             elif level <= 6:
-                return "info"
+                return self.LEVEL_INFO
             else:
-                return "debug"
+                return self.LEVEL_DEBUG
 
         level_lower = str(level).lower()
 
         if level_lower in ("0", "verbose", "trace", "debug"):
-            return "debug"
+            return self.LEVEL_DEBUG
         elif level_lower in ("1", "information", "info"):
-            return "info"
+            return self.LEVEL_INFO
         elif level_lower in ("2", "warning", "warn"):
-            return "warning"
+            return self.LEVEL_WARNING
         elif level_lower in ("3", "error", "err"):
-            return "error"
+            return self.LEVEL_ERROR
         elif level_lower in ("4", "critical", "fatal", "crit"):
-            return "critical"
+            return self.LEVEL_CRITICAL
         else:
-            return "info"
+            return self.LEVEL_INFO
