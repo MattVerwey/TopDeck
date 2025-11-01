@@ -1,9 +1,9 @@
 """
 Monitoring API endpoints.
 
-Provides API endpoints for retrieving metrics and logs from observability
-platforms (Prometheus, Loki, Elasticsearch, Azure Log Analytics) for resource
-monitoring and failure detection.
+Provides API endpoints for retrieving metrics, traces, and logs from observability
+platforms (Prometheus, Tempo, Loki, Elasticsearch, Azure Log Analytics) for resource
+monitoring, distributed tracing, and failure detection.
 """
 
 import logging
@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from topdeck.common.config import settings
 from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
+from topdeck.monitoring.collectors.tempo import TempoCollector
 from topdeck.monitoring.transaction_flow import TransactionFlowService
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -124,6 +125,33 @@ class TransactionFlowResponse(BaseModel):
     warning_count: int
     source: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TraceSpanResponse(BaseModel):
+    """Response model for a trace span."""
+
+    trace_id: str
+    span_id: str
+    parent_span_id: str | None
+    operation_name: str
+    service_name: str
+    start_time: datetime
+    duration_ms: float
+    tags: dict[str, Any] = Field(default_factory=dict)
+    status: str
+
+
+class TraceResponse(BaseModel):
+    """Response model for a distributed trace."""
+
+    trace_id: str
+    spans: list[TraceSpanResponse]
+    start_time: datetime
+    end_time: datetime
+    duration_ms: float
+    service_count: int
+    error_count: int
+    root_service: str | None = None
 
 
 # Create router
@@ -507,6 +535,135 @@ async def trace_transaction_flow(
         raise HTTPException(status_code=500, detail=f"Failed to trace transaction: {str(e)}") from e
 
 
+@router.get("/traces/{trace_id}", response_model=TraceResponse)
+async def get_trace(trace_id: str) -> TraceResponse:
+    """
+    Get a distributed trace by ID from Tempo.
+
+    Returns complete trace with all spans, timing information, and service interactions.
+    This is useful for debugging performance issues and understanding service dependencies.
+
+    Note: Traces are stored in Tempo (distributed tracing backend), not Prometheus.
+    Prometheus is for metrics, Tempo is for traces.
+    """
+    # Check if Tempo is configured
+    if not settings.tempo_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Tempo integration is not configured. Please set TEMPO_URL in your environment.",
+        )
+
+    try:
+        collector = TempoCollector(settings.tempo_url)
+
+        try:
+            trace = await collector.get_trace(trace_id)
+
+            if not trace:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Trace not found: {trace_id}",
+                )
+
+            return TraceResponse(
+                trace_id=trace.trace_id,
+                spans=[
+                    TraceSpanResponse(
+                        trace_id=span.trace_id,
+                        span_id=span.span_id,
+                        parent_span_id=span.parent_span_id,
+                        operation_name=span.operation_name,
+                        service_name=span.service_name,
+                        start_time=span.start_time,
+                        duration_ms=span.duration_ms,
+                        tags=span.tags,
+                        status=span.status,
+                    )
+                    for span in trace.spans
+                ],
+                start_time=trace.start_time,
+                end_time=trace.end_time,
+                duration_ms=trace.duration_ms,
+                service_count=trace.service_count,
+                error_count=trace.error_count,
+                root_service=trace.root_service,
+            )
+        finally:
+            await collector.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get trace: {str(e)}") from e
+
+
+@router.get("/resources/{resource_id}/traces", response_model=list[TraceResponse])
+async def get_resource_traces(
+    resource_id: str,
+    duration_hours: int = Query(1, ge=1, le=24, description="Duration in hours to search"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of traces"),
+) -> list[TraceResponse]:
+    """
+    Get distributed traces for a specific resource from Tempo.
+
+    Returns traces that involve the specified resource, helping to understand
+    its interactions and performance characteristics.
+
+    Note: Traces are stored in Tempo (distributed tracing backend), not Prometheus.
+    Prometheus is for metrics, Tempo is for traces.
+    """
+    # Check if Tempo is configured
+    if not settings.tempo_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Tempo integration is not configured. Please set TEMPO_URL in your environment.",
+        )
+
+    try:
+        collector = TempoCollector(settings.tempo_url)
+
+        try:
+            traces = await collector.find_traces_by_resource(
+                resource_id=resource_id,
+                duration=timedelta(hours=duration_hours),
+                limit=limit,
+            )
+
+            return [
+                TraceResponse(
+                    trace_id=trace.trace_id,
+                    spans=[
+                        TraceSpanResponse(
+                            trace_id=span.trace_id,
+                            span_id=span.span_id,
+                            parent_span_id=span.parent_span_id,
+                            operation_name=span.operation_name,
+                            service_name=span.service_name,
+                            start_time=span.start_time,
+                            duration_ms=span.duration_ms,
+                            tags=span.tags,
+                            status=span.status,
+                        )
+                        for span in trace.spans
+                    ],
+                    start_time=trace.start_time,
+                    end_time=trace.end_time,
+                    duration_ms=trace.duration_ms,
+                    service_count=trace.service_count,
+                    error_count=trace.error_count,
+                    root_service=trace.root_service,
+                )
+                for trace in traces
+            ]
+        finally:
+            await collector.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get traces for resource: {str(e)}"
+        ) from e
+
+
 @router.get("/health", response_model=dict[str, Any])
 async def get_monitoring_health() -> dict[str, Any]:
     """
@@ -518,6 +675,7 @@ async def get_monitoring_health() -> dict[str, Any]:
     """
     health = {
         "prometheus": {"status": "not_configured", "url": None},
+        "tempo": {"status": "not_configured", "url": None},
         "loki": {"status": "not_configured", "url": None},
         "azure_log_analytics": {"status": "not_configured", "workspace_id": None},
         "elasticsearch": {"status": "not_configured", "url": None},
@@ -537,6 +695,23 @@ async def get_monitoring_health() -> dict[str, Any]:
                 await collector.close()
         except Exception:
             health["prometheus"] = {"status": "error", "url": settings.prometheus_url}
+
+    # Check Tempo (only if configured)
+    if settings.tempo_url:
+        try:
+            collector = TempoCollector(settings.tempo_url)
+            try:
+                # Try a simple health check by accessing the API
+                # Tempo doesn't have a specific health endpoint in the query API,
+                # so we'll just verify we can connect
+                await collector.client.get(f"{settings.tempo_url}/api/echo")
+                health["tempo"] = {"status": "healthy", "url": settings.tempo_url}
+            except Exception:
+                health["tempo"] = {"status": "unhealthy", "url": settings.tempo_url}
+            finally:
+                await collector.close()
+        except Exception:
+            health["tempo"] = {"status": "error", "url": settings.tempo_url}
 
     # Check Loki (only if configured)
     if settings.loki_url:

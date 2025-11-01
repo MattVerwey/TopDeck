@@ -131,13 +131,13 @@ TopDeck provides that answer by:
    - Blast radius calculation
    - Failure scenario simulation
 
-5. **Performance Monitoring Integration**
-   - Multiple log platforms supported: Prometheus/Grafana, Elasticsearch, Azure Log Analytics, Loki
-   - API latency tracking
+5. **Performance Monitoring & Observability Integration**
+   - Metrics (Prometheus), Traces (Tempo), Logs (Loki/Elasticsearch/Azure Log Analytics)
+   - API latency tracking and performance metrics
+   - Distributed tracing for transaction flows
    - Database deadlock detection
    - Error correlation analysis
    - Root cause identification
-   - Transaction tracing across services
 
 ## 🚀 Example Use Case
 
@@ -257,13 +257,19 @@ TopDeck/
 - GitLab API (future)
 
 ### Monitoring & Observability
-- **Prometheus** - Metrics collection and monitoring
+- **Prometheus** - Metrics collection (CPU, memory, latency, error rates)
+- **Tempo** - Distributed tracing (trace IDs, spans, service interactions)
+- **Loki** - Log aggregation (application logs, error messages)
 - **Grafana** - Visualization and dashboards
-- **Elasticsearch** - Log aggregation and search (supports Elastic Stack)
+- **Elasticsearch** - Log aggregation and search (alternative to Loki)
 - **Azure Log Analytics** - Azure-native log analytics
-- **Loki** - Log aggregation for Kubernetes
 
-**Flexible Log Platform Support**: TopDeck works with your existing observability stack. You don't need Prometheus or Grafana - use Elasticsearch, Azure Log Analytics, or any combination that fits your infrastructure.
+**Three Pillars of Observability**:
+- **Metrics** (Prometheus): Performance indicators like CPU, memory, request rates
+- **Traces** (Tempo): Distributed request flows showing how transactions move through services
+- **Logs** (Loki/Elasticsearch/Azure): Detailed event records and error messages
+
+**Flexible Platform Support**: TopDeck works with your existing observability stack. You can use any combination that fits your infrastructure.
 
 **Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
 
