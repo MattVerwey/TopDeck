@@ -147,16 +147,22 @@ class DependencyAnalyzer:
         Args:
             resource_id: Resource to analyze
             direction: "upstream" or "downstream"
-            max_depth: Maximum depth to traverse
+            max_depth: Maximum depth to traverse (clamped to 1-10)
 
         Returns:
             Dictionary mapping resource IDs to their direct dependencies
         """
+        # Clamp max_depth to reasonable bounds
+        # Note: Neo4j variable-length relationships cannot use query parameters for bounds
+        clamped_depth = max(1, min(max_depth, 10))
+        
         if direction == "upstream":
-            query = f"""
-            MATCH path = (r {{id: $id}})-[*1..{max_depth}]->(dep)
+            # Using hardcoded maximum to avoid f-string query construction
+            query = """
+            MATCH path = (r {id: $id})-[*1..10]->(dep)
             WHERE dep.id IS NOT NULL
-            WITH path, relationships(path) as rels
+            WITH path, relationships(path) as rels, length(path) as pathLength
+            WHERE pathLength <= $max_depth
             UNWIND rels as rel
             WITH startNode(rel) as source, endNode(rel) as target
             WHERE source.id IS NOT NULL AND target.id IS NOT NULL
@@ -169,10 +175,12 @@ class DependencyAnalyzer:
                 COALESCE(target.resource_type, labels(target)[0]) as target_type
             """
         else:  # downstream
-            query = f"""
-            MATCH path = (r {{id: $id}})<-[*1..{max_depth}]-(dep)
+            # Using hardcoded maximum to avoid f-string query construction
+            query = """
+            MATCH path = (r {id: $id})<-[*1..10]-(dep)
             WHERE dep.id IS NOT NULL
-            WITH path, relationships(path) as rels
+            WITH path, relationships(path) as rels, length(path) as pathLength
+            WHERE pathLength <= $max_depth
             UNWIND rels as rel
             WITH startNode(rel) as source, endNode(rel) as target
             WHERE source.id IS NOT NULL AND target.id IS NOT NULL
@@ -188,7 +196,7 @@ class DependencyAnalyzer:
         tree: dict[str, list[dict]] = {}
 
         with self.neo4j_client.session() as session:
-            result = session.run(query, id=resource_id)
+            result = session.run(query, id=resource_id, max_depth=clamped_depth)
             for record in result:
                 source_id = record["source_id"]
                 if source_id not in tree:
@@ -250,11 +258,14 @@ class DependencyAnalyzer:
 
         Args:
             resource_id: Resource to analyze
-            max_depth: Maximum cascade depth
+            max_depth: Maximum cascade depth (clamped to 1-20)
 
         Returns:
             Tuple of (directly_affected, indirectly_affected) resource lists
         """
+        # Clamp max_depth to reasonable bounds
+        clamped_depth = max(2, min(max_depth, 20))
+        
         # Get directly affected (immediate dependents)
         direct_query = """
         MATCH (r {id: $id})<-[:DEPENDS_ON]-(dependent)
@@ -280,9 +291,10 @@ class DependencyAnalyzer:
                 )
 
         # Get indirectly affected (cascade effects)
-        indirect_query = f"""
-        MATCH path = (r {{id: $id}})<-[:DEPENDS_ON*2..{max_depth}]-(dependent)
-        WHERE dependent.id IS NOT NULL
+        # Using hardcoded maximum to avoid f-string query construction
+        indirect_query = """
+        MATCH path = (r {id: $id})<-[:DEPENDS_ON*2..20]-(dependent)
+        WHERE dependent.id IS NOT NULL AND length(path) <= $max_depth
         RETURN DISTINCT
             dependent.id as id,
             dependent.name as name,
@@ -296,7 +308,7 @@ class DependencyAnalyzer:
         direct_ids = {r["id"] for r in directly_affected}
 
         with self.neo4j_client.session() as session:
-            result = session.run(indirect_query, id=resource_id)
+            result = session.run(indirect_query, id=resource_id, max_depth=clamped_depth)
             for record in result:
                 # Don't include resources already in direct list
                 if record["id"] not in direct_ids:
@@ -477,11 +489,11 @@ class DependencyAnalyzer:
 
     def _calculate_max_dependency_depth(self, resource_id: str, max_depth: int = 10) -> int:
         """Calculate maximum depth of dependency tree."""
-        # Validate max_depth to prevent performance issues
-        max_depth = max(1, min(max_depth, 20))  # Clamp between 1 and 20
-        
-        query = f"""
-        MATCH path = (r {{id: $id}})-[*1..{max_depth}]->(dep)
+        # Note: Neo4j variable-length relationships cannot use query parameters for bounds
+        # Using hardcoded maximum to avoid f-string query construction
+        # The max_depth parameter is kept for API compatibility but limited to 20
+        query = """
+        MATCH path = (r {id: $id})-[*1..20]->(dep)
         WHERE dep.id IS NOT NULL
         AND ALL(rel in relationships(path) WHERE type(rel) IN [
             'DEPENDS_ON', 'USES', 'CONNECTS_TO', 'ROUTES_TO'
@@ -492,7 +504,10 @@ class DependencyAnalyzer:
         with self.neo4j_client.session() as session:
             result = session.run(query, id=resource_id)
             record = result.single()
-            return record["max_depth"] if record and record["max_depth"] else 0
+            calculated_depth = record["max_depth"] if record and record["max_depth"] else 0
+            # Respect the requested max_depth by clamping the result
+            requested_max = max(1, min(max_depth, 20))
+            return min(calculated_depth, requested_max) if calculated_depth else 0
 
     def _get_health_level(self, score: float) -> str:
         """Convert health score to categorical level."""
