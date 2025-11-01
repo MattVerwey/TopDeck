@@ -366,7 +366,13 @@ class DependencyAnalyzer:
             for record in result:
                 cycle = record["cycle"]
                 # Normalize cycle to start with smallest ID (for deduplication)
-                min_idx = cycle.index(min(cycle))
+                # Use enumerate to find min element and index in single pass O(n)
+                min_val = cycle[0]
+                min_idx = 0
+                for i, val in enumerate(cycle):
+                    if val < min_val:
+                        min_val = val
+                        min_idx = i
                 normalized = cycle[min_idx:] + cycle[:min_idx]
                 
                 # Only add if not already present (avoid duplicates)
@@ -419,10 +425,29 @@ class DependencyAnalyzer:
 
         # Factor 3: Single points of failure in dependency chain
         dependency_tree = self.get_dependency_tree(resource_id, direction="upstream", max_depth=3)
+        
+        # Batch check all dependencies for SPOF status in single query
+        dep_ids = list(dependency_tree.keys())
         spof_in_deps = []
-        for dep_id in dependency_tree.keys():
-            if self.is_single_point_of_failure(dep_id):
-                spof_in_deps.append(dep_id)
+        
+        if dep_ids:
+            # Query all at once to reduce database roundtrips
+            spof_query = """
+            UNWIND $dep_ids as dep_id
+            MATCH (r {id: dep_id})
+            OPTIONAL MATCH (r)<-[:DEPENDS_ON]-(dependent)
+            WHERE dependent.id IS NOT NULL
+            WITH r, dep_id, COUNT(dependent) as dependent_count
+            OPTIONAL MATCH (r)-[:REDUNDANT_WITH]->(alt)
+            WHERE alt.id IS NOT NULL
+            WITH dep_id, dependent_count, COUNT(alt) as redundant_count
+            WHERE dependent_count > 0 AND redundant_count = 0
+            RETURN dep_id
+            """
+            
+            with self.neo4j_client.session() as session:
+                result = session.run(spof_query, dep_ids=dep_ids)
+                spof_in_deps = [record["dep_id"] for record in result]
         
         if spof_in_deps:
             spof_penalty = min(20, len(spof_in_deps) * 5)

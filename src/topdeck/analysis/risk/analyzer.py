@@ -580,13 +580,12 @@ class RiskAnalyzer:
         # Calculate average risk
         avg_risk = sum(a.risk_score for a in assessments) / len(assessments)
 
-        # Count by risk level
-        risk_distribution = {
-            "critical": sum(1 for a in assessments if a.risk_level.value == "critical"),
-            "high": sum(1 for a in assessments if a.risk_level.value == "high"),
-            "medium": sum(1 for a in assessments if a.risk_level.value == "medium"),
-            "low": sum(1 for a in assessments if a.risk_level.value == "low")
-        }
+        # Count by risk level in single pass
+        risk_distribution = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for assessment in assessments:
+            risk_level = assessment.risk_level.value
+            if risk_level in risk_distribution:
+                risk_distribution[risk_level] += 1
 
         # Find common risk factors
         common_factors = self._identify_common_risk_factors(assessments)
