@@ -123,6 +123,7 @@ temp/
 # Test coverage
 coverage/
 *.cover
+coverage.xml
 .nyc_output
 
 # JetBrains IDEs
