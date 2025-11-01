@@ -269,7 +269,7 @@ async def get_change_metrics(
     KPIs and effectiveness metrics.
     """
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from topdeck.change_management.metrics import ChangeMetricsCalculator
 
         service = get_change_service()
