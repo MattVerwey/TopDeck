@@ -5,6 +5,7 @@ Collects and queries distributed traces from Grafana Tempo for transaction
 tracing, performance analysis, and debugging.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -63,6 +64,21 @@ class TempoCollector:
     async def close(self) -> None:
         """Close HTTP client."""
         await self.client.aclose()
+
+    @staticmethod
+    def _escape_traceql_string(value: str) -> str:
+        """
+        Escape a string value for use in TraceQL queries.
+        
+        Escapes backslashes first, then quotes to prevent injection attacks.
+        
+        Args:
+            value: String value to escape
+            
+        Returns:
+            Escaped string safe for TraceQL queries
+        """
+        return value.replace("\\", "\\\\").replace('"', '\\"')
 
     async def get_trace(self, trace_id: str) -> Trace | None:
         """
@@ -144,17 +160,15 @@ class TempoCollector:
         # Build TraceQL query with proper escaping
         query_parts = []
         if service_name:
-            # Escape backslashes first, then quotes to prevent TraceQL injection
-            escaped_service = service_name.replace("\\", "\\\\").replace('"', '\\"')
+            escaped_service = self._escape_traceql_string(service_name)
             query_parts.append(f'resource.service.name="{escaped_service}"')
         if operation_name:
-            escaped_operation = operation_name.replace("\\", "\\\\").replace('"', '\\"')
+            escaped_operation = self._escape_traceql_string(operation_name)
             query_parts.append(f'name="{escaped_operation}"')
         if tags:
             for key, value in tags.items():
-                # Sanitize both key and value - backslashes first, then quotes
-                escaped_key = key.replace("\\", "\\\\").replace('"', '\\"')
-                escaped_value = str(value).replace("\\", "\\\\").replace('"', '\\"')
+                escaped_key = self._escape_traceql_string(key)
+                escaped_value = self._escape_traceql_string(str(value))
                 query_parts.append(f'{escaped_key}="{escaped_value}"')
         
         if query_parts:
@@ -165,14 +179,26 @@ class TempoCollector:
             response.raise_for_status()
             data = response.json()
 
-            traces = []
-            for trace_data in data.get("traces", []):
-                # Get full trace details
-                trace_id = trace_data.get("traceID")
-                if trace_id:
-                    trace = await self.get_trace(trace_id)
-                    if trace:
-                        traces.append(trace)
+            # Get trace IDs from search results
+            trace_ids = [
+                trace_data.get("traceID")
+                for trace_data in data.get("traces", [])
+                if trace_data.get("traceID")
+            ]
+
+            # Fetch traces concurrently for better performance
+            if trace_ids:
+                trace_results = await asyncio.gather(
+                    *[self.get_trace(trace_id) for trace_id in trace_ids],
+                    return_exceptions=True
+                )
+                # Filter out None values and exceptions
+                traces = [
+                    trace for trace in trace_results
+                    if trace is not None and not isinstance(trace, Exception)
+                ]
+            else:
+                traces = []
 
             return traces
         except httpx.HTTPStatusError as e:

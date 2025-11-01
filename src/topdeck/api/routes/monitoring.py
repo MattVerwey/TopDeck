@@ -13,6 +13,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import httpx
+
 from topdeck.common.config import settings
 from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
@@ -703,11 +705,10 @@ async def get_monitoring_health() -> dict[str, Any]:
             try:
                 # Try multiple health check endpoints for compatibility
                 # Different Tempo versions expose different endpoints
-                
                 try:
                     # Try /ready endpoint (newer versions)
                     await collector.client.get(f"{settings.tempo_url}/ready")
-                except httpx.HTTPError:
+                except (httpx.HTTPStatusError, httpx.RequestError):
                     # Try /api/echo as fallback
                     await collector.client.get(f"{settings.tempo_url}/api/echo")
                 health["tempo"] = {"status": "healthy", "url": settings.tempo_url}
