@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added - Change Management Features (2024-11-01)
+- **Change Request Tracking**: Full lifecycle management from draft to completion
+- **Impact Assessment**: Automated blast radius calculation and risk scoring
+- **Change Calendar**: View and manage scheduled changes
+- **ServiceNow Integration**: Webhook receiver for change request sync
+- **Jira Integration**: Webhook receiver for issue/change ticket sync
+- **Approval Workflows**: Risk-based approval routing with multiple approvers
+- **Change Metrics**: KPI tracking, success rates, and trend analysis
+- **API Endpoints**: 
+  - `POST /api/v1/changes` - Create change request
+  - `POST /api/v1/changes/{id}/assess` - Assess impact
+  - `GET /api/v1/changes/calendar` - View scheduled changes
+  - `GET /api/v1/changes/metrics` - Get metrics and trends
+  - `POST /api/v1/changes/{id}/approve` - Approve change
+  - `POST /api/v1/changes/{id}/reject` - Reject change
+  - `POST /api/v1/webhooks/servicenow` - ServiceNow webhook
+  - `POST /api/v1/webhooks/jira` - Jira webhook
+- **Frontend Enhancement**: Connected Change Impact page to real API
+- **Documentation**: Comprehensive Change Management Guide and Quick Reference
+
+### Added - Initial Release
 - Initial project structure
 - Comprehensive README with architecture overview
 - Documentation structure (architecture, user guide, issues)
@@ -20,7 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 7 detailed initial development issues
 
 ### Changed
-- Nothing yet
+- Enhanced Change Impact Analysis page to use real backend APIs
+- Updated README with change management capabilities
+- Improved API client with change management methods
 
 ### Deprecated
 - Nothing yet

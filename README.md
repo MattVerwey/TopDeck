@@ -345,7 +345,7 @@ The web interface provides:
 - **Dashboard**: Overview with key metrics and status
 - **Topology View**: Interactive network graph with Cytoscape.js
 - **Risk Analysis**: Visual risk distribution and SPOF detection
-- **Change Impact**: Analyze impacts of ServiceNow/Jira changes
+- **Change Impact**: Analyze impacts of changes with real-time assessment ✨ **ENHANCED**
 - **Integrations**: Manage data source plugins and configurations
 
 See [FRONTEND_README.md](FRONTEND_README.md) for complete UI documentation.
@@ -418,14 +418,51 @@ curl "http://localhost:8000/api/v1/prediction/health"
 
 See **[ML Prediction Research](docs/ML_PREDICTION_RESEARCH.md)** for technical analysis and **[ML Prediction Guide](docs/ML_PREDICTION_GUIDE.md)** for usage examples.
 
+**7. Change Management** ✨ **NEW**
+```bash
+# Create a change request
+curl -X POST http://localhost:8000/api/v1/changes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Deploy API v2.1.0",
+    "description": "Production deployment",
+    "change_type": "deployment",
+    "affected_resources": ["resource-id"],
+    "scheduled_start": "2024-11-15T02:00:00Z"
+  }'
+
+# Assess change impact
+curl -X POST "http://localhost:8000/api/v1/changes/{change-id}/assess?resource_id=resource-123"
+
+# View change calendar
+curl "http://localhost:8000/api/v1/changes/calendar?start_date=2024-11-01T00:00:00Z"
+
+# Receive webhooks from ServiceNow/Jira
+# POST /api/v1/webhooks/servicenow
+# POST /api/v1/webhooks/jira
+```
+
+**Change Management Features:**
+- ✅ **Change Request Tracking**: Create and track change requests through their lifecycle
+- ✅ **Impact Assessment**: Automated analysis of change blast radius and risk
+- ✅ **Change Calendar**: Visualize upcoming changes and detect conflicts
+- ✅ **ServiceNow Integration**: Webhook receiver for ServiceNow change requests
+- ✅ **Jira Integration**: Webhook receiver for Jira change tickets
+- ✅ **Risk-Based Recommendations**: Automatic approval routing and scheduling guidance
+- ✅ **Rollback Planning**: Identifies when rollback plans are required
+
+See **[Change Management Guide](docs/CHANGE_MANAGEMENT_GUIDE.md)** for complete documentation.
+
 ### What's Next 🚀
 
 Recent additions:
+- **Change Management** ✨ NEW: Full change request tracking with ServiceNow/Jira integration
 - **ML-Based Predictions** ✨ NEW: Predict failures, performance degradation, and detect anomalies using traditional ML (scikit-learn, Prophet)
 
 Areas for future enhancement:
 - **Multi-Cloud Support**: Complete AWS/GCP discovery (Azure is fully implemented)
 - **Cost Impact Analysis**: Estimate financial impact of failures
+- **Automated Change Workflows**: Approval automation and change templates
 - **Automated Remediation**: Suggest and apply infrastructure changes
 
 ---
