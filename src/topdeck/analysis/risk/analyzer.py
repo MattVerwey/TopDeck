@@ -726,9 +726,12 @@ class RiskAnalyzer:
         cascading_analysis["summary"] = {
             "max_cascade_depth": level,
             "total_resources_at_risk": total_at_risk,
-            "expected_failures": sum(
-                len(lvl["affected_resources"]) * lvl["failure_probability"]
-                for lvl in cascading_analysis["levels"]
+            "expected_failures": round(
+                sum(
+                    len(lvl["affected_resources"]) * lvl["failure_probability"]
+                    for lvl in cascading_analysis["levels"]
+                ),
+                3
             ),
             "recommendations": self._generate_cascade_recommendations(level, total_at_risk)
         }
