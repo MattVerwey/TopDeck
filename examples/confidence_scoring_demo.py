@@ -6,8 +6,6 @@ This example shows how the multi-factor confidence scoring system works
 with different feature sets and quality levels.
 """
 import asyncio
-from datetime import datetime, timezone
-
 from topdeck.analysis.prediction import Predictor
 from topdeck.analysis.prediction.feature_extractor import FeatureExtractor
 from topdeck.analysis.prediction.models import PredictionConfidence, RiskLevel
