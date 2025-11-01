@@ -5,11 +5,14 @@ Collects and queries distributed traces from Grafana Tempo for transaction
 tracing, performance analysis, and debugging.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -86,8 +89,13 @@ class TempoCollector:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return None
+            logger.error(f"HTTP error getting trace {trace_id}: {e}")
             raise
-        except Exception:
+        except httpx.RequestError as e:
+            logger.error(f"Network error getting trace {trace_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error parsing trace {trace_id}: {e}")
             return None
 
     async def search_traces(
@@ -133,15 +141,21 @@ class TempoCollector:
         if max_duration_ms:
             params["maxDuration"] = f"{int(max_duration_ms)}ms"
         
-        # Build TraceQL query
+        # Build TraceQL query with proper escaping
         query_parts = []
         if service_name:
-            query_parts.append(f'resource.service.name="{service_name}"')
+            # Escape quotes to prevent TraceQL injection
+            escaped_service = service_name.replace('"', '\\"').replace("\\", "\\\\")
+            query_parts.append(f'resource.service.name="{escaped_service}"')
         if operation_name:
-            query_parts.append(f'name="{operation_name}"')
+            escaped_operation = operation_name.replace('"', '\\"').replace("\\", "\\\\")
+            query_parts.append(f'name="{escaped_operation}"')
         if tags:
             for key, value in tags.items():
-                query_parts.append(f'{key}="{value}"')
+                # Sanitize both key and value
+                escaped_key = key.replace('"', '\\"').replace("\\", "\\\\")
+                escaped_value = str(value).replace('"', '\\"').replace("\\", "\\\\")
+                query_parts.append(f'{escaped_key}="{escaped_value}"')
         
         if query_parts:
             params["q"] = "{" + " && ".join(query_parts) + "}"
@@ -161,7 +175,14 @@ class TempoCollector:
                         traces.append(trace)
 
             return traces
-        except Exception:
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error searching traces: {e}")
+            return []
+        except httpx.RequestError as e:
+            logger.error(f"Network error searching traces: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error searching traces: {e}")
             return []
 
     async def find_traces_by_resource(

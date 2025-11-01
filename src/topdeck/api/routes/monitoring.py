@@ -701,16 +701,22 @@ async def get_monitoring_health() -> dict[str, Any]:
         try:
             collector = TempoCollector(settings.tempo_url)
             try:
-                # Try a simple health check by accessing the API
-                # Tempo doesn't have a specific health endpoint in the query API,
-                # so we'll just verify we can connect
-                await collector.client.get(f"{settings.tempo_url}/api/echo")
+                # Try multiple health check endpoints for compatibility
+                # Different Tempo versions expose different endpoints
+                try:
+                    # Try /ready endpoint (newer versions)
+                    await collector.client.get(f"{settings.tempo_url}/ready")
+                except Exception:
+                    # Try /api/echo as fallback
+                    await collector.client.get(f"{settings.tempo_url}/api/echo")
                 health["tempo"] = {"status": "healthy", "url": settings.tempo_url}
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Tempo health check failed: {e}")
                 health["tempo"] = {"status": "unhealthy", "url": settings.tempo_url}
             finally:
                 await collector.close()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to create Tempo collector: {e}")
             health["tempo"] = {"status": "error", "url": settings.tempo_url}
 
     # Check Loki (only if configured)
