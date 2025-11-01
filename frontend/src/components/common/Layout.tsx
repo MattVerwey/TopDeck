@@ -155,7 +155,7 @@ export default function Layout({ children }: LayoutProps) {
             {bottomMenuItems.map((item) => (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
-                  selected={location.pathname === item.path}
+                  {...(!item.external ? { selected: location.pathname === item.path } : {})}
                   onClick={() => {
                     if (item.external) {
                       window.open(item.path, '_blank');
