@@ -660,6 +660,13 @@ async def compare_risk_scores(
         ids = [rid.strip() for rid in resource_ids.split(",") if rid.strip()]
         if not ids:
             raise HTTPException(status_code=400, detail="At least one resource ID required")
+        
+        # Limit to 50 resources to prevent performance issues
+        if len(ids) > 50:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many resources requested ({len(ids)}). Maximum is 50."
+            )
 
         analyzer = get_risk_analyzer()
         comparison = analyzer.compare_risk_scores(ids)

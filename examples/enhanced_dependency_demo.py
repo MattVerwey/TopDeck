@@ -222,6 +222,28 @@ class DependencyAnalysisDemo:
             print(f"   • {rec}")
 
 
+def get_sample_resources(api_base_url: str, limit: int = 3) -> tuple[str | None, list[str]]:
+    """
+    Fetch sample resources from the API.
+    
+    Returns:
+        Tuple of (first_resource_id, list_of_resource_ids)
+    """
+    try:
+        response = requests.get(f"{api_base_url}/api/v1/topology", timeout=5)
+        response.raise_for_status()
+        topology = response.json()
+        
+        if "nodes" in topology and topology["nodes"]:
+            # Get resource IDs from topology
+            resource_ids = [node["id"] for node in topology["nodes"][:limit]]
+            return resource_ids[0] if resource_ids else None, resource_ids
+    except Exception as e:
+        print(f"⚠️  Could not fetch resources from API: {e}")
+    
+    return None, []
+
+
 def main():
     """Run the demo."""
     print("\n" + "=" * 80)
@@ -233,13 +255,20 @@ def main():
     # Initialize demo
     demo = DependencyAnalysisDemo()
 
-    # Example resource IDs - replace with actual IDs from your environment
-    example_resource_id = "example-resource-1"
-    example_resources = ["resource-1", "resource-2", "resource-3"]
+    # Try to fetch actual resource IDs from the API
+    print("\n🔍 Fetching sample resources from API...")
+    example_resource_id, example_resources = get_sample_resources(demo.api_base_url)
+    
+    if not example_resource_id:
+        print("\n⚠️  No resources found in the system.")
+        print("   This demo requires resources to be discovered first.")
+        print("   Run resource discovery before using this demo:")
+        print("   python -m topdeck.discovery.azure.discoverer --subscription-id <id>")
+        print("\n   Or provide resource IDs manually by editing this script.")
+        return
 
-    print("\n⚠️  NOTE: This demo uses example resource IDs.")
-    print("   Replace them with actual resource IDs from your Neo4j database.")
-    print("   You can find resource IDs using: curl http://localhost:8000/api/v1/topology")
+    print(f"✅ Found {len(example_resources)} sample resource(s)")
+    print(f"   Using resource: {example_resource_id}")
 
     # 1. Check for circular dependencies
     demo.detect_circular_dependencies()
@@ -247,8 +276,11 @@ def main():
     # 2. Check dependency health for a specific resource
     demo.check_dependency_health(example_resource_id)
 
-    # 3. Compare multiple resources
-    demo.compare_resources(example_resources)
+    # 3. Compare multiple resources (if we have more than one)
+    if len(example_resources) > 1:
+        demo.compare_resources(example_resources)
+    else:
+        print("\n⚠️  Skipping comparison - need at least 2 resources")
 
     # 4. Analyze cascading failure probability
     demo.analyze_cascading_failure(example_resource_id, initial_probability=1.0)

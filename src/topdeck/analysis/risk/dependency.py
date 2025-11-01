@@ -366,13 +366,7 @@ class DependencyAnalyzer:
             for record in result:
                 cycle = record["cycle"]
                 # Normalize cycle to start with smallest ID (for deduplication)
-                # Use enumerate to find min element and index in single pass O(n)
-                min_val = cycle[0]
-                min_idx = 0
-                for i, val in enumerate(cycle):
-                    if val < min_val:
-                        min_val = val
-                        min_idx = i
+                min_idx = min(range(len(cycle)), key=lambda i: cycle[i])
                 normalized = cycle[min_idx:] + cycle[:min_idx]
                 
                 # Only add if not already present (avoid duplicates)
@@ -483,6 +477,9 @@ class DependencyAnalyzer:
 
     def _calculate_max_dependency_depth(self, resource_id: str, max_depth: int = 10) -> int:
         """Calculate maximum depth of dependency tree."""
+        # Validate max_depth to prevent performance issues
+        max_depth = max(1, min(max_depth, 20))  # Clamp between 1 and 20
+        
         query = f"""
         MATCH path = (r {{id: $id}})-[*1..{max_depth}]->(dep)
         WHERE dep.id IS NOT NULL
