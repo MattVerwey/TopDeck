@@ -275,7 +275,7 @@ async def get_change_metrics(
         service = get_change_service()
 
         # Get changes from the last N days
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Query Neo4j for changes
         query = """
@@ -336,7 +336,7 @@ async def approve_change(
             "message": f"Change {change_id} approved by {approver}",
             "approver": approver,
             "comments": comments,
-            "approved_at": datetime.utcnow().isoformat(),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:
@@ -368,7 +368,7 @@ async def reject_change(
             "message": f"Change {change_id} rejected by {approver}",
             "approver": approver,
             "reason": reason,
-            "rejected_at": datetime.utcnow().isoformat(),
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:

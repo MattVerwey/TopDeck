@@ -183,7 +183,7 @@ class ChangeMetricsCalculator:
             }
 
         # Group by week
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         start_date = now - timedelta(days=period_days)
 
         changes_by_week: dict[int, list[dict[str, Any]]] = {}

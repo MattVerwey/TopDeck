@@ -5,7 +5,7 @@ Provides business logic for change requests, impact assessment,
 and integration with external change management systems.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -55,8 +55,8 @@ class ChangeManagementService:
             scheduled_end=scheduled_end,
             external_system=external_system,
             external_id=external_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         # Store in Neo4j
@@ -125,8 +125,10 @@ class ChangeManagementService:
                 estimated_downtime = self._estimate_downtime(change_request.change_type)
                 max_downtime = max(max_downtime, estimated_downtime)
                 
-            except Exception:
-                # Resource not found or error - continue with others
+            except Exception as e:
+                # Resource not found or error - log and continue with others
+                import logging
+                logging.warning(f"Failed to assess resource {res_id}: {e}")
                 continue
 
         # Calculate overall metrics
@@ -168,7 +170,7 @@ class ChangeManagementService:
                 "critical_path": critical_path,
             },
             recommendations=recommendations,
-            assessed_at=datetime.utcnow(),
+            assessed_at=datetime.now(timezone.utc),
         )
 
         return assessment

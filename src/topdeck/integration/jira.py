@@ -4,10 +4,13 @@ Jira integration for change management.
 Handles webhooks and API interactions with Jira for change requests.
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 
 from topdeck.change_management.models import ChangeRequest, ChangeStatus, ChangeType
+
+logger = logging.getLogger(__name__)
 from topdeck.change_management.service import ChangeManagementService
 
 
@@ -56,7 +59,8 @@ class JiraWebhookHandler:
                 scheduled_start = datetime.fromisoformat(
                     fields["customfield_10100"].replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError, KeyError):
+            except (ValueError, AttributeError, KeyError) as e:
+                logger.warning(f"Failed to parse start date from Jira custom field: {e}")
                 pass
                 
         if fields.get("customfield_10101"):  # Example: End date field
@@ -64,7 +68,8 @@ class JiraWebhookHandler:
                 scheduled_end = datetime.fromisoformat(
                     fields["customfield_10101"].replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError, KeyError):
+            except (ValueError, AttributeError, KeyError) as e:
+                logger.warning(f"Failed to parse end date from Jira custom field: {e}")
                 pass
 
         # Extract affected resources from labels or custom fields

@@ -4,10 +4,13 @@ ServiceNow integration for change management.
 Handles webhooks and API interactions with ServiceNow for change requests.
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 
 from topdeck.change_management.models import ChangeRequest, ChangeStatus, ChangeType
+
+logger = logging.getLogger(__name__)
 from topdeck.change_management.service import ChangeManagementService
 
 
@@ -52,7 +55,8 @@ class ServiceNowWebhookHandler:
                 scheduled_start = datetime.fromisoformat(
                     payload["start_date"].replace(" ", "T")
                 )
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Failed to parse start_date from ServiceNow: {e}")
                 pass
                 
         if payload.get("end_date"):
@@ -60,7 +64,8 @@ class ServiceNowWebhookHandler:
                 scheduled_end = datetime.fromisoformat(
                     payload["end_date"].replace(" ", "T")
                 )
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Failed to parse end_date from ServiceNow: {e}")
                 pass
 
         # Extract affected resources from payload or configuration items

@@ -5,7 +5,7 @@ Represents change requests, approvals, and impact assessments.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -85,8 +85,8 @@ class ChangeRequest:
     external_url: str | None = None
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     tags: dict[str, str] = field(default_factory=dict)
     properties: dict[str, Any] = field(default_factory=dict)
 
@@ -151,7 +151,7 @@ class ChangeImpactAssessment:
     breakdown: dict[str, Any] = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
     
-    assessed_at: datetime = field(default_factory=datetime.utcnow)
+    assessed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses"""
