@@ -86,8 +86,9 @@ class Settings(BaseSettings):
     )
 
     # Monitoring & Observability Configuration
-    prometheus_url: str = Field(default="", description="Prometheus server URL")
-    loki_url: str = Field(default="", description="Loki server URL")
+    prometheus_url: str = Field(default="", description="Prometheus server URL (for metrics)")
+    tempo_url: str = Field(default="", description="Tempo server URL (for distributed tracing)")
+    loki_url: str = Field(default="", description="Loki server URL (for logs)")
     grafana_url: str = Field(default="", description="Grafana server URL")
 
     # Elasticsearch Configuration

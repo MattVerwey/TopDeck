@@ -3,6 +3,9 @@ Prometheus metrics collector.
 
 Collects and queries metrics from Prometheus for performance monitoring,
 bottleneck detection, and failure analysis.
+
+Note: Prometheus stores metrics (CPU, memory, latency, error rates), not traces.
+For distributed tracing with trace IDs, use Tempo instead.
 """
 
 from dataclasses import dataclass
