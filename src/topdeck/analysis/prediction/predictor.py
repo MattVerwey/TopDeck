@@ -447,13 +447,22 @@ class Predictor:
             Consistency score between 0.0 and 1.0
         """
         # Check variance/std metrics
-        cpu_std = features.get("cpu_std", 0)
-        memory_std = features.get("memory_std", 0)
+        cpu_std = features.get("cpu_std")
+        memory_std = features.get("memory_std")
+
+        # If no variance data available, assume moderate consistency
+        if cpu_std is None and memory_std is None:
+            return 0.7  # Moderate confidence when no variance data
+
+        # Calculate average standard deviation from available data
+        valid_stds = [s for s in [cpu_std, memory_std] if s is not None]
+        if not valid_stds:
+            return 0.7  # Moderate confidence
+
+        avg_std = sum(valid_stds) / len(valid_stds)
 
         # Lower standard deviation = more consistent = higher confidence
         # High std (>0.3) = very inconsistent, Low std (<0.1) = very consistent
-        avg_std = (cpu_std + memory_std) / 2
-
         if avg_std < 0.1:
             return 1.0  # Very consistent
         elif avg_std < 0.2:
