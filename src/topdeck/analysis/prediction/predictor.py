@@ -29,6 +29,22 @@ class Predictor:
     Coordinates all prediction types and manages model lifecycle.
     """
 
+    # Confidence scoring configuration
+    CONFIDENCE_WEIGHTS = {
+        "completeness": 0.3,
+        "quality": 0.3,
+        "recency": 0.2,
+        "consistency": 0.2,
+    }
+    
+    # Confidence thresholds
+    CONFIDENCE_HIGH_THRESHOLD = 0.8
+    CONFIDENCE_MEDIUM_THRESHOLD = 0.6
+    
+    # Minimal data penalty
+    MIN_COMPLETENESS_THRESHOLD = 0.1
+    LOW_DATA_PENALTY_FACTOR = 0.5
+
     def __init__(
         self, feature_extractor: FeatureExtractor | None = None, model_dir: str = "/data/models"
     ):
@@ -279,7 +295,11 @@ class Predictor:
         # Factor 1: Feature completeness (0-1 scale)
         feature_count = sum(1 for v in features.values() if v is not None)
         total_possible_features = len(self.feature_extractor.get_feature_names())
-        completeness_score = min(feature_count / total_possible_features, 1.0)
+        
+        if total_possible_features == 0:
+            completeness_score = 0.0
+        else:
+            completeness_score = min(feature_count / total_possible_features, 1.0)
 
         # Factor 2: Feature quality (0-1 scale)
         quality_score = self._calculate_feature_quality(features)
@@ -290,30 +310,23 @@ class Predictor:
         # Factor 4: Prediction consistency (0-1 scale)
         consistency_score = self._calculate_prediction_consistency(features)
 
-        # Weighted average of all factors
-        weights = {
-            "completeness": 0.3,
-            "quality": 0.3,
-            "recency": 0.2,
-            "consistency": 0.2,
-        }
-
+        # Weighted average of all factors using class constants
         confidence_score = (
-            completeness_score * weights["completeness"]
-            + quality_score * weights["quality"]
-            + recency_score * weights["recency"]
-            + consistency_score * weights["consistency"]
+            completeness_score * self.CONFIDENCE_WEIGHTS["completeness"]
+            + quality_score * self.CONFIDENCE_WEIGHTS["quality"]
+            + recency_score * self.CONFIDENCE_WEIGHTS["recency"]
+            + consistency_score * self.CONFIDENCE_WEIGHTS["consistency"]
         )
 
-        # Apply penalty for very low feature counts (< 10% completeness)
+        # Apply penalty for very low feature counts
         # This ensures we don't have high confidence with minimal data
-        if completeness_score < 0.1:
-            confidence_score *= 0.5  # Halve the confidence score
+        if completeness_score < self.MIN_COMPLETENESS_THRESHOLD:
+            confidence_score *= self.LOW_DATA_PENALTY_FACTOR
 
-        # Map to confidence levels
-        if confidence_score >= 0.8:
+        # Map to confidence levels using class thresholds
+        if confidence_score >= self.CONFIDENCE_HIGH_THRESHOLD:
             confidence_level = PredictionConfidence.HIGH
-        elif confidence_score >= 0.6:
+        elif confidence_score >= self.CONFIDENCE_MEDIUM_THRESHOLD:
             confidence_level = PredictionConfidence.MEDIUM
         else:
             confidence_level = PredictionConfidence.LOW
