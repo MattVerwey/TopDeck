@@ -50,6 +50,7 @@ TopDeck provides that answer by:
 
 ### Risk Analysis
 - **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
+- **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)** - ✨ NEW! Circular dependencies, health scoring, and cascading failures
 - **[Risk Analysis Quick Reference](docs/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
 
@@ -371,9 +372,21 @@ curl "http://localhost:8000/api/v1/risk/resources/{resource-id}"
 
 # Find all single points of failure
 curl "http://localhost:8000/api/v1/risk/spof"
+
+# Detect circular dependencies (NEW!)
+curl "http://localhost:8000/api/v1/risk/dependencies/circular"
+
+# Check dependency health (NEW!)
+curl "http://localhost:8000/api/v1/risk/dependencies/{resource-id}/health"
+
+# Compare risk across resources (NEW!)
+curl "http://localhost:8000/api/v1/risk/compare?resource_ids=id1,id2,id3"
+
+# Analyze cascading failure probability (NEW!)
+curl "http://localhost:8000/api/v1/risk/cascading-failure/{resource-id}"
 ```
 
-**New Risk Analysis Features:**
+**Risk Analysis Features:**
 - ✅ **Degraded Performance**: Analyzes realistic degradation (slow responses, timeouts, blips)
 - ✅ **Intermittent Failures**: Models occasional errors and service blips
 - ✅ **Partial Outages**: Multi-zone failure scenarios
@@ -382,7 +395,13 @@ curl "http://localhost:8000/api/v1/risk/spof"
 - ✅ **Enhanced Dependency Search**: All relationship types in graph
 - ✅ **Combined Risk Score**: Weighted average across all scenarios
 
-See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** for complete documentation.
+**NEW Advanced Dependency Analysis Features:** ✨
+- ✅ **Circular Dependency Detection**: Find cycles in dependency graph that can cause deadlocks
+- ✅ **Dependency Health Scoring**: Comprehensive health score (0-100) considering coupling, SPOFs, and depth
+- ✅ **Risk Comparison**: Compare risk scores across multiple resources for prioritization
+- ✅ **Cascading Failure Probability**: Model how failures propagate through dependencies
+
+See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** and **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)** for complete documentation.
 
 **6. ML-Based Predictions** ✨ **NEW**
 ```bash

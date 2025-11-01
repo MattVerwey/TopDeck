@@ -241,3 +241,171 @@ def test_identify_single_points_of_failure_none_found(risk_analyzer, mock_neo4j_
     spofs = risk_analyzer.identify_single_points_of_failure()
 
     assert len(spofs) == 0
+
+
+def test_compare_risk_scores_multiple_resources(risk_analyzer, mock_neo4j_client):
+    """Test comparing risk scores across multiple resources."""
+    mock_session = MagicMock()
+    
+    # Mock resource details for 3 resources
+    resource_details = [
+        {
+            "id": "res-1",
+            "name": "Database A",
+            "resource_type": "database",
+            "cloud_provider": "azure",
+            "region": "eastus",
+        },
+        {
+            "id": "res-2",
+            "name": "Database B",
+            "resource_type": "database",
+            "cloud_provider": "azure",
+            "region": "westus",
+        },
+        {
+            "id": "res-3",
+            "name": "Web App",
+            "resource_type": "web_app",
+            "cloud_provider": "azure",
+            "region": "eastus",
+        },
+    ]
+    
+    # Mock dependency counts
+    dependency_counts = [(3, 5), (2, 3), (5, 1)]
+    
+    # Mock SPOF checks
+    spof_results = [True, False, False]
+    
+    # Mock redundancy checks
+    redundancy_results = [{"redundant_count": 0}, {"redundant_count": 1}, {"redundant_count": 0}]
+    
+    call_index = [0]
+    
+    def mock_run_side_effect(*args, **kwargs):
+        idx = call_index[0]
+        call_index[0] += 1
+        
+        # Resource details queries (3x)
+        if idx < 3:
+            mock_result = MagicMock()
+            mock_result.single.return_value = resource_details[idx]
+            return mock_result
+        
+        # Dependency counts (6 queries, 2 per resource)
+        elif idx < 9:
+            dep_idx = (idx - 3) // 2
+            count_type = (idx - 3) % 2
+            mock_result = MagicMock()
+            mock_result.single.return_value = {"count": dependency_counts[dep_idx][count_type]}
+            return mock_result
+        
+        # SPOF checks (3x)
+        elif idx < 12:
+            spof_idx = idx - 9
+            mock_result = MagicMock()
+            mock_result.single.return_value = {"is_spof": spof_results[spof_idx]}
+            return mock_result
+        
+        # Redundancy checks (3x)
+        elif idx < 15:
+            red_idx = idx - 12
+            mock_result = MagicMock()
+            mock_result.single.return_value = redundancy_results[red_idx]
+            return mock_result
+        
+        # Blast radius queries (3x, minimal mocking)
+        else:
+            mock_result = MagicMock()
+            mock_result.__iter__.return_value = []
+            return mock_result
+    
+    mock_session.run.side_effect = mock_run_side_effect
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    comparison = risk_analyzer.compare_risk_scores(["res-1", "res-2", "res-3"])
+    
+    assert comparison["resources_compared"] == 3
+    assert "average_risk_score" in comparison
+    assert "highest_risk" in comparison
+    assert "lowest_risk" in comparison
+    assert "risk_distribution" in comparison
+    assert comparison["highest_risk"]["resource_id"] in ["res-1", "res-2", "res-3"]
+
+
+def test_compare_risk_scores_empty_list(risk_analyzer, mock_neo4j_client):
+    """Test comparing risk scores with empty resource list."""
+    comparison = risk_analyzer.compare_risk_scores([])
+    
+    assert comparison["resources_compared"] == 0
+    assert "error" in comparison
+
+
+def test_calculate_cascading_failure_probability(risk_analyzer, mock_neo4j_client):
+    """Test cascading failure probability calculation."""
+    mock_session = MagicMock()
+    
+    # Mock dependency tree
+    # Resource 1 -> Resource 2, Resource 3
+    # Resource 2 -> Resource 4
+    mock_tree_result = MagicMock()
+    mock_tree_result.__iter__.return_value = [
+        {
+            "source_id": "res-1",
+            "source_name": "App",
+            "source_type": "web_app",
+            "target_id": "res-2",
+            "target_name": "Database",
+            "target_type": "database",
+        },
+        {
+            "source_id": "res-1",
+            "source_name": "App",
+            "source_type": "web_app",
+            "target_id": "res-3",
+            "target_name": "Cache",
+            "target_type": "cache",
+        },
+        {
+            "source_id": "res-2",
+            "source_name": "Database",
+            "source_type": "database",
+            "target_id": "res-4",
+            "target_name": "Storage",
+            "target_type": "storage",
+        },
+    ]
+    
+    mock_session.run.return_value = mock_tree_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    analysis = risk_analyzer.calculate_cascading_failure_probability("res-1", 1.0)
+    
+    assert "initial_resource" in analysis
+    assert analysis["initial_resource"] == "res-1"
+    assert analysis["initial_failure_probability"] == 1.0
+    assert "levels" in analysis
+    assert len(analysis["levels"]) > 0
+    assert "summary" in analysis
+    assert "max_cascade_depth" in analysis["summary"]
+    assert "total_resources_at_risk" in analysis["summary"]
+    assert "recommendations" in analysis["summary"]
+
+
+def test_calculate_cascading_failure_probability_no_dependencies(
+    risk_analyzer, mock_neo4j_client
+):
+    """Test cascading failure when resource has no dependencies."""
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.__iter__.return_value = []
+    
+    mock_session.run.return_value = mock_result
+    mock_neo4j_client.session.return_value.__enter__.return_value = mock_session
+    
+    analysis = risk_analyzer.calculate_cascading_failure_probability("res-1", 1.0)
+    
+    assert analysis["initial_resource"] == "res-1"
+    assert len(analysis["levels"]) == 0
+    assert analysis["summary"]["total_resources_at_risk"] == 0
