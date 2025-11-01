@@ -11,7 +11,6 @@ Demonstrates the new dependency analysis features:
 This example shows how to use these features to improve infrastructure health.
 """
 
-import json
 import sys
 from typing import Any
 
