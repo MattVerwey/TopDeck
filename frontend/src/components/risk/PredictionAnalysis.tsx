@@ -107,7 +107,10 @@ export default function PredictionAnalysis() {
               recommendations: data.recommendations,
               predicted_at: data.predicted_at,
             }))
-            .catch(() => null)
+            .catch((err) => {
+              console.warn('Failed to fetch prediction for resource:', resource.id, err);
+              return null;
+            })
         );
       }
 
