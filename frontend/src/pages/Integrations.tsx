@@ -24,6 +24,7 @@ import {
 import {
   GitHub as GitHubIcon,
   Cloud as AzureIcon,
+  DeveloperMode as AzureDevOpsIcon,
   Assessment as PrometheusIcon,
   ConfirmationNumber as JiraIcon,
   BugReport as ServiceNowIcon,
@@ -65,6 +66,16 @@ export default function Integrations() {
       setIntegrations([
         {
           id: '1',
+          name: 'Azure',
+          type: 'cloud-provider',
+          description: 'Connect to Azure cloud resources and services',
+          enabled: true,
+          configured: true,
+          icon: <AzureIcon fontSize="large" />,
+          lastSync: '30 minutes ago',
+        },
+        {
+          id: '2',
           name: 'GitHub',
           type: 'source-control',
           description: 'Connect to GitHub repositories and workflows',
@@ -74,17 +85,17 @@ export default function Integrations() {
           lastSync: '2 hours ago',
         },
         {
-          id: '2',
+          id: '3',
           name: 'Azure DevOps',
           type: 'source-control',
           description: 'Connect to Azure DevOps pipelines and repos',
           enabled: true,
           configured: true,
-          icon: <AzureIcon fontSize="large" />,
+          icon: <AzureDevOpsIcon fontSize="large" />,
           lastSync: '1 hour ago',
         },
         {
-          id: '3',
+          id: '4',
           name: 'Prometheus',
           type: 'monitoring',
           description: 'Pull metrics from Prometheus',
@@ -94,7 +105,7 @@ export default function Integrations() {
           lastSync: '5 minutes ago',
         },
         {
-          id: '4',
+          id: '5',
           name: 'Loki',
           type: 'logging',
           description: 'Pull logs from Grafana Loki',
@@ -104,7 +115,7 @@ export default function Integrations() {
           lastSync: '10 minutes ago',
         },
         {
-          id: '5',
+          id: '6',
           name: 'Jira',
           type: 'ticketing',
           description: 'Integrate with Jira for change tracking',
@@ -113,7 +124,7 @@ export default function Integrations() {
           icon: <JiraIcon fontSize="large" />,
         },
         {
-          id: '6',
+          id: '7',
           name: 'ServiceNow',
           type: 'ticketing',
           description: 'Integrate with ServiceNow for change requests',
@@ -158,6 +169,8 @@ export default function Integrations() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
+      case 'cloud-provider':
+        return 'secondary';
       case 'source-control':
         return 'primary';
       case 'monitoring':
@@ -262,6 +275,36 @@ export default function Integrations() {
             <Typography variant="body2" color="text.secondary" paragraph>
               Enter the configuration details for {configDialog.integration?.name}
             </Typography>
+
+            {configDialog.integration?.type === 'cloud-provider' && (
+              <>
+                <TextField
+                  label="Tenant ID"
+                  fullWidth
+                  margin="normal"
+                  placeholder="Enter Azure tenant ID"
+                />
+                <TextField
+                  label="Client ID"
+                  fullWidth
+                  margin="normal"
+                  placeholder="Enter Azure client ID"
+                />
+                <TextField
+                  label="Client Secret"
+                  fullWidth
+                  margin="normal"
+                  type="password"
+                  placeholder="Enter Azure client secret"
+                />
+                <TextField
+                  label="Subscription ID"
+                  fullWidth
+                  margin="normal"
+                  placeholder="Enter Azure subscription ID"
+                />
+              </>
+            )}
 
             {configDialog.integration?.type === 'source-control' && (
               <>
