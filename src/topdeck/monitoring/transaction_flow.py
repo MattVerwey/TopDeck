@@ -1,8 +1,14 @@
 """
 Transaction flow tracing service.
 
-Combines data from multiple observability platforms (Loki, Prometheus, Azure Log Analytics)
-to trace transactions through the network and visualize their flow.
+Combines data from multiple observability platforms to trace transactions through
+the network and visualize their flow:
+- Loki/Azure Log Analytics: Log-based transaction tracing
+- Prometheus: Metrics enrichment (performance data)
+- Tempo: Distributed trace data (spans and service interactions)
+
+Note: Transaction tracing is primarily done via logs (Loki) or traces (Tempo).
+Prometheus provides metrics for enrichment only.
 """
 
 from dataclasses import dataclass, field

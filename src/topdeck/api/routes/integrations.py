@@ -120,6 +120,19 @@ def get_integrations_data() -> list[dict[str, Any]]:
             }
         )
 
+    # Tempo integration
+    if settings.enable_monitoring:
+        integrations.append(
+            {
+                "id": "tempo",
+                "name": "Tempo",
+                "type": "tempo",
+                "enabled": True,
+                "configured": bool(settings.tempo_url),
+                "last_sync": None,
+            }
+        )
+
     # Loki integration
     if settings.enable_monitoring:
         integrations.append(
