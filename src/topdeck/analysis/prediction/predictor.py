@@ -11,6 +11,7 @@ import structlog
 from .feature_extractor import FeatureExtractor
 from .models import (
     AnomalyDetection,
+    ConfidenceMetrics,
     ContributingFactor,
     FailurePrediction,
     PerformancePrediction,
@@ -268,15 +269,13 @@ class Predictor:
 
     def _calculate_confidence_with_metrics(
         self, features: dict
-    ) -> tuple[PredictionConfidence, "ConfidenceMetrics"]:
+    ) -> tuple[PredictionConfidence, ConfidenceMetrics]:
         """
         Calculate confidence with detailed metrics.
 
         Returns:
             Tuple of (PredictionConfidence, ConfidenceMetrics)
         """
-        from .models import ConfidenceMetrics
-
         # Factor 1: Feature completeness (0-1 scale)
         feature_count = sum(1 for v in features.values() if v is not None)
         total_possible_features = len(self.feature_extractor.get_feature_names())

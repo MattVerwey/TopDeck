@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from topdeck.analysis.prediction import Predictor
 from topdeck.analysis.prediction.feature_extractor import FeatureExtractor
+from topdeck.analysis.prediction.models import PredictionConfidence, RiskLevel
 
 
 async def demo_confidence_scenarios():
@@ -116,9 +117,7 @@ async def demo_confidence_scenarios():
     print(f"Risk Level: {prediction3.risk_level.value.upper()}")
     print(f"Failure Probability: {prediction3.failure_probability:.1%}\n")
 
-    # Decision logic
-    from topdeck.analysis.prediction.models import PredictionConfidence, RiskLevel
-
+    # Decision logic based on confidence and risk
     if prediction3.confidence == PredictionConfidence.HIGH:
         if prediction3.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
             print("✅ Decision: AUTOMATICALLY SCALE/ALERT")
