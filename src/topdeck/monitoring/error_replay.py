@@ -664,9 +664,11 @@ class ErrorReplayService:
 
     def _dict_to_error_snapshot(self, data: dict[str, Any]) -> ErrorSnapshot:
         """Convert dictionary to ErrorSnapshot."""
+        # Handle 'Z' suffix for UTC timezone (Python < 3.11 compatibility)
+        timestamp_str = data["timestamp"].replace("Z", "+00:00")
         return ErrorSnapshot(
             error_id=data["error_id"],
-            timestamp=datetime.fromisoformat(data["timestamp"]),
+            timestamp=datetime.fromisoformat(timestamp_str),
             severity=ErrorSeverity(data["severity"]),
             source=ErrorSource(data["source"]),
             resource_id=data.get("resource_id"),
