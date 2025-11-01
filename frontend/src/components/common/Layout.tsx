@@ -25,6 +25,9 @@ import {
   Warning as RiskIcon,
   Assessment as ImpactIcon,
   Extension as IntegrationsIcon,
+  Layers as LayersIcon,
+  Settings as SettingsIcon,
+  AccountCircle as AccountCircleIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -70,12 +73,27 @@ export default function Layout({ children }: LayoutProps) {
           >
             <MenuIcon />
           </IconButton>
+          <LayersIcon sx={{ mr: 1.5, fontSize: 28 }} />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             TopDeck
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.7 }}>
+          <Typography variant="body2" sx={{ opacity: 0.7, mr: 2 }}>
             Multi-Cloud Platform
           </Typography>
+          <IconButton
+            color="inherit"
+            sx={{ mr: 1 }}
+            aria-label="settings"
+          >
+            <SettingsIcon />
+          </IconButton>
+          <IconButton
+            color="inherit"
+            edge="end"
+            aria-label="user profile"
+          >
+            <AccountCircleIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
 
