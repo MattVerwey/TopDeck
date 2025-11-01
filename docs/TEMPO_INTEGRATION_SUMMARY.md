@@ -26,12 +26,7 @@ This PR adds complete Grafana Tempo integration for distributed tracing, properl
    - Trace parsing tests
    - Service name extraction tests
 
-3. **config/tempo.yaml** (40 lines)
-   - Tempo configuration for local development
-   - OTLP receiver setup (gRPC and HTTP)
-   - Storage and retention settings
-
-4. **docs/OBSERVABILITY.md** (300 lines)
+3. **docs/OBSERVABILITY.md** (300 lines)
    - Complete observability architecture guide
    - Three pillars explanation
    - Configuration examples
@@ -60,13 +55,10 @@ This PR adds complete Grafana Tempo integration for distributed tracing, properl
 6. **src/topdeck/api/routes/integrations.py**
    - Added Tempo to integrations list
 
-7. **docker-compose.yml**
-   - Added Tempo service with health checks
-
-8. **.env.example**
+7. **.env.example**
    - Added TEMPO_URL configuration
 
-9. **README.md**
+8. **README.md**
    - Updated observability section
    - Clarified three pillars of observability
 
@@ -114,15 +106,12 @@ TEMPO_URL=http://tempo:3200
 LOKI_URL=http://loki:3100
 ```
 
-### Docker Compose
-```yaml
-tempo:
-  image: grafana/tempo:latest
-  ports:
-    - "3200:3200"  # Query API
-    - "4317:4317"  # OTLP gRPC receiver
-    - "4318:4318"  # OTLP HTTP receiver
-```
+### Integration with Existing Tempo
+
+TopDeck integrates with your existing Tempo deployment:
+- Connect to Tempo via `TEMPO_URL` environment variable
+- Works with Grafana Cloud Tempo or self-hosted instances
+- No Tempo deployment included - uses your existing infrastructure
 
 ## Security Features
 
@@ -225,15 +214,15 @@ await collector.close()
 - [x] Code review feedback addressed
 - [x] All imports validated
 - [x] Configuration examples provided
-- [x] Docker setup complete
+- [x] Integration with external Tempo
 - [x] Health check integrated
 
 ## Migration Notes
 
 For existing deployments:
 
-1. Add Tempo to docker-compose: `docker-compose up -d tempo`
-2. Set environment variable: `TEMPO_URL=http://tempo:3200`
+1. Ensure your Tempo instance is accessible
+2. Set environment variable: `TEMPO_URL=http://your-tempo:3200`
 3. Restart TopDeck API
 4. Verify health: `GET /api/v1/monitoring/health`
 

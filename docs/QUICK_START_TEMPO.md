@@ -15,11 +15,10 @@
 
 ## Quick Setup (5 minutes)
 
-### 1. Start Tempo
-```bash
-# Add to docker-compose.yml (already done)
-docker-compose up -d tempo
-```
+### 1. Ensure Tempo is Available
+TopDeck integrates with your existing Tempo installation. Make sure:
+- Tempo is running and accessible
+- You have the Tempo query endpoint URL (default: `http://tempo:3200`)
 
 ### 2. Configure TopDeck
 ```bash
@@ -27,7 +26,7 @@ docker-compose up -d tempo
 TEMPO_URL=http://localhost:3200
 ```
 
-### 3. Restart API
+### 3. Start/Restart TopDeck API
 ```bash
 docker-compose restart api
 # or
@@ -143,18 +142,17 @@ export TEMPO_URL=http://localhost:3200
 
 ### Tempo shows "unhealthy"
 ```bash
-# Check if Tempo is running
-docker ps | grep tempo
+# Verify Tempo is accessible
+curl http://your-tempo-url:3200/ready
 
-# Check Tempo logs
-docker logs topdeck-tempo
+# Check your Tempo instance logs
+# (depends on your Tempo deployment)
 ```
 
 ### No traces returned
-- Tempo stores traces sent via OTLP
-- Configure your app to send traces to Tempo:
-  - gRPC: `localhost:4317`
-  - HTTP: `localhost:4318`
+- Tempo stores traces sent via OTLP from your applications
+- Ensure your applications are configured to send traces to your Tempo instance
+- Check your Tempo OTLP receiver configuration
 
 ## Next Steps
 

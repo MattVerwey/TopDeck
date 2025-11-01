@@ -134,26 +134,20 @@ LOKI_URL=http://loki:3100                # Logs
 2. Get **trace** from Tempo → See full request flow
 3. Check **metrics** around that time → Identify resource issues
 
-## Docker Compose Setup
+## External Observability Stack
 
-```yaml
-services:
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    
-  tempo:
-    image: grafana/tempo:latest
-    ports:
-      - "3200:3200"  # Query API
-      - "4317:4317"  # OTLP gRPC
-      - "4318:4318"  # OTLP HTTP
-    
-  loki:
-    image: grafana/loki:latest
-    ports:
-      - "3100:3100"
+TopDeck integrates with your existing observability infrastructure:
+
+- **Prometheus**: Your existing Prometheus instance for metrics
+- **Tempo**: Your existing Tempo instance for distributed tracing (e.g., from Grafana Cloud)
+- **Loki**: Your existing Loki instance for logs
+
+Configure TopDeck to connect to these services via environment variables:
+
+```bash
+PROMETHEUS_URL=http://your-prometheus:9090
+TEMPO_URL=http://your-tempo:3200
+LOKI_URL=http://your-loki:3100
 ```
 
 ## Best Practices

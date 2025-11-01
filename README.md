@@ -269,7 +269,7 @@ TopDeck/
 - **Traces** (Tempo): Distributed request flows showing how transactions move through services
 - **Logs** (Loki/Elasticsearch/Azure): Detailed event records and error messages
 
-**Flexible Platform Support**: TopDeck works with your existing observability stack. You can use any combination that fits your infrastructure.
+**Flexible Platform Support**: TopDeck integrates with your existing observability infrastructure. Configure it to connect to your Prometheus, Tempo, and Loki/Elasticsearch instances - no additional deployment required.
 
 **Rationale**: After evaluating both Python and Go through proof-of-concept implementations, Python was selected for its superior cloud SDK support, faster development velocity, and rich ecosystem. See the [ADR](docs/architecture/adr/001-technology-stack.md) for complete analysis.
 
