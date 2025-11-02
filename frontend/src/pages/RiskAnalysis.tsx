@@ -270,7 +270,7 @@ export default function RiskAnalysis() {
                                 bgcolor: risk.severity === 'critical' ? 'error.light' :
                                         risk.severity === 'high' ? 'warning.light' :
                                         'info.light',
-                                opacity: 0.2,
+                                opacity: 0.35,
                               }}
                             >
                               {getSeverityIcon(risk.severity)}

@@ -2,6 +2,7 @@
  * Enhanced resource card component with visual hierarchy and metadata display
  */
 
+import { useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
   Chip,
   Tooltip,
   Avatar,
+  alpha,
 } from '@mui/material';
 import {
   Cloud as CloudIcon,
@@ -58,11 +60,18 @@ const getCloudProviderColor = (provider: string) => {
   }
 };
 
+// Type guard to check if a property exists and is boolean
+function hasBooleanProp(obj: Record<string, unknown> | undefined, prop: string): boolean {
+  return typeof obj?.[prop] === 'boolean' ? (obj[prop] as boolean) : false;
+}
+
 const getHealthStatus = (resource: Resource) => {
-  const hasIssues = resource.properties?.hasIssues || resource.metadata?.hasIssues;
+  const hasIssues = hasBooleanProp(resource.properties, 'hasIssues') || 
+                    hasBooleanProp(resource.metadata, 'hasIssues');
   if (hasIssues) return { status: 'error', label: 'Unhealthy', color: 'error' as const };
   
-  const isWarning = resource.properties?.warning || resource.metadata?.warning;
+  const isWarning = hasBooleanProp(resource.properties, 'warning') || 
+                    hasBooleanProp(resource.metadata, 'warning');
   if (isWarning) return { status: 'warning', label: 'Warning', color: 'warning' as const };
   
   return { status: 'success', label: 'Healthy', color: 'success' as const };
@@ -72,7 +81,8 @@ export default function ResourceCard({ resource, onClick, selected = false, comp
   const healthStatus = getHealthStatus(resource);
   const providerColor = getCloudProviderColor(resource.cloud_provider);
 
-  const getMetadataChips = () => {
+  // Memoize metadata chips to avoid repeated type checks on each render
+  const metadataChips = useMemo(() => {
     const chips = [];
     
     if (resource.metadata?.region && typeof resource.metadata.region === 'string') {
@@ -112,7 +122,7 @@ export default function ResourceCard({ resource, onClick, selected = false, comp
     }
     
     return chips;
-  };
+  }, [resource.metadata, resource.properties]);
 
   return (
     <Card
@@ -178,7 +188,7 @@ export default function ResourceCard({ resource, onClick, selected = false, comp
               label={resource.cloud_provider.toUpperCase()}
               size="small"
               sx={{
-                bgcolor: `${providerColor}20`,
+                bgcolor: alpha(providerColor, 0.12),
                 color: providerColor,
                 fontWeight: 600,
                 fontSize: '0.7rem',
@@ -193,7 +203,7 @@ export default function ResourceCard({ resource, onClick, selected = false, comp
                 fontSize: '0.7rem',
               }}
             />
-            {getMetadataChips()}
+            {metadataChips}
           </Box>
 
           {!compact && resource.properties?.description && typeof resource.properties.description === 'string' ? (

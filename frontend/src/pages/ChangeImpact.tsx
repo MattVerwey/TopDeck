@@ -318,7 +318,7 @@ export default function ChangeImpact() {
                       Service {i + 1}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {i < impactResult.breakdown.directDependents ? 'Direct' : 'Indirect'} dependency
+                      Affected service
                     </Typography>
                   </Box>
                 </Grid>
