@@ -1,5 +1,11 @@
 """
 Tests for Azure resource matching and duplicate prevention.
+
+This module tests critical functionality for Azure resource discovery:
+- Resource name normalization (FQDN to short name)
+- Flexible name matching across different Azure name formats
+- Duplicate prevention for resources and dependencies
+- Integration scenarios for Service Bus, Storage, and parallel discovery
 """
 
 import pytest

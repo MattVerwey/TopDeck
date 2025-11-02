@@ -678,6 +678,10 @@ class DiscoveryResult:
     discovery_started_at: datetime = field(default_factory=datetime.utcnow)
     discovery_completed_at: datetime | None = None
 
+    # Internal tracking sets for efficient duplicate detection (not serialized)
+    _resource_ids: set[str] = field(default_factory=set, init=False, repr=False)
+    _dependency_pairs: set[tuple[str, str]] = field(default_factory=set, init=False, repr=False)
+
     @property
     def resource_count(self) -> int:
         """Total resources discovered"""
@@ -738,17 +742,18 @@ class DiscoveryResult:
         Add a discovered resource, avoiding duplicates.
         
         A resource is considered a duplicate if another resource with the same ID
-        already exists in the result set.
+        already exists in the result set. Uses an internal set for O(1) duplicate
+        detection for better performance with large resource sets.
         
         Args:
             resource: The resource to add
         """
-        # Check if resource already exists by ID
-        for existing in self.resources:
-            if existing.id == resource.id:
-                # Resource already exists, skip adding
-                return
+        # Check if resource already exists by ID (O(1) lookup)
+        if resource.id in self._resource_ids:
+            # Resource already exists, skip adding
+            return
         
+        self._resource_ids.add(resource.id)
         self.resources.append(resource)
 
     def add_dependency(self, dependency: ResourceDependency) -> None:
@@ -756,20 +761,19 @@ class DiscoveryResult:
         Add a discovered dependency, avoiding duplicates.
         
         A dependency is considered a duplicate if another dependency with the same
-        source_id and target_id already exists.
+        source_id and target_id already exists. Uses an internal set for O(1) 
+        duplicate detection for better performance with large dependency sets.
         
         Args:
             dependency: The dependency to add
         """
-        # Check if dependency already exists
-        for existing in self.dependencies:
-            if (
-                existing.source_id == dependency.source_id
-                and existing.target_id == dependency.target_id
-            ):
-                # Dependency already exists, skip adding
-                return
+        # Check if dependency already exists (O(1) lookup)
+        dep_pair = (dependency.source_id, dependency.target_id)
+        if dep_pair in self._dependency_pairs:
+            # Dependency already exists, skip adding
+            return
         
+        self._dependency_pairs.add(dep_pair)
         self.dependencies.append(dependency)
 
     def add_application(self, application: Application) -> None:
