@@ -20,29 +20,10 @@ from topdeck.reporting.models import (
     ReportStatus,
     ReportType,
 )
+from topdeck.reporting.utils import parse_timestamp
 from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_timestamp(timestamp: Any) -> datetime | None:
-    """
-    Parse a timestamp from various formats.
-
-    Args:
-        timestamp: Timestamp as string, datetime, or other
-
-    Returns:
-        datetime object or None if parsing fails
-    """
-    if isinstance(timestamp, str):
-        try:
-            return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            return None
-    elif isinstance(timestamp, datetime):
-        return timestamp
-    return None
 
 
 class ReportingService:
@@ -528,6 +509,13 @@ class ReportingService:
         Returns:
             List of health metric snapshots (currently empty)
         """
+        # Log warning that this is not yet implemented
+        logger.warning(
+            "Health metrics integration not yet implemented. "
+            "Reports will not include health metric charts. "
+            "Integrate with Prometheus/monitoring systems to enable this feature."
+        )
+
         # Placeholder - integrate with Prometheus/monitoring systems
         # Example structure:
         # [
@@ -777,13 +765,13 @@ class ReportingService:
         # Analyze post-deployment errors
         post_deployment_errors = 0
         for deployment in deployments:
-            deployment_time = _parse_timestamp(deployment.get("timestamp"))
+            deployment_time = parse_timestamp(deployment.get("timestamp"))
             if not deployment_time:
                 continue
 
             # Count errors within 1 hour after deployment
             for error in errors:
-                error_time = _parse_timestamp(error.get("timestamp"))
+                error_time = parse_timestamp(error.get("timestamp"))
                 if not error_time:
                     continue
 
@@ -803,7 +791,7 @@ class ReportingService:
             # Group errors by hour
             error_hours: dict[str, int] = {}
             for error in errors:
-                error_time = _parse_timestamp(error.get("timestamp"))
+                error_time = parse_timestamp(error.get("timestamp"))
                 if not error_time:
                     continue
 

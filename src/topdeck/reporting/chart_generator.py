@@ -6,30 +6,11 @@ by various frontends (matplotlib, plotly, Chart.js, etc.).
 """
 
 import logging
-from datetime import datetime
 from typing import Any
 
+from topdeck.reporting.utils import parse_timestamp
+
 logger = logging.getLogger(__name__)
-
-
-def _parse_timestamp(timestamp: Any) -> datetime | None:
-    """
-    Parse a timestamp from various formats.
-
-    Args:
-        timestamp: Timestamp as string, datetime, or other
-
-    Returns:
-        datetime object or None if parsing fails
-    """
-    if isinstance(timestamp, str):
-        try:
-            return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            return None
-    elif isinstance(timestamp, datetime):
-        return timestamp
-    return None
 
 
 class ChartGenerator:
@@ -53,7 +34,7 @@ class ChartGenerator:
         severity_counts: dict[str, dict[str, int]] = {}
 
         for error in errors:
-            timestamp = _parse_timestamp(error.get("timestamp"))
+            timestamp = parse_timestamp(error.get("timestamp"))
             if not timestamp:
                 continue
 
@@ -169,7 +150,7 @@ class ChartGenerator:
         time_points: dict[str, dict[str, float]] = {}
 
         for metric in health_metrics:
-            timestamp = _parse_timestamp(metric.get("timestamp"))
+            timestamp = parse_timestamp(metric.get("timestamp"))
             if not timestamp:
                 continue
 
@@ -231,7 +212,7 @@ class ChartGenerator:
 
         # Add deployments
         for deployment in deployments:
-            timestamp = _parse_timestamp(deployment.get("timestamp"))
+            timestamp = parse_timestamp(deployment.get("timestamp"))
             if not timestamp:
                 continue
 
@@ -242,7 +223,7 @@ class ChartGenerator:
 
         # Add errors
         for error in errors:
-            timestamp = _parse_timestamp(error.get("timestamp"))
+            timestamp = parse_timestamp(error.get("timestamp"))
             if not timestamp:
                 continue
 
