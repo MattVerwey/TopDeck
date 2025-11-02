@@ -473,7 +473,9 @@ export default function SLAManagement() {
                                 {resource?.name || resourceStatus.resource_id}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {resourceStatus.resource_id.slice(0, RESOURCE_ID_DISPLAY_LENGTH)}...
+                                {resourceStatus.resource_id.length > RESOURCE_ID_DISPLAY_LENGTH
+                                  ? resourceStatus.resource_id.slice(0, RESOURCE_ID_DISPLAY_LENGTH) + '...'
+                                  : resourceStatus.resource_id}
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
