@@ -70,6 +70,8 @@ export default function SLAManagement() {
     service_name: '',
     resources: [],
   });
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [selectedSLAForResources, setSelectedSLAForResources] = useState<SLAConfig | null>(null);
 
   useEffect(() => {
     loadData();
@@ -170,6 +172,16 @@ export default function SLAManagement() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete SLA configuration');
     }
+  };
+
+  const handleOpenResourceDialog = (config: SLAConfig) => {
+    setSelectedSLAForResources(config);
+    setResourceDialogOpen(true);
+  };
+
+  const handleCloseResourceDialog = () => {
+    setResourceDialogOpen(false);
+    setSelectedSLAForResources(null);
   };
 
   const getStatusColor = (budget: ErrorBudgetStatus) => {
@@ -343,7 +355,13 @@ export default function SLAManagement() {
                           )}
                         </TableCell>
                         <TableCell align="center">
-                          <Chip label={config.resources.length} size="small" />
+                          <Chip
+                            label={config.resources.length}
+                            size="small"
+                            onClick={() => handleOpenResourceDialog(config)}
+                            color={config.resources.length > 0 ? 'primary' : 'default'}
+                            sx={{ cursor: 'pointer' }}
+                          />
                         </TableCell>
                         <TableCell align="center">
                           <IconButton
@@ -390,6 +408,150 @@ export default function SLAManagement() {
           </Alert>
         </Grid>
       </Grid>
+
+      {/* Resource Details Dialog */}
+      <Dialog open={resourceDialogOpen} onClose={handleCloseResourceDialog} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Resource Metrics - {selectedSLAForResources?.name}
+        </DialogTitle>
+        <DialogContent>
+          {selectedSLAForResources && selectedSLAForResources.id && (
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Showing metrics for all resources in this SLA. Resources in yellow or red are close to or failing SLO targets.
+              </Typography>
+              
+              {errorBudgets[selectedSLAForResources.id]?.resources_status && errorBudgets[selectedSLAForResources.id].resources_status.length > 0 ? (
+                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Resource ID</TableCell>
+                        <TableCell align="right">Uptime</TableCell>
+                        <TableCell align="right">Error Count</TableCell>
+                        <TableCell align="center">SLO Status</TableCell>
+                        <TableCell>Health</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {selectedSLAForResources.id && errorBudgets[selectedSLAForResources.id].resources_status.map((resourceStatus) => {
+                        const resource = availableResources.find(r => r.id === resourceStatus.resource_id);
+                        const uptimePercent = resourceStatus.uptime_percentage;
+                        const errorBudget = errorBudgets[selectedSLAForResources.id!];
+                        const sloPercent = errorBudget.slo_percentage;
+                        const slaPercent = errorBudget.sla_percentage;
+                        
+                        // Determine status color based on how close to failing
+                        let statusColor: 'success' | 'warning' | 'error' = 'success';
+                        let statusText = 'Healthy';
+                        
+                        if (uptimePercent < slaPercent) {
+                          statusColor = 'error';
+                          statusText = 'Below SLA';
+                        } else if (uptimePercent < sloPercent) {
+                          statusColor = 'warning';
+                          statusText = 'Below SLO';
+                        } else if (uptimePercent < sloPercent + 0.5) {
+                          statusColor = 'warning';
+                          statusText = 'At Risk';
+                        }
+                        
+                        return (
+                          <TableRow key={resourceStatus.resource_id}>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={statusColor !== 'success' ? 'bold' : 'normal'}>
+                                {resource?.name || resourceStatus.resource_id}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {resourceStatus.resource_id.slice(0, 16)}...
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Chip
+                                label={`${uptimePercent.toFixed(2)}%`}
+                                size="small"
+                                color={statusColor}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Chip
+                                label={resourceStatus.error_count}
+                                size="small"
+                                color={resourceStatus.error_count > 50 ? 'error' : resourceStatus.error_count > 20 ? 'warning' : 'default'}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              {resourceStatus.meets_slo ? (
+                                <CheckCircleIcon color="success" fontSize="small" />
+                              ) : (
+                                <WarningIcon color="warning" fontSize="small" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={Math.min(100, (uptimePercent / sloPercent) * 100)}
+                                  color={statusColor}
+                                  sx={{ flexGrow: 1, height: 6, borderRadius: 1 }}
+                                />
+                                <Typography variant="caption" color={`${statusColor}.main`}>
+                                  {statusText}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  No resource metrics available for this SLA.
+                </Alert>
+              )}
+              
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Metric Thresholds:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      SLA Target:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {selectedSLAForResources.sla_percentage}%
+                    </Typography>
+                  </Box>
+                  {selectedSLAForResources.id && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        SLO Target:
+                      </Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {errorBudgets[selectedSLAForResources.id]?.slo_percentage.toFixed(3)}%
+                      </Typography>
+                    </Box>
+                  )}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Resources Monitored:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {selectedSLAForResources.resources.length}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseResourceDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* SLA Configuration Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
