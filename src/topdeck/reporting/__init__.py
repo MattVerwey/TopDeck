@@ -17,7 +17,6 @@ from topdeck.reporting.models import (
     ReportStatus,
     ReportType,
 )
-from topdeck.reporting.service import ReportingService
 
 __all__ = [
     "Report",
@@ -28,3 +27,12 @@ __all__ = [
     "ReportType",
     "ReportingService",
 ]
+
+
+def __getattr__(name):
+    """Lazy import for ReportingService to avoid requiring Neo4j at import time."""
+    if name == "ReportingService":
+        from topdeck.reporting.service import ReportingService
+
+        return ReportingService
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
