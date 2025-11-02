@@ -440,7 +440,7 @@ export default function SLAManagement() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedSLAForResources.id && errorBudgets[selectedSLAForResources.id]?.resources_status.map((resourceStatus) => {
+                      {errorBudgets[selectedSLAForResources.id]?.resources_status?.map((resourceStatus) => {
                         const resource = availableResources.find(r => r.id === resourceStatus.resource_id);
                         const uptimePercent = resourceStatus.uptime_percentage;
                         const errorBudget = errorBudgets[selectedSLAForResources.id!];
