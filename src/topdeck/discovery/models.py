@@ -734,11 +734,42 @@ class DiscoveryResult:
         return len(self.errors) > 0
 
     def add_resource(self, resource: DiscoveredResource) -> None:
-        """Add a discovered resource"""
+        """
+        Add a discovered resource, avoiding duplicates.
+        
+        A resource is considered a duplicate if another resource with the same ID
+        already exists in the result set.
+        
+        Args:
+            resource: The resource to add
+        """
+        # Check if resource already exists by ID
+        for existing in self.resources:
+            if existing.id == resource.id:
+                # Resource already exists, skip adding
+                return
+        
         self.resources.append(resource)
 
     def add_dependency(self, dependency: ResourceDependency) -> None:
-        """Add a discovered dependency"""
+        """
+        Add a discovered dependency, avoiding duplicates.
+        
+        A dependency is considered a duplicate if another dependency with the same
+        source_id and target_id already exists.
+        
+        Args:
+            dependency: The dependency to add
+        """
+        # Check if dependency already exists
+        for existing in self.dependencies:
+            if (
+                existing.source_id == dependency.source_id
+                and existing.target_id == dependency.target_id
+            ):
+                # Dependency already exists, skip adding
+                return
+        
         self.dependencies.append(dependency)
 
     def add_application(self, application: Application) -> None:

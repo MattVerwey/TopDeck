@@ -140,6 +140,46 @@ class AzureResourceMapper:
         return None
 
     @staticmethod
+    def map_resource(azure_resource: Any) -> DiscoveredResource:
+        """
+        Map an Azure SDK resource object to a DiscoveredResource.
+
+        This is a convenience method that extracts common properties from
+        Azure SDK resource objects and calls map_azure_resource.
+
+        Args:
+            azure_resource: Azure SDK resource object (from Azure Management SDKs)
+
+        Returns:
+            DiscoveredResource instance
+        """
+        # Extract properties from Azure SDK resource object
+        resource_id = azure_resource.id if hasattr(azure_resource, "id") else ""
+        resource_name = azure_resource.name if hasattr(azure_resource, "name") else ""
+        resource_type = azure_resource.type if hasattr(azure_resource, "type") else ""
+        location = azure_resource.location if hasattr(azure_resource, "location") else ""
+        tags = azure_resource.tags if hasattr(azure_resource, "tags") else None
+        provisioning_state = (
+            azure_resource.provisioning_state
+            if hasattr(azure_resource, "provisioning_state")
+            else None
+        )
+
+        # Extract additional properties specific to the resource
+        properties: dict[str, Any] = {}
+
+        # Call the main mapping method
+        return AzureResourceMapper.map_azure_resource(
+            resource_id=resource_id,
+            resource_name=resource_name,
+            resource_type=resource_type,
+            location=location,
+            tags=tags,
+            properties=properties,
+            provisioning_state=provisioning_state,
+        )
+
+    @staticmethod
     def map_azure_resource(
         resource_id: str,
         resource_name: str,
@@ -177,6 +217,111 @@ class AzureResourceMapper:
             tags=tags or {},
             properties=properties or {},
         )
+
+    @staticmethod
+    def normalize_resource_name(name: str) -> str:
+        """
+        Normalize a resource name for comparison.
+        
+        Extracts the base name from FQDNs and hostnames.
+        For example:
+        - "myservicebus.servicebus.windows.net" -> "myservicebus"
+        - "mystorage.blob.core.windows.net" -> "mystorage"
+        - "myvm" -> "myvm"
+        
+        Args:
+            name: Resource name, hostname, or FQDN
+            
+        Returns:
+            Normalized base name
+        """
+        if not name:
+            return ""
+        
+        # Remove common Azure service suffixes
+        azure_suffixes = [
+            ".servicebus.windows.net",
+            ".blob.core.windows.net",
+            ".queue.core.windows.net",
+            ".table.core.windows.net",
+            ".file.core.windows.net",
+            ".database.windows.net",
+            ".redis.cache.windows.net",
+            ".azurewebsites.net",
+            ".vault.azure.net",
+            ".documents.azure.com",
+        ]
+        
+        name_lower = name.lower()
+        for suffix in azure_suffixes:
+            if name_lower.endswith(suffix):
+                return name[:len(name) - len(suffix)]
+        
+        # If it looks like a FQDN, extract the first part
+        if "." in name and not name.replace(".", "").replace("-", "").isdigit():
+            # Not an IP address, likely a hostname
+            parts = name.split(".")
+            return parts[0]
+        
+        return name
+    
+    @staticmethod
+    def extract_hostname_from_endpoint(endpoint: str) -> str | None:
+        """
+        Extract hostname from an endpoint URL.
+        
+        Args:
+            endpoint: Endpoint URL (e.g., "sb://mybus.servicebus.windows.net/")
+            
+        Returns:
+            Extracted hostname or None
+        """
+        if not endpoint:
+            return None
+        
+        # Remove protocol if present
+        if "://" in endpoint:
+            endpoint = endpoint.split("://", 1)[1]
+        
+        # Remove path if present
+        if "/" in endpoint:
+            endpoint = endpoint.split("/", 1)[0]
+        
+        # Remove port if present
+        if ":" in endpoint:
+            endpoint = endpoint.split(":", 1)[0]
+        
+        return endpoint if endpoint else None
+    
+    @staticmethod
+    def names_match(name1: str, name2: str) -> bool:
+        """
+        Check if two resource names match, accounting for different formats.
+        
+        This handles cases where resources may be referenced by:
+        - Short name (e.g., "myresource")
+        - FQDN (e.g., "myresource.servicebus.windows.net")
+        - Endpoint URL (e.g., "sb://myresource.servicebus.windows.net/")
+        
+        Args:
+            name1: First name to compare
+            name2: Second name to compare
+            
+        Returns:
+            True if names match, False otherwise
+        """
+        if not name1 or not name2:
+            return False
+        
+        # Direct match
+        if name1 == name2:
+            return True
+        
+        # Normalize and compare
+        normalized1 = AzureResourceMapper.normalize_resource_name(name1)
+        normalized2 = AzureResourceMapper.normalize_resource_name(name2)
+        
+        return normalized1.lower() == normalized2.lower()
 
     @staticmethod
     def extract_connection_strings_from_properties(
