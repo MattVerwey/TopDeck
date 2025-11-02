@@ -25,6 +25,26 @@ from topdeck.storage.neo4j_client import Neo4jClient
 logger = logging.getLogger(__name__)
 
 
+def _parse_timestamp(timestamp: Any) -> datetime | None:
+    """
+    Parse a timestamp from various formats.
+
+    Args:
+        timestamp: Timestamp as string, datetime, or other
+
+    Returns:
+        datetime object or None if parsing fails
+    """
+    if isinstance(timestamp, str):
+        try:
+            return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+    elif isinstance(timestamp, datetime):
+        return timestamp
+    return None
+
+
 class ReportingService:
     """Service for generating comprehensive reports."""
 
@@ -36,7 +56,6 @@ class ReportingService:
             neo4j_client: Neo4j client for querying topology and events
         """
         self.neo4j_client = neo4j_client
-        self.chart_generator = ChartGenerator()
 
     def generate_report(
         self,
@@ -131,7 +150,7 @@ class ReportingService:
         )
 
         if config.include_charts and health_metrics:
-            health_chart = self.chart_generator.generate_resource_health_chart(health_metrics)
+            health_chart = ChartGenerator.generate_resource_health_chart(health_metrics)
             sections.append(
                 ReportSection(
                     title="Health Metrics Over Time",
@@ -192,7 +211,7 @@ class ReportingService:
 
         # Change impact chart
         if config.include_charts and changes:
-            change_chart = self.chart_generator.generate_change_impact_chart(changes)
+            change_chart = ChartGenerator.generate_change_impact_chart(changes)
             sections.append(
                 ReportSection(
                     title="Change Distribution",
@@ -250,7 +269,7 @@ class ReportingService:
 
         # Error timeline chart
         if config.include_charts and errors:
-            error_chart = self.chart_generator.generate_error_timeline_chart(errors)
+            error_chart = ChartGenerator.generate_error_timeline_chart(errors)
             sections.append(
                 ReportSection(
                     title="Error Timeline",
@@ -309,7 +328,7 @@ class ReportingService:
 
         # Correlation chart
         if config.include_charts and (deployments or errors):
-            correlation_chart = self.chart_generator.generate_deployment_correlation_chart(
+            correlation_chart = ChartGenerator.generate_deployment_correlation_chart(
                 deployments, errors
             )
             sections.append(
@@ -388,7 +407,7 @@ class ReportingService:
 
         # Health metrics
         if health_metrics and config.include_charts:
-            health_chart = self.chart_generator.generate_resource_health_chart(health_metrics)
+            health_chart = ChartGenerator.generate_resource_health_chart(health_metrics)
             sections.append(
                 ReportSection(
                     title="Health Metrics",
@@ -424,7 +443,7 @@ class ReportingService:
             )
 
             if config.include_charts:
-                error_chart = self.chart_generator.generate_error_timeline_chart(errors)
+                error_chart = ChartGenerator.generate_error_timeline_chart(errors)
                 sections.append(
                     ReportSection(
                         title="Error Timeline",
@@ -437,7 +456,7 @@ class ReportingService:
 
         # Deployment correlation
         if deployments and config.include_charts:
-            correlation_chart = self.chart_generator.generate_deployment_correlation_chart(
+            correlation_chart = ChartGenerator.generate_deployment_correlation_chart(
                 deployments, errors
             )
             sections.append(
@@ -495,9 +514,31 @@ class ReportingService:
     def _get_resource_health_metrics(
         self, resource_id: str | None, hours: int
     ) -> list[dict[str, Any]]:
-        """Get health metrics for a resource (placeholder - integrate with monitoring)."""
-        # This would integrate with Prometheus/monitoring systems
-        # For now, return sample data structure
+        """
+        Get health metrics for a resource.
+
+        TODO: This is a placeholder that should integrate with monitoring systems
+        (Prometheus, Azure Monitor, CloudWatch, etc.) to fetch actual health metrics
+        like CPU usage, memory usage, latency, and error rates.
+
+        Args:
+            resource_id: ID of the resource
+            hours: Number of hours to look back
+
+        Returns:
+            List of health metric snapshots (currently empty)
+        """
+        # Placeholder - integrate with Prometheus/monitoring systems
+        # Example structure:
+        # [
+        #   {
+        #     "timestamp": datetime.now(UTC),
+        #     "cpu_usage": 45.5,
+        #     "memory_usage": 60.2,
+        #     "error_rate": 0.01,
+        #     "latency_p95": 250.0
+        #   }
+        # ]
         return []
 
     def _get_resource_errors(
@@ -736,18 +777,14 @@ class ReportingService:
         # Analyze post-deployment errors
         post_deployment_errors = 0
         for deployment in deployments:
-            deployment_time = deployment.get("timestamp")
-            if isinstance(deployment_time, str):
-                deployment_time = datetime.fromisoformat(deployment_time.replace("Z", "+00:00"))
-            elif not isinstance(deployment_time, datetime):
+            deployment_time = _parse_timestamp(deployment.get("timestamp"))
+            if not deployment_time:
                 continue
 
             # Count errors within 1 hour after deployment
             for error in errors:
-                error_time = error.get("timestamp")
-                if isinstance(error_time, str):
-                    error_time = datetime.fromisoformat(error_time.replace("Z", "+00:00"))
-                elif not isinstance(error_time, datetime):
+                error_time = _parse_timestamp(error.get("timestamp"))
+                if not error_time:
                     continue
 
                 if (
@@ -766,10 +803,8 @@ class ReportingService:
             # Group errors by hour
             error_hours: dict[str, int] = {}
             for error in errors:
-                error_time = error.get("timestamp")
-                if isinstance(error_time, str):
-                    error_time = datetime.fromisoformat(error_time.replace("Z", "+00:00"))
-                elif not isinstance(error_time, datetime):
+                error_time = _parse_timestamp(error.get("timestamp"))
+                if not error_time:
                     continue
 
                 hour_key = error_time.strftime("%Y-%m-%d %H:00")

@@ -12,6 +12,26 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _parse_timestamp(timestamp: Any) -> datetime | None:
+    """
+    Parse a timestamp from various formats.
+
+    Args:
+        timestamp: Timestamp as string, datetime, or other
+
+    Returns:
+        datetime object or None if parsing fails
+    """
+    if isinstance(timestamp, str):
+        try:
+            return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+    elif isinstance(timestamp, datetime):
+        return timestamp
+    return None
+
+
 class ChartGenerator:
     """Generates chart data for reports."""
 
@@ -33,12 +53,8 @@ class ChartGenerator:
         severity_counts: dict[str, dict[str, int]] = {}
 
         for error in errors:
-            timestamp = error.get("timestamp")
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-            elif isinstance(timestamp, datetime):
-                pass
-            else:
+            timestamp = _parse_timestamp(error.get("timestamp"))
+            if not timestamp:
                 continue
 
             # Round to hour
@@ -153,12 +169,8 @@ class ChartGenerator:
         time_points: dict[str, dict[str, float]] = {}
 
         for metric in health_metrics:
-            timestamp = metric.get("timestamp")
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-            elif isinstance(timestamp, datetime):
-                pass
-            else:
+            timestamp = _parse_timestamp(metric.get("timestamp"))
+            if not timestamp:
                 continue
 
             time_key = timestamp.strftime("%Y-%m-%d %H:%M")
@@ -219,12 +231,8 @@ class ChartGenerator:
 
         # Add deployments
         for deployment in deployments:
-            timestamp = deployment.get("timestamp")
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-            elif isinstance(timestamp, datetime):
-                pass
-            else:
+            timestamp = _parse_timestamp(deployment.get("timestamp"))
+            if not timestamp:
                 continue
 
             hour_key = timestamp.strftime("%Y-%m-%d %H:00")
@@ -234,12 +242,8 @@ class ChartGenerator:
 
         # Add errors
         for error in errors:
-            timestamp = error.get("timestamp")
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-            elif isinstance(timestamp, datetime):
-                pass
-            else:
+            timestamp = _parse_timestamp(error.get("timestamp"))
+            if not timestamp:
                 continue
 
             hour_key = timestamp.strftime("%Y-%m-%d %H:00")
