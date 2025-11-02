@@ -503,7 +503,7 @@ export default function SLAManagement() {
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <LinearProgress
                                   variant="determinate"
-                                  value={Math.min(100, (uptimePercent / sloPercent) * 100)}
+                                  value={sloPercent > 0 ? Math.min(100, (uptimePercent / sloPercent) * 100) : 0}
                                   color={statusColor}
                                   sx={{ flexGrow: 1, height: 6, borderRadius: 1 }}
                                 />
