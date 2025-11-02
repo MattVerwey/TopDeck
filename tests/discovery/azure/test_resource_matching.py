@@ -8,7 +8,6 @@ This module tests critical functionality for Azure resource discovery:
 - Integration scenarios for Service Bus, Storage, and parallel discovery
 """
 
-import pytest
 
 from topdeck.discovery.azure.mapper import AzureResourceMapper
 from topdeck.discovery.models import (
