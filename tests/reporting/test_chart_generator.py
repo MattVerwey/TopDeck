@@ -2,8 +2,6 @@
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 from topdeck.reporting.chart_generator import ChartGenerator
 
 

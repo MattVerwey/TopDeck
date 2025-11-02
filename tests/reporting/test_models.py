@@ -2,8 +2,6 @@
 
 from datetime import UTC, datetime
 
-import pytest
-
 from topdeck.reporting.models import (
     Report,
     ReportConfig,

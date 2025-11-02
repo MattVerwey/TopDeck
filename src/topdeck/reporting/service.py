@@ -633,9 +633,11 @@ class ReportingService:
             timestamp = error.get("timestamp", "Unknown")
             if isinstance(timestamp, datetime):
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            message = error.get('message', 'No message')
+            truncated_message = f"{message[:50]}{'...' if len(message) > 50 else ''}"
             details += (
                 f"| {timestamp} | {error.get('severity', 'Unknown')} | "
-                f"{error.get('message', 'No message')[:50]}... | "
+                f"{truncated_message} | "
                 f"{error.get('error_type', 'Unknown')} |\n"
             )
 

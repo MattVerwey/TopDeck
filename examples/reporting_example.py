@@ -5,17 +5,13 @@ This example shows how to generate various types of reports programmatically.
 """
 
 import json
+import os
 import sys
-from datetime import UTC, datetime, timedelta
 
-# Add src to path for imports
-sys.path.insert(0, "../src")
+# Add src to path for imports, relative to this file's location
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from topdeck.reporting.models import (
-    ReportConfig,
-    ReportFormat,
-    ReportType,
-)
+from topdeck.reporting.models import ReportConfig
 
 
 def print_section_divider(title: str) -> None:
@@ -101,7 +97,7 @@ def example_api_usage() -> None:
         ),
         (
             "Quick Resource Health Report",
-            """curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_type=resource_health&time_range_hours=24\"""",
+            'curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_type=resource_health&time_range_hours=24"',
         ),
         (
             "Error Timeline Report",

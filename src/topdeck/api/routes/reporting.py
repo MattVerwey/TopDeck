@@ -8,15 +8,13 @@ and analysis showing resource health, changes, errors, and correlations.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from topdeck.common.config import settings
 from topdeck.reporting import (
-    Report,
     ReportFormat,
     ReportingService,
-    ReportStatus,
     ReportType,
 )
 from topdeck.reporting.models import ReportConfig
@@ -67,19 +65,22 @@ class ReportListResponse(BaseModel):
 
 
 # Dependency for Neo4j client
-def get_neo4j_client() -> Neo4jClient:
-    """Get Neo4j client instance."""
-    return Neo4jClient(
+def get_neo4j_client():
+    """Get Neo4j client instance with proper lifecycle management."""
+    client = Neo4jClient(
         uri=settings.NEO4J_URI,
         username=settings.NEO4J_USERNAME,
         password=settings.NEO4J_PASSWORD,
     )
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 # Dependency for reporting service
-def get_reporting_service() -> ReportingService:
+def get_reporting_service(neo4j_client: Neo4jClient = Depends(get_neo4j_client)) -> ReportingService:
     """Get reporting service instance."""
-    neo4j_client = get_neo4j_client()
     return ReportingService(neo4j_client)
 
 
@@ -87,7 +88,10 @@ def get_reporting_service() -> ReportingService:
 
 
 @router.post("/generate", response_model=ReportResponse)
-async def generate_report(request: GenerateReportRequest) -> dict[str, Any]:
+async def generate_report(
+    request: GenerateReportRequest,
+    reporting_service: ReportingService = Depends(get_reporting_service),
+) -> dict[str, Any]:
     """
     Generate a new report based on the specified parameters.
 
@@ -116,8 +120,6 @@ async def generate_report(request: GenerateReportRequest) -> dict[str, Any]:
         ```
     """
     try:
-        reporting_service = get_reporting_service()
-
         # Create report config from request
         config = ReportConfig(
             resource_id=request.resource_id,
@@ -182,6 +184,7 @@ async def get_report_formats() -> list[str]:
 @router.post("/resource/{resource_id}", response_model=ReportResponse)
 async def generate_resource_report(
     resource_id: str,
+    reporting_service: ReportingService = Depends(get_reporting_service),
     report_type: ReportType = Query(
         default=ReportType.COMPREHENSIVE, description="Type of report to generate"
     ),
@@ -209,8 +212,6 @@ async def generate_resource_report(
         ```
     """
     try:
-        reporting_service = get_reporting_service()
-
         config = ReportConfig(
             resource_id=resource_id,
             time_range_hours=time_range_hours,
@@ -233,7 +234,7 @@ async def generate_resource_report(
 
 
 @router.get("/health")
-async def health_check() -> dict[str, str]:
+async def health_check(neo4j_client: Neo4jClient = Depends(get_neo4j_client)) -> dict[str, str]:
     """
     Health check endpoint for the reporting service.
 
@@ -242,7 +243,6 @@ async def health_check() -> dict[str, str]:
     """
     try:
         # Test Neo4j connection
-        neo4j_client = get_neo4j_client()
         neo4j_client.execute_query("RETURN 1", {})
         return {"status": "healthy", "service": "reporting"}
     except Exception as e:

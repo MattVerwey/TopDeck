@@ -5,7 +5,7 @@ Represents reports, report metadata, sections, and configuration.
 """
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
