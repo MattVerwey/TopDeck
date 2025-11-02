@@ -298,11 +298,32 @@ export default function ChangeImpact() {
             <Typography variant="body2" color="text.secondary" paragraph>
               Services that will be impacted by this change
             </Typography>
-            <Box display="flex" flexWrap="wrap" gap={1}>
+            <Grid container spacing={1.5}>
               {Array.from({ length: impactResult.affectedServices }, (_, i) => (
-                <Chip key={i} label={`Service ${i + 1}`} variant="outlined" />
+                <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: 'rgba(33, 150, 243, 0.05)',
+                      },
+                    }}
+                  >
+                    <Typography variant="body2" fontWeight={600} noWrap>
+                      Service {i + 1}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {i < impactResult.breakdown.directDependents ? 'Direct' : 'Indirect'} dependency
+                    </Typography>
+                  </Box>
+                </Grid>
               ))}
-            </Box>
+            </Grid>
           </Paper>
         </>
       )}

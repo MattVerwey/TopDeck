@@ -17,6 +17,7 @@ import {
   Chip,
   Box,
   Divider,
+  Grid,
 } from '@mui/material';
 import {
   FilterList,
@@ -257,31 +258,65 @@ export default function ResourceSelector({
 
                 <Box
                   sx={{
-                    maxHeight: 300,
+                    maxHeight: 400,
                     overflowY: 'auto',
                     border: '1px solid',
                     borderColor: 'divider',
                     borderRadius: 1,
-                    p: 1,
+                    p: 2,
                   }}
                 >
-                  <Stack spacing={1}>
+                  <Grid container spacing={2}>
                     {filteredApps.map((app) => (
-                      <Chip
-                        key={app.id}
-                        label={`${app.name} (${app.resource_type})`}
-                        onClick={() => toggleAppSelection(app.id)}
-                        color={selectedApps.includes(app.id) ? 'primary' : 'default'}
-                        variant={selectedApps.includes(app.id) ? 'filled' : 'outlined'}
-                        sx={{ justifyContent: 'flex-start' }}
-                      />
+                      <Grid key={app.id} size={{ xs: 12, md: 6 }}>
+                        <Box
+                          onClick={() => toggleAppSelection(app.id)}
+                          sx={{
+                            cursor: 'pointer',
+                            border: '2px solid',
+                            borderColor: selectedApps.includes(app.id) ? 'primary.main' : 'divider',
+                            borderRadius: 1,
+                            p: 1.5,
+                            transition: 'all 0.2s',
+                            bgcolor: selectedApps.includes(app.id) 
+                              ? 'rgba(33, 150, 243, 0.1)' 
+                              : 'transparent',
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              bgcolor: 'rgba(33, 150, 243, 0.05)',
+                            },
+                          }}
+                        >
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" fontWeight={600} noWrap>
+                              {app.name}
+                            </Typography>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Chip
+                                label={app.resource_type}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                              <Chip
+                                label={app.cloud_provider.toUpperCase()}
+                                size="small"
+                                color="primary"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      </Grid>
                     ))}
                     {filteredApps.length === 0 && (
-                      <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-                        No resources found
-                      </Typography>
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                          No resources found
+                        </Typography>
+                      </Grid>
                     )}
-                  </Stack>
+                  </Grid>
                 </Box>
               </Box>
             </>
