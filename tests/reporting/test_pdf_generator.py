@@ -151,10 +151,17 @@ def test_format_content():
     # Test bold text
     result = generator._format_content("This is **bold** text")
     assert "<b>bold</b>" in result
+    
+    # Test multiple bold sections
+    result = generator._format_content("This has **bold** and **more bold** text")
+    assert result.count("<b>") == 2
+    assert result.count("</b>") == 2
 
     # Test bullets
     result = generator._format_content("- Item 1\n- Item 2")
     assert "•" in result
+    assert "Item 1" in result
+    assert "Item 2" in result
 
 
 def test_extract_table_data():

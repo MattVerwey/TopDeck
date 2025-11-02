@@ -224,7 +224,15 @@ class PDFGenerator:
             HTML-formatted string for Paragraph rendering
         """
         # Replace markdown bold with HTML bold
-        content = content.replace("**", "<b>").replace("**", "</b>")
+        # Split by ** and alternate between opening and closing tags
+        parts = content.split("**")
+        formatted = []
+        for i, part in enumerate(parts):
+            if i % 2 == 1:  # Odd indices are bold text
+                formatted.append(f"<b>{part}</b>")
+            else:
+                formatted.append(part)
+        content = "".join(formatted)
 
         # Replace markdown bullets with HTML
         lines = content.split("\n")
