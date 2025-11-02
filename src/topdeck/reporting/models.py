@@ -26,6 +26,7 @@ class ReportFormat(str, Enum):
     JSON = "json"
     HTML = "html"
     MARKDOWN = "markdown"
+    PDF = "pdf"
 
 
 class ReportStatus(str, Enum):

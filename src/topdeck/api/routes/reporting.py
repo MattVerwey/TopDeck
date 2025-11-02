@@ -9,6 +9,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from topdeck.common.config import settings
@@ -87,11 +88,11 @@ def get_reporting_service(neo4j_client: Neo4jClient = Depends(get_neo4j_client))
 # API Endpoints
 
 
-@router.post("/generate", response_model=ReportResponse)
+@router.post("/generate")
 async def generate_report(
     request: GenerateReportRequest,
     reporting_service: ReportingService = Depends(get_reporting_service),
-) -> dict[str, Any]:
+) -> Response | dict[str, Any]:
     """
     Generate a new report based on the specified parameters.
 
@@ -106,7 +107,8 @@ async def generate_report(
         request: Report generation parameters
 
     Returns:
-        Generated report with all sections and charts
+        Generated report with all sections and charts (JSON format)
+        or PDF document (when report_format is 'pdf')
 
     Example:
         ```
@@ -115,7 +117,19 @@ async def generate_report(
             "report_type": "comprehensive",
             "resource_id": "resource-123",
             "time_range_hours": 48,
-            "include_charts": true
+            "include_charts": true,
+            "report_format": "json"
+        }
+        ```
+
+        For PDF export:
+        ```
+        POST /api/v1/reports/generate
+        {
+            "report_type": "comprehensive",
+            "resource_id": "resource-123",
+            "time_range_hours": 48,
+            "report_format": "pdf"
         }
         ```
     """
@@ -139,6 +153,16 @@ async def generate_report(
             report_format=request.report_format,
             config=config,
         )
+
+        # Return PDF if requested
+        if request.report_format == ReportFormat.PDF:
+            pdf_bytes = reporting_service.export_report_as_pdf(report)
+            filename = f"{request.report_type.value}_{report.metadata.report_id}.pdf"
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
 
         return report.to_dict()
 
@@ -177,20 +201,24 @@ async def get_report_formats() -> list[str]:
     - json: JSON format (structured data)
     - html: HTML format (for web display)
     - markdown: Markdown format (for documentation)
+    - pdf: PDF format (for printing and archival)
     """
     return [f.value for f in ReportFormat]
 
 
-@router.post("/resource/{resource_id}", response_model=ReportResponse)
+@router.post("/resource/{resource_id}")
 async def generate_resource_report(
     resource_id: str,
     reporting_service: ReportingService = Depends(get_reporting_service),
     report_type: ReportType = Query(
         default=ReportType.COMPREHENSIVE, description="Type of report to generate"
     ),
+    report_format: ReportFormat = Query(
+        default=ReportFormat.JSON, description="Output format for the report"
+    ),
     time_range_hours: int = Query(default=24, ge=1, le=168, description="Time range in hours"),
     include_charts: bool = Query(default=True, description="Include charts in report"),
-) -> dict[str, Any]:
+) -> Response | dict[str, Any]:
     """
     Generate a report for a specific resource.
 
@@ -200,15 +228,21 @@ async def generate_resource_report(
     Args:
         resource_id: ID of the resource to report on
         report_type: Type of report to generate
+        report_format: Output format (json, html, markdown, pdf)
         time_range_hours: Time range in hours (1-168)
         include_charts: Whether to include charts
 
     Returns:
-        Generated report
+        Generated report (JSON format or PDF document)
 
     Example:
         ```
         POST /api/v1/reports/resource/resource-123?report_type=comprehensive&time_range_hours=48
+        ```
+
+        For PDF export:
+        ```
+        POST /api/v1/reports/resource/resource-123?report_format=pdf&report_type=comprehensive
         ```
     """
     try:
@@ -220,9 +254,19 @@ async def generate_resource_report(
 
         report = reporting_service.generate_report(
             report_type=report_type,
-            report_format=ReportFormat.JSON,
+            report_format=report_format,
             config=config,
         )
+
+        # Return PDF if requested
+        if report_format == ReportFormat.PDF:
+            pdf_bytes = reporting_service.export_report_as_pdf(report)
+            filename = f"{report_type.value}_{resource_id}_{report.metadata.report_id}.pdf"
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
 
         return report.to_dict()
 

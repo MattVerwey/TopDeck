@@ -20,6 +20,7 @@ from topdeck.reporting.models import (
     ReportStatus,
     ReportType,
 )
+from topdeck.reporting.pdf_generator import PDFGenerator
 from topdeck.reporting.utils import parse_timestamp
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -37,6 +38,7 @@ class ReportingService:
             neo4j_client: Neo4j client for querying topology and events
         """
         self.neo4j_client = neo4j_client
+        self.pdf_generator = PDFGenerator()
 
     def generate_report(
         self,
@@ -91,6 +93,18 @@ class ReportingService:
                 status=ReportStatus.FAILED,
                 error_message=str(e),
             )
+
+    def export_report_as_pdf(self, report: Report) -> bytes:
+        """
+        Export a report as PDF.
+
+        Args:
+            report: Report object to export
+
+        Returns:
+            PDF document as bytes
+        """
+        return self.pdf_generator.generate_pdf(report)
 
     def _generate_resource_health_report(
         self, metadata: ReportMetadata, config: ReportConfig

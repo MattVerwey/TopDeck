@@ -85,19 +85,36 @@ def example_api_usage() -> None:
 
     examples = [
         (
-            "Generate Comprehensive Report",
+            "Generate Comprehensive Report (JSON)",
             """curl -X POST http://localhost:8000/api/v1/reports/generate \\
   -H "Content-Type: application/json" \\
   -d '{
     "report_type": "comprehensive",
     "resource_id": "api-gateway-prod",
     "time_range_hours": 48,
-    "include_charts": true
+    "include_charts": true,
+    "report_format": "json"
   }'""",
+        ),
+        (
+            "Generate PDF Report",
+            """curl -X POST http://localhost:8000/api/v1/reports/generate \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "report_type": "comprehensive",
+    "resource_id": "api-gateway-prod",
+    "time_range_hours": 48,
+    "report_format": "pdf"
+  }' \\
+  -o report.pdf""",
         ),
         (
             "Quick Resource Health Report",
             'curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_type=resource_health&time_range_hours=24"',
+        ),
+        (
+            "Quick PDF Export for Resource",
+            'curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_format=pdf&report_type=comprehensive" -o db-report.pdf',
         ),
         (
             "Error Timeline Report",
@@ -107,6 +124,10 @@ def example_api_usage() -> None:
         (
             "List Available Report Types",
             """curl http://localhost:8000/api/v1/reports/types""",
+        ),
+        (
+            "List Available Report Formats",
+            """curl http://localhost:8000/api/v1/reports/formats""",
         ),
     ]
 
@@ -122,7 +143,7 @@ def example_python_usage() -> None:
     code = """
 import requests
 
-def generate_incident_report(resource_id: str, hours: int = 24):
+def generate_incident_report(resource_id: str, hours: int = 24, as_pdf: bool = False):
     \"\"\"Generate comprehensive incident report.\"\"\"
     response = requests.post(
         "http://localhost:8000/api/v1/reports/generate",
@@ -130,13 +151,21 @@ def generate_incident_report(resource_id: str, hours: int = 24):
             "report_type": "comprehensive",
             "resource_id": resource_id,
             "time_range_hours": hours,
-            "include_charts": True
+            "include_charts": True,
+            "report_format": "pdf" if as_pdf else "json"
         }
     )
-    return response.json()
+    
+    if as_pdf:
+        # Save PDF to file
+        with open(f"report_{resource_id}.pdf", "wb") as f:
+            f.write(response.content)
+        return f"PDF saved to report_{resource_id}.pdf"
+    else:
+        return response.json()
 
-# Generate report
-report = generate_incident_report("api-gateway-prod", 48)
+# Generate JSON report
+report = generate_incident_report("api-gateway-prod", 48, as_pdf=False)
 
 # Print report summary
 print(f"Report: {report['title']}")
@@ -153,6 +182,10 @@ for section in report['sections']:
     if section.get('charts'):
         for chart in section['charts']:
             print(f"  Chart: {chart['title']} ({chart['type']})")
+
+# Generate PDF report
+pdf_result = generate_incident_report("api-gateway-prod", 48, as_pdf=True)
+print(pdf_result)
 """
     print(code)
 
