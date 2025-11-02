@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from topdeck.common.config import settings
 from topdeck.monitoring.error_replay import (
-    ErrorReplayResult,
     ErrorReplayService,
     ErrorSearchFilter,
     ErrorSeverity,

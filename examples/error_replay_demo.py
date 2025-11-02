@@ -248,7 +248,7 @@ async def main() -> None:
         error_id_1 = await demo_basic_error_capture(service)
 
         # Demo 2: Error with trace info
-        error_id_2 = await demo_error_with_trace_info(service)
+        await demo_error_with_trace_info(service)
 
         # Demo 3: Replay an error
         await demo_error_replay(service, error_id_1)

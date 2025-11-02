@@ -16,6 +16,7 @@ Key Features:
 
 import hashlib
 import json
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -27,6 +28,8 @@ from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.monitoring.collectors.tempo import TempoCollector
 from topdeck.storage.neo4j_client import Neo4jClient
+
+logger = logging.getLogger(__name__)
 
 
 class ErrorSeverity(str, Enum):
@@ -415,7 +418,8 @@ class ErrorReplayService:
                     resource_id=resource_id, start_time=start_time, end_time=end_time, limit=50
                 )
                 logs.extend([asdict(log) for log in loki_logs])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to collect logs from Loki: {e}")
                 pass  # Continue with other sources
 
         # Try Elasticsearch
@@ -425,7 +429,8 @@ class ErrorReplayService:
                     resource_id=resource_id, start_time=start_time, end_time=end_time, limit=50
                 )
                 logs.extend([asdict(log) for log in es_logs])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to collect logs from Elasticsearch: {e}")
                 pass
 
         # Try Azure Log Analytics
@@ -435,7 +440,8 @@ class ErrorReplayService:
                     resource_id=resource_id, start_time=start_time, end_time=end_time, limit=50
                 )
                 logs.extend([asdict(log) for log in azure_logs])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to collect logs from Azure Log Analytics: {e}")
                 pass
 
         return logs
@@ -455,7 +461,8 @@ class ErrorReplayService:
                 end_time=timestamp + timedelta(minutes=5),
             )
             return asdict(metrics)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to collect metrics from Prometheus: {e}")
             return {}
 
     async def _collect_traces(
@@ -471,7 +478,8 @@ class ErrorReplayService:
                 if trace:
                     return [asdict(trace)]
             return []
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to collect traces from Tempo: {e}")
             return []
 
     async def _capture_topology_snapshot(
@@ -665,7 +673,11 @@ class ErrorReplayService:
     def _dict_to_error_snapshot(self, data: dict[str, Any]) -> ErrorSnapshot:
         """Convert dictionary to ErrorSnapshot."""
         # Handle 'Z' suffix for UTC timezone (Python < 3.11 compatibility)
-        timestamp_str = data["timestamp"].replace("Z", "+00:00")
+        timestamp_str = (
+            data["timestamp"].replace("Z", "+00:00")
+            if data["timestamp"].endswith("Z")
+            else data["timestamp"]
+        )
         return ErrorSnapshot(
             error_id=data["error_id"],
             timestamp=datetime.fromisoformat(timestamp_str),
@@ -709,7 +721,7 @@ class ErrorReplayService:
         )
 
         # Add logs in chronological order
-        for log in sorted(error_snapshot.logs, key=lambda x: x.get("timestamp", "")):
+        for log in sorted(error_snapshot.logs, key=lambda x: x.get("timestamp") or ""):
             timeline.append(
                 {
                     "timestamp": log.get("timestamp"),
@@ -732,7 +744,7 @@ class ErrorReplayService:
                 )
 
         # Sort by timestamp
-        timeline.sort(key=lambda x: x["timestamp"])
+        timeline.sort(key=lambda x: x.get("timestamp") or "")
 
         return timeline
 
