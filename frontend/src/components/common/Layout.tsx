@@ -31,6 +31,7 @@ import {
   AccountCircle as AccountCircleIcon,
   Description as DescriptionIcon,
   Api as ApiIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -45,6 +46,7 @@ const menuItems = [
   { text: 'Topology', icon: <TopologyIcon />, path: '/topology' },
   { text: 'Risk Analysis', icon: <RiskIcon />, path: '/risk' },
   { text: 'Change Impact', icon: <ImpactIcon />, path: '/impact' },
+  { text: 'SLA/SLO', icon: <SpeedIcon />, path: '/sla' },
   { text: 'Integrations', icon: <IntegrationsIcon />, path: '/integrations' },
 ];
 

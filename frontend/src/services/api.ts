@@ -15,6 +15,10 @@ import type {
   FailurePrediction,
   PerformancePrediction,
   AnomalyDetection,
+  SLAConfig,
+  SLOCalculation,
+  ErrorBudgetStatus,
+  ResourceAvailability,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -494,6 +498,76 @@ class ApiClient {
   }> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get('/api/v1/prediction/health');
+      return data;
+    });
+  }
+
+  // SLA/SLO Management API
+  async createSLAConfig(config: Omit<SLAConfig, 'id' | 'created_at' | 'updated_at'>): Promise<SLAConfig> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post('/api/v1/sla/configs', config);
+      return data;
+    });
+  }
+
+  async listSLAConfigs(serviceName?: string): Promise<SLAConfig[]> {
+    return this.requestWithRetry(async () => {
+      const params = serviceName ? { service_name: serviceName } : {};
+      const { data } = await this.client.get('/api/v1/sla/configs', { params });
+      return data;
+    });
+  }
+
+  async getSLAConfig(slaId: string): Promise<SLAConfig> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/sla/configs/${slaId}`);
+      return data;
+    });
+  }
+
+  async updateSLAConfig(slaId: string, config: SLAConfig): Promise<SLAConfig> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.put(`/api/v1/sla/configs/${slaId}`, config);
+      return data;
+    });
+  }
+
+  async deleteSLAConfig(slaId: string): Promise<{ status: string; sla_id: string }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.delete(`/api/v1/sla/configs/${slaId}`);
+      return data;
+    });
+  }
+
+  async calculateSLO(slaId: string): Promise<SLOCalculation> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/sla/configs/${slaId}/slo`);
+      return data;
+    });
+  }
+
+  async getErrorBudgetStatus(slaId: string, periodHours: number = 24): Promise<ErrorBudgetStatus> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/sla/configs/${slaId}/error-budget`, {
+        params: { period_hours: periodHours },
+      });
+      return data;
+    });
+  }
+
+  async getResourceAvailability(
+    resourceId: string,
+    periodHours: number = 24,
+    sloPercentage?: number
+  ): Promise<ResourceAvailability> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, number> = { period_hours: periodHours };
+      if (sloPercentage !== undefined) {
+        params.slo_percentage = sloPercentage;
+      }
+      const { data } = await this.client.get(`/api/v1/sla/resources/${resourceId}/availability`, {
+        params,
+      });
       return data;
     });
   }

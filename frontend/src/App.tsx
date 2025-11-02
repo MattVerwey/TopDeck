@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Topology from './pages/Topology';
 import RiskAnalysis from './pages/RiskAnalysis';
 import ChangeImpact from './pages/ChangeImpact';
+import SLAManagement from './pages/SLAManagement';
 import Integrations from './pages/Integrations';
 
 const theme = createTheme({
@@ -41,6 +42,7 @@ function App() {
             <Route path="/topology" element={<Topology />} />
             <Route path="/risk" element={<RiskAnalysis />} />
             <Route path="/impact" element={<ChangeImpact />} />
+            <Route path="/sla" element={<SLAManagement />} />
             <Route path="/integrations" element={<Integrations />} />
           </Routes>
         </Layout>
