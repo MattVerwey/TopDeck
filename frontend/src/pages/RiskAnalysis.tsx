@@ -248,25 +248,56 @@ export default function RiskAnalysis() {
                 <Grid container spacing={2}>
                   {defaultRisks.map((risk) => (
                     <Grid size={{ xs: 12 }} key={risk.id}>
-                      <Card sx={{ background: '#132f4c' }}>
-                        <CardContent>
+                      <Card 
+                        sx={{ 
+                          background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            borderColor: risk.severity === 'critical' ? 'error.main' : 
+                                       risk.severity === 'high' ? 'warning.main' : 'info.main',
+                            boxShadow: 3,
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ p: 3 }}>
                           <Box display="flex" alignItems="flex-start" gap={2}>
-                            {getSeverityIcon(risk.severity)}
+                            <Box
+                              sx={{
+                                p: 1.5,
+                                borderRadius: 2,
+                                bgcolor: risk.severity === 'critical' ? 'error.light' :
+                                        risk.severity === 'high' ? 'warning.light' :
+                                        'info.light',
+                                opacity: 0.35,
+                              }}
+                            >
+                              {getSeverityIcon(risk.severity)}
+                            </Box>
                             <Box flex={1}>
-                              <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                <Typography variant="h6">{risk.title}</Typography>
+                              <Box display="flex" alignItems="center" gap={1} mb={1} flexWrap="wrap">
+                                <Typography variant="h6" fontWeight={600}>
+                                  {risk.title}
+                                </Typography>
                                 <Chip
                                   label={risk.severity.toUpperCase()}
                                   size="small"
                                   color={getSeverityColor(risk.severity) as 'error' | 'warning' | 'info' | 'success'}
+                                  sx={{ fontWeight: 600 }}
                                 />
                               </Box>
-                              <Typography variant="body2" color="text.secondary" paragraph>
+                              <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2 }}>
                                 {risk.description}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {risk.affected} services affected
-                              </Typography>
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <Chip
+                                  label={`${risk.affected} services affected`}
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                />
+                              </Box>
                             </Box>
                           </Box>
                         </CardContent>
