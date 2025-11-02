@@ -1,6 +1,7 @@
 """SLA/SLO Management API routes."""
 
-from datetime import UTC, datetime
+import random
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -134,7 +135,8 @@ def calculate_error_budget(sla_percentage: float) -> dict[str, float]:
 
 
 # In-memory storage for demo purposes
-# In production, this would use Neo4j or another persistent store
+# TODO: Implement persistent storage using Neo4j or another database
+# NOTE: Current implementation will lose all SLA configurations on service restart
 _sla_configs: dict[str, dict[str, Any]] = {}
 
 
@@ -263,9 +265,7 @@ async def get_error_budget_status(
     
     # Calculate time period
     now = datetime.now(UTC)
-    period_start = datetime.now(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    period_start = now - timedelta(hours=period_hours)
     
     # For demo purposes, simulate resource availability
     # In production, this would query actual metrics from monitoring systems
@@ -275,7 +275,6 @@ async def get_error_budget_status(
     
     if resource_count > 0:
         # Simulate different resource availability
-        import random
         random.seed(42)  # For consistent demo results
         
         for resource_id in config["resources"]:
@@ -334,8 +333,6 @@ async def get_resource_availability(
     """
     # For demo purposes, simulate resource metrics
     # In production, this would query actual metrics from monitoring systems
-    import random
-    
     random.seed(hash(resource_id) % 1000)  # Consistent but varied results per resource
     
     # Simulate uptime between 95% and 100%
@@ -353,9 +350,7 @@ async def get_resource_availability(
         meets_slo = uptime >= slo_percentage
     
     now = datetime.now(UTC)
-    period_start = datetime.now(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    period_start = now - timedelta(hours=period_hours)
     
     return ResourceAvailability(
         resource_id=resource_id,
