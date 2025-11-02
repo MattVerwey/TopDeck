@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
 import ErrorDisplay from '../components/common/ErrorDisplay';
+import DocLink from '../components/common/DocLink';
 
 interface FeatureFlags {
   azure_discovery: boolean;
@@ -153,21 +154,25 @@ export default function Settings() {
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" gap={2} mb={3}>
-        <SettingsIcon fontSize="large" />
-        <Box>
-          <Typography variant="h4" fontWeight={600}>
-            Application Settings
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            View and manage TopDeck configuration
-          </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <SettingsIcon fontSize="large" />
+          <Box>
+            <Typography variant="h4" fontWeight={600}>
+              Application Settings
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              View and manage TopDeck configuration
+            </Typography>
+          </Box>
         </Box>
+        <DocLink href=".env.example" text="Configuration Guide" />
       </Box>
 
       <Alert severity="info" sx={{ mb: 3 }}>
         Settings are configured through environment variables. Changes require restarting the application.
-        See <strong>.env.example</strong> for configuration options.
+        See <strong>.env.example</strong> for configuration options. Also see{' '}
+        <DocLink href="docs/SECURITY_ENCRYPTION.md" text="Security Guide" variant="link" />.
       </Alert>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>

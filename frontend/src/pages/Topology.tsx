@@ -28,6 +28,7 @@ import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
 import ServiceDependencyGraph from '../components/topology/ServiceDependencyGraph';
 import ResourceSelector from '../components/topology/ResourceSelector';
+import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
 import type { TopologyGraph as TopologyGraphType } from '../types';
 
@@ -191,6 +192,7 @@ export default function Topology() {
           Network Topology
         </Typography>
         <Stack direction="row" spacing={2} alignItems="center">
+          <DocLink href="docs/ENHANCED_TOPOLOGY_ANALYSIS.md" text="Topology Guide" />
           <Chip
             label={useMockData ? 'Demo Mode' : 'Live Data'}
             color={useMockData ? 'warning' : 'success'}
