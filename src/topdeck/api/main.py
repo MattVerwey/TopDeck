@@ -10,6 +10,7 @@ from topdeck import __version__
 from topdeck.api.routes import (
     change_management,
     discovery,
+    error_replay,
     integrations,
     monitoring,
     prediction,
@@ -101,6 +102,7 @@ app.include_router(prediction.router)
 app.include_router(discovery.router)
 app.include_router(change_management.router)
 app.include_router(webhooks.router)
+app.include_router(error_replay.router)
 
 
 @app.get("/")
