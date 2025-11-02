@@ -287,7 +287,7 @@ class PDFGenerator:
                     if cells:
                         table_data.append(cells)
 
-                return table_data if len(table_data) > 1 else None
+                return table_data if len(table_data) >= 1 else None
 
         return None
 
