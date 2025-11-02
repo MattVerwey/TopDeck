@@ -55,6 +55,12 @@ interface SLAFormData {
   resources: string[];
 }
 
+// Constants for resource metrics thresholds
+const RESOURCE_ID_DISPLAY_LENGTH = 16;
+const ERROR_COUNT_HIGH_THRESHOLD = 50;
+const ERROR_COUNT_MEDIUM_THRESHOLD = 20;
+const AT_RISK_MARGIN_PERCENTAGE = 0.5;
+
 export default function SLAManagement() {
   const [slaConfigs, setSlaConfigs] = useState<SLAConfig[]>([]);
   const [errorBudgets, setErrorBudgets] = useState<Record<string, ErrorBudgetStatus>>({});
@@ -434,10 +440,14 @@ export default function SLAManagement() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedSLAForResources.id && errorBudgets[selectedSLAForResources.id].resources_status.map((resourceStatus) => {
+                      {selectedSLAForResources.id && errorBudgets[selectedSLAForResources.id]?.resources_status.map((resourceStatus) => {
                         const resource = availableResources.find(r => r.id === resourceStatus.resource_id);
                         const uptimePercent = resourceStatus.uptime_percentage;
                         const errorBudget = errorBudgets[selectedSLAForResources.id!];
+                        
+                        // Safety check: if errorBudget doesn't exist, skip this resource
+                        if (!errorBudget) return null;
+                        
                         const sloPercent = errorBudget.slo_percentage;
                         const slaPercent = errorBudget.sla_percentage;
                         
@@ -451,7 +461,7 @@ export default function SLAManagement() {
                         } else if (uptimePercent < sloPercent) {
                           statusColor = 'warning';
                           statusText = 'Below SLO';
-                        } else if (uptimePercent < sloPercent + 0.5) {
+                        } else if (uptimePercent < sloPercent + AT_RISK_MARGIN_PERCENTAGE) {
                           statusColor = 'warning';
                           statusText = 'At Risk';
                         }
@@ -463,7 +473,7 @@ export default function SLAManagement() {
                                 {resource?.name || resourceStatus.resource_id}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {resourceStatus.resource_id.slice(0, 16)}...
+                                {resourceStatus.resource_id.slice(0, RESOURCE_ID_DISPLAY_LENGTH)}...
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
@@ -477,7 +487,7 @@ export default function SLAManagement() {
                               <Chip
                                 label={resourceStatus.error_count}
                                 size="small"
-                                color={resourceStatus.error_count > 50 ? 'error' : resourceStatus.error_count > 20 ? 'warning' : 'default'}
+                                color={resourceStatus.error_count > ERROR_COUNT_HIGH_THRESHOLD ? 'error' : resourceStatus.error_count > ERROR_COUNT_MEDIUM_THRESHOLD ? 'warning' : 'default'}
                               />
                             </TableCell>
                             <TableCell align="center">
