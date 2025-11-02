@@ -157,9 +157,16 @@ class PDFGenerator:
 
         if metadata.get("generated_at"):
             try:
-                dt = datetime.fromisoformat(metadata["generated_at"])
-                parts.append(f"Generated: {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            except (ValueError, TypeError):
+                # Handle ISO format with 'Z' suffix and microseconds
+                dt_str = metadata["generated_at"]
+                if isinstance(dt_str, str):
+                    # Replace 'Z' with '+00:00' for ISO format compatibility
+                    dt_str = dt_str.replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(dt_str)
+                    parts.append(f"Generated: {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                else:
+                    parts.append(f"Generated: {metadata['generated_at']}")
+            except (ValueError, TypeError, AttributeError):
                 parts.append(f"Generated: {metadata['generated_at']}")
 
         if metadata.get("report_type"):
@@ -191,18 +198,21 @@ class PDFGenerator:
         elements.append(Paragraph(section.title, self.styles["SectionHeading"]))
         elements.append(Spacer(1, 6))
 
-        # Section content
-        if section.content:
+        # Handle tables first if section is table type
+        if section.section_type == "table":
+            table_data = self._extract_table_data(section)
+            if table_data:
+                elements.extend(self._create_table(table_data))
+            elif section.content:
+                # If no table found in content, render as normal text
+                content = self._format_content(section.content)
+                elements.append(Paragraph(content, self.styles["Normal"]))
+                elements.append(Spacer(1, 12))
+        elif section.content:
             # Convert markdown-style content to formatted text
             content = self._format_content(section.content)
             elements.append(Paragraph(content, self.styles["Normal"]))
             elements.append(Spacer(1, 12))
-
-        # Handle tables in section data
-        if section.section_type == "table" and section.data:
-            table_data = self._extract_table_data(section)
-            if table_data:
-                elements.extend(self._create_table(table_data))
 
         # Handle charts
         if section.charts:
