@@ -1,11 +1,12 @@
 """SLA/SLO Management API routes."""
 
 import random
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/sla", tags=["SLA/SLO"])
 
@@ -29,14 +30,6 @@ class SLAConfig(BaseModel):
     )
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
-
-    @field_validator("sla_percentage")
-    @classmethod
-    def validate_sla_percentage(cls, v: float) -> float:
-        """Validate SLA percentage is reasonable."""
-        if v < 0 or v > 100:
-            raise ValueError("SLA percentage must be between 0 and 100")
-        return v
 
 
 class SLOCalculation(BaseModel):
@@ -102,10 +95,7 @@ def calculate_slo_from_sla(sla_percentage: float) -> float:
     if error_budget >= 1.0:  # 99% or lower
         # Reduce error budget by 90% for SLO
         slo_error_budget = error_budget * 0.1
-    elif error_budget >= 0.1:  # 99.9%
-        # Reduce error budget by 80% for SLO
-        slo_error_budget = error_budget * 0.2
-    else:  # 99.99% or higher
+    else:  # 99.9% or higher
         # Reduce error budget by 80% for SLO
         slo_error_budget = error_budget * 0.2
     
@@ -149,7 +139,7 @@ async def create_sla_config(config: SLAConfig) -> SLAConfig:
     """
     # Generate ID if not provided
     if not config.id:
-        config.id = f"sla-{len(_sla_configs) + 1}"
+        config.id = str(uuid.uuid4())
     
     # Set timestamps
     now = datetime.now(UTC).isoformat()
@@ -274,12 +264,11 @@ async def get_error_budget_status(
     resource_count = len(config.get("resources", []))
     
     if resource_count > 0:
-        # Simulate different resource availability
-        random.seed(42)  # For consistent demo results
-        
+        # Use per-resource seeded random generator for reproducible but unique uptimes
         for resource_id in config["resources"]:
             # Simulate uptime between 95% and 100%
-            uptime = 95.0 + random.random() * 5.0
+            resource_rng = random.Random(f"42-{resource_id}")
+            uptime = 95.0 + resource_rng.random() * 5.0
             total_uptime += uptime
             
             resources_status.append({
