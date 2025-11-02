@@ -105,8 +105,10 @@ export default function Settings() {
     setLoading(true);
     setError(null);
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
       // Fetch settings from API
-      const settingsResponse = await fetch('http://localhost:8000/api/v1/settings');
+      const settingsResponse = await fetch(`${API_BASE_URL}/api/v1/settings`);
       if (!settingsResponse.ok) {
         throw new Error('Failed to fetch settings');
       }
@@ -114,7 +116,7 @@ export default function Settings() {
       setSettings(settingsData);
 
       // Fetch connection status
-      const connectionsResponse = await fetch('http://localhost:8000/api/v1/settings/connections');
+      const connectionsResponse = await fetch(`${API_BASE_URL}/api/v1/settings/connections`);
       if (!connectionsResponse.ok) {
         throw new Error('Failed to fetch connection status');
       }

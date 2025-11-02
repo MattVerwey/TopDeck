@@ -59,6 +59,16 @@ class RateLimitSettings(BaseModel):
     requests_per_minute: int = Field(description="Requests per minute per client")
 
 
+class IntegrationStatus(BaseModel):
+    """Integration status for monitoring services."""
+
+    prometheus: bool = Field(description="Prometheus metrics integration configured")
+    tempo: bool = Field(description="Tempo tracing integration configured")
+    loki: bool = Field(description="Loki logging integration configured")
+    elasticsearch: bool = Field(description="Elasticsearch logging integration configured")
+    azure_log_analytics: bool = Field(description="Azure Log Analytics integration configured")
+
+
 class ApplicationSettings(BaseModel):
     """Complete application settings response."""
 
@@ -69,7 +79,7 @@ class ApplicationSettings(BaseModel):
     cache: CacheSettings = Field(description="Cache configuration")
     security: SecuritySettings = Field(description="Security settings")
     rate_limiting: RateLimitSettings = Field(description="Rate limiting configuration")
-    integrations: dict[str, bool] = Field(description="Integration status")
+    integrations: IntegrationStatus = Field(description="Integration status")
 
 
 class ConnectionStatus(BaseModel):
@@ -123,13 +133,13 @@ async def get_settings() -> ApplicationSettings:
             enabled=settings.rate_limit_enabled,
             requests_per_minute=settings.rate_limit_requests_per_minute,
         ),
-        integrations={
-            "prometheus": bool(settings.prometheus_url),
-            "tempo": bool(settings.tempo_url),
-            "loki": bool(settings.loki_url),
-            "elasticsearch": bool(settings.elasticsearch_url),
-            "azure_log_analytics": bool(settings.azure_log_analytics_workspace_id),
-        },
+        integrations=IntegrationStatus(
+            prometheus=bool(settings.prometheus_url),
+            tempo=bool(settings.tempo_url),
+            loki=bool(settings.loki_url),
+            elasticsearch=bool(settings.elasticsearch_url),
+            azure_log_analytics=bool(settings.azure_log_analytics_workspace_id),
+        ),
     )
 
 
