@@ -199,3 +199,59 @@ export interface AnomalyDetection {
   detection_window_hours: number;
   model_version: string;
 }
+
+// SLA/SLO types
+export interface SLAConfig {
+  id?: string;
+  name: string;
+  description?: string;
+  sla_percentage: number;
+  service_name: string;
+  resources: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SLOCalculation {
+  sla_id: string;
+  sla_percentage: number;
+  slo_percentage: number;
+  error_budget_percentage: number;
+  error_budget_minutes_per_month: number;
+  error_budget_minutes_per_year: number;
+  calculated_at: string;
+}
+
+export interface ErrorBudgetStatus {
+  sla_id: string;
+  service_name: string;
+  sla_percentage: number;
+  slo_percentage: number;
+  current_uptime_percentage: number;
+  error_budget_percentage: number;
+  error_budget_remaining_percentage: number;
+  error_budget_consumed_percentage: number;
+  is_within_budget: boolean;
+  resources_status: Array<{
+    resource_id: string;
+    uptime_percentage: number;
+    meets_slo: boolean;
+    error_count: number;
+  }>;
+  period_start: string;
+  period_end: string;
+  calculated_at: string;
+}
+
+export interface ResourceAvailability {
+  resource_id: string;
+  resource_name: string;
+  resource_type: string;
+  uptime_percentage: number;
+  downtime_minutes: number;
+  error_count: number;
+  success_rate: number;
+  meets_slo: boolean;
+  period_start: string;
+  period_end: string;
+}
