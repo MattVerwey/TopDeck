@@ -678,7 +678,10 @@ class DiscoveryResult:
     discovery_started_at: datetime = field(default_factory=datetime.utcnow)
     discovery_completed_at: datetime | None = None
 
-    # Internal tracking sets for efficient duplicate detection (not serialized)
+    # Internal tracking sets for efficient duplicate detection
+    # Note: These sets are transient and not persisted during serialization
+    # (e.g., JSON export/import or pickling). They are rebuilt on deserialization
+    # by iterating through resources and dependencies.
     _resource_ids: set[str] = field(default_factory=set, init=False, repr=False)
     _dependency_pairs: set[tuple[str, str]] = field(default_factory=set, init=False, repr=False)
 
