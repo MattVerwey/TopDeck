@@ -543,7 +543,7 @@ export default function SLAManagement() {
                         SLO Target:
                       </Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {errorBudgets[selectedSLAForResources.id]?.slo_percentage.toFixed(3)}%
+                        {errorBudgets[selectedSLAForResources.id]?.slo_percentage?.toFixed(3) ?? 'N/A'}%
                       </Typography>
                     </Box>
                   )}
