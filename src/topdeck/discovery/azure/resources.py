@@ -755,9 +755,9 @@ async def detect_servicebus_dependencies(
     for topic in topics:
         namespace_name = topic.properties.get("namespace")
         if namespace_name:
-            # Find the namespace resource
+            # Find the namespace resource using name matching that handles different formats
             for ns_id, namespace in namespaces.items():
-                if namespace.name == namespace_name:
+                if AzureResourceMapper.names_match(namespace.name, namespace_name):
                     dep = ResourceDependency(
                         source_id=ns_id,
                         target_id=topic.id,
@@ -773,9 +773,9 @@ async def detect_servicebus_dependencies(
     for queue in queues:
         namespace_name = queue.properties.get("namespace")
         if namespace_name:
-            # Find the namespace resource
+            # Find the namespace resource using name matching that handles different formats
             for ns_id, namespace in namespaces.items():
-                if namespace.name == namespace_name:
+                if AzureResourceMapper.names_match(namespace.name, namespace_name):
                     dep = ResourceDependency(
                         source_id=ns_id,
                         target_id=queue.id,
@@ -793,9 +793,12 @@ async def detect_servicebus_dependencies(
         topic_name = subscription.properties.get("topic")
         namespace_name = subscription.properties.get("namespace")
         if topic_name and namespace_name:
-            # Find the topic resource
+            # Find the topic resource using name matching that handles different formats
             for topic in topics:
-                if topic.name == topic_name and topic.properties.get("namespace") == namespace_name:
+                if (
+                    AzureResourceMapper.names_match(topic.name, topic_name)
+                    and AzureResourceMapper.names_match(topic.properties.get("namespace", ""), namespace_name)
+                ):
                     dep = ResourceDependency(
                         source_id=topic.id,
                         target_id=subscription.id,
@@ -825,9 +828,9 @@ async def detect_servicebus_dependencies(
                 continue
 
             for namespace_name in namespace_names:
-                # Find the namespace resource
+                # Find the namespace resource using name matching that handles different formats
                 for ns_id, namespace in namespaces.items():
-                    if namespace.name == namespace_name:
+                    if AzureResourceMapper.names_match(namespace.name, namespace_name):
                         dep = ResourceDependency(
                             source_id=app_id,
                             target_id=ns_id,
@@ -851,9 +854,9 @@ async def detect_servicebus_dependencies(
                 continue
 
             for namespace_name in namespace_names:
-                # Find the namespace resource
+                # Find the namespace resource using name matching that handles different formats
                 for ns_id, namespace in namespaces.items():
-                    if namespace.name == namespace_name:
+                    if AzureResourceMapper.names_match(namespace.name, namespace_name):
                         dep = ResourceDependency(
                             source_id=aks_id,
                             target_id=ns_id,
