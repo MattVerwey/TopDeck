@@ -144,3 +144,7 @@ cache/
 uploads/
 data/
 !data/.gitkeep
+
+# Generated test reports
+test_report.pdf
+*_report.pdf

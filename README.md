@@ -555,8 +555,23 @@ curl -X POST http://localhost:8000/api/v1/reports/generate \
     "time_range_hours": 48
   }'
 
+# Export report as PDF ✨ **NEW**
+curl -X POST http://localhost:8000/api/v1/reports/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "report_type": "comprehensive",
+    "resource_id": "api-gateway-prod",
+    "time_range_hours": 48,
+    "report_format": "pdf"
+  }' \
+  -o report.pdf
+
 # Quick resource health report
 curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_type=resource_health&time_range_hours=24"
+
+# Quick PDF export for resource ✨ **NEW**
+curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_format=pdf" \
+  -o db-report.pdf
 
 # Error timeline report
 curl -X POST http://localhost:8000/api/v1/reports/generate \
@@ -578,9 +593,9 @@ curl http://localhost:8000/api/v1/reports/types
 - ✅ **Comprehensive Reports**: All-in-one view with charts and analysis
 - ✅ **Chart Generation**: Format-agnostic charts for any visualization library
 - ✅ **Stability Analysis**: Deployment success rates and error patterns
-- ✅ **Multiple Formats**: JSON, HTML, and Markdown output
+- ✅ **Multiple Formats**: JSON, HTML, Markdown, and **PDF export** ✨ **NEW**
 
-See **[Reporting Guide](docs/REPORTING_GUIDE.md)** and **[Reporting Quick Reference](docs/REPORTING_QUICK_REF.md)** for complete documentation.
+See **[Reporting Guide](docs/REPORTING_GUIDE.md)**, **[PDF Export Guide](docs/PDF_EXPORT_GUIDE.md)** ✨ **NEW**, and **[Reporting Quick Reference](docs/REPORTING_QUICK_REF.md)** for complete documentation.
 
 ### What's Next 🚀
 

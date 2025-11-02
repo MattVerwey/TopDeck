@@ -26,13 +26,18 @@ __all__ = [
     "ReportStatus",
     "ReportType",
     "ReportingService",
+    "PDFGenerator",
 ]
 
 
 def __getattr__(name):
-    """Lazy import for ReportingService to avoid requiring Neo4j at import time."""
+    """Lazy import for ReportingService and PDFGenerator to avoid requiring dependencies at import time."""
     if name == "ReportingService":
         from topdeck.reporting.service import ReportingService
 
         return ReportingService
+    if name == "PDFGenerator":
+        from topdeck.reporting.pdf_generator import PDFGenerator
+
+        return PDFGenerator
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
