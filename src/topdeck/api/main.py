@@ -14,6 +14,7 @@ from topdeck.api.routes import (
     integrations,
     monitoring,
     prediction,
+    reporting,
     risk,
     sla,
     topology,
@@ -105,6 +106,7 @@ app.include_router(change_management.router)
 app.include_router(webhooks.router)
 app.include_router(error_replay.router)
 app.include_router(sla.router)
+app.include_router(reporting.router)
 
 
 @app.get("/")

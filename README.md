@@ -544,9 +544,48 @@ curl "http://localhost:8000/error-replay/statistics?start_time=2024-01-01T00:00:
 
 See **[Error Replay Guide](docs/ERROR_REPLAY_GUIDE.md)** for complete documentation.
 
+**8. Reporting & Analysis** ✨ **NEW**
+```bash
+# Generate comprehensive report for a resource
+curl -X POST http://localhost:8000/api/v1/reports/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "report_type": "comprehensive",
+    "resource_id": "api-gateway-prod",
+    "time_range_hours": 48
+  }'
+
+# Quick resource health report
+curl -X POST "http://localhost:8000/api/v1/reports/resource/db-prod?report_type=resource_health&time_range_hours=24"
+
+# Error timeline report
+curl -X POST http://localhost:8000/api/v1/reports/generate \
+  -d '{"report_type":"error_timeline","resource_id":"web-app","time_range_hours":72}'
+
+# Deployment correlation report
+curl -X POST http://localhost:8000/api/v1/reports/generate \
+  -d '{"report_type":"code_deployment_correlation","resource_id":"api-service","time_range_hours":96}'
+
+# Get available report types
+curl http://localhost:8000/api/v1/reports/types
+```
+
+**Reporting Features:**
+- ✅ **Resource Health Reports**: Track health metrics and status over time
+- ✅ **Change Impact Reports**: Analyze what changes affected resources
+- ✅ **Error Timeline Reports**: Visualize when resources became unstable
+- ✅ **Deployment Correlation**: Correlate code changes with stability
+- ✅ **Comprehensive Reports**: All-in-one view with charts and analysis
+- ✅ **Chart Generation**: Format-agnostic charts for any visualization library
+- ✅ **Stability Analysis**: Deployment success rates and error patterns
+- ✅ **Multiple Formats**: JSON, HTML, and Markdown output
+
+See **[Reporting Guide](docs/REPORTING_GUIDE.md)** and **[Reporting Quick Reference](docs/REPORTING_QUICK_REF.md)** for complete documentation.
+
 ### What's Next 🚀
 
 Recent additions:
+- **Reporting & Analysis** ✨ NEW: Generate comprehensive reports with charts showing changes, errors, and deployments
 - **Error Replay & Debugging** ✨ NEW: "DVR for cloud errors" with time-travel debugging and root cause analysis
 - **Change Management** ✨ NEW: Full change request tracking with ServiceNow/Jira integration
 - **ML-Based Predictions** ✨ NEW: Predict failures, performance degradation, and detect anomalies using traditional ML (scikit-learn, Prophet)
