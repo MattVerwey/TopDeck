@@ -192,7 +192,8 @@ export default function ResourceList({
           sx={{
             p: 4,
             textAlign: 'center',
-            border: '2px dashed rgba(255, 255, 255, 0.12)',
+            border: '2px dashed',
+            borderColor: 'divider',
             borderRadius: 2,
           }}
         >

@@ -119,7 +119,9 @@ export default function ResourceCard({ resource, onClick, selected = false, comp
       sx={{
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s ease-in-out',
-        border: selected ? '2px solid #2196f3' : '1px solid rgba(255, 255, 255, 0.12)',
+        border: selected ? 2 : 1,
+        borderColor: selected ? 'primary.main' : 'divider',
+        borderStyle: 'solid',
         '&:hover': onClick ? {
           transform: 'translateY(-2px)',
           boxShadow: 4,

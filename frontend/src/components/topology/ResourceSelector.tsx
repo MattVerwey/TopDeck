@@ -279,11 +279,11 @@ export default function ResourceSelector({
                             p: 1.5,
                             transition: 'all 0.2s',
                             bgcolor: selectedApps.includes(app.id) 
-                              ? 'rgba(33, 150, 243, 0.1)' 
+                              ? 'action.selected' 
                               : 'transparent',
                             '&:hover': {
                               borderColor: 'primary.main',
-                              bgcolor: 'rgba(33, 150, 243, 0.05)',
+                              bgcolor: 'action.hover',
                             },
                           }}
                         >

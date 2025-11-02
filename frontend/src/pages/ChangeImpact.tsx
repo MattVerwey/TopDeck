@@ -310,7 +310,7 @@ export default function ChangeImpact() {
                       transition: 'all 0.2s',
                       '&:hover': {
                         borderColor: 'primary.main',
-                        bgcolor: 'rgba(33, 150, 243, 0.05)',
+                        bgcolor: 'action.hover',
                       },
                     }}
                   >

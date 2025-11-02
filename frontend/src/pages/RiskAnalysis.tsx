@@ -251,11 +251,12 @@ export default function RiskAnalysis() {
                       <Card 
                         sx={{ 
                           background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
-                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          border: '1px solid',
+                          borderColor: 'divider',
                           transition: 'all 0.2s',
                           '&:hover': {
-                            borderColor: risk.severity === 'critical' ? '#f44336' : 
-                                       risk.severity === 'high' ? '#ff9800' : '#2196f3',
+                            borderColor: risk.severity === 'critical' ? 'error.main' : 
+                                       risk.severity === 'high' ? 'warning.main' : 'info.main',
                             boxShadow: 3,
                           }
                         }}
@@ -266,9 +267,10 @@ export default function RiskAnalysis() {
                               sx={{
                                 p: 1.5,
                                 borderRadius: 2,
-                                bgcolor: risk.severity === 'critical' ? 'rgba(244, 67, 54, 0.1)' :
-                                        risk.severity === 'high' ? 'rgba(255, 152, 0, 0.1)' :
-                                        'rgba(33, 150, 243, 0.1)',
+                                bgcolor: risk.severity === 'critical' ? 'error.light' :
+                                        risk.severity === 'high' ? 'warning.light' :
+                                        'info.light',
+                                opacity: 0.2,
                               }}
                             >
                               {getSeverityIcon(risk.severity)}
