@@ -4,17 +4,16 @@ PDF Generator for Reports.
 Provides functionality to convert reports into PDF format with charts and formatting.
 """
 
+import html
 import io
 import logging
 from datetime import datetime
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
 from reportlab.platypus import (
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -239,9 +238,11 @@ class PDFGenerator:
         formatted = []
         for i, part in enumerate(parts):
             if i % 2 == 1:  # Odd indices are bold text
-                formatted.append(f"<b>{part}</b>")
+                # Escape HTML special characters in bold content
+                formatted.append(f"<b>{html.escape(part)}</b>")
             else:
-                formatted.append(part)
+                # Escape HTML special characters in regular content
+                formatted.append(html.escape(part))
         content = "".join(formatted)
 
         # Replace markdown bullets with HTML
