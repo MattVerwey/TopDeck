@@ -47,6 +47,8 @@ TopDeck provides that answer by:
 ### Topology & Dependencies (NEW!)
 - **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
 - **[Topology Analysis Quick Reference](docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+- **[Multi-Source Dependency Verification](docs/DEPENDENCY_VERIFICATION.md)** - ✨ NEW! Verify dependencies across Azure, ADO, Prometheus, and Tempo
+- **[Dependency Verification Quick Reference](docs/DEPENDENCY_VERIFICATION_QUICK_REF.md)** - Quick verification commands
 
 ### Risk Analysis & SLA/SLO
 - **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
@@ -427,10 +429,45 @@ curl "http://localhost:8000/api/v1/risk/cascading-failure/{resource-id}"
 - ✅ **Dependency Health Scoring**: Comprehensive health score (0-100) considering coupling, SPOFs, and depth
 - ✅ **Risk Comparison**: Compare risk scores across multiple resources for prioritization
 - ✅ **Cascading Failure Probability**: Model how failures propagate through dependencies
+- ✅ **Multi-Source Verification**: Verify dependencies across Azure infrastructure, ADO code, Prometheus, and Tempo
 
-See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** and **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)** for complete documentation.
+See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)**, **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)**, and **[Dependency Verification Guide](docs/DEPENDENCY_VERIFICATION.md)** for complete documentation.
 
-**6. ML-Based Predictions** ✨ **NEW**
+**6. Multi-Source Dependency Verification** ✨ **NEW**
+```bash
+# Verify a dependency using all available sources
+curl "http://localhost:8000/api/v1/accuracy/dependencies/verify?source_id=web-app&target_id=sql-db&duration_hours=24"
+
+# Find stale dependencies that need revalidation
+curl "http://localhost:8000/api/v1/accuracy/dependencies/stale?max_age_days=7"
+
+# Apply confidence decay to unconfirmed dependencies
+curl -X POST "http://localhost:8000/api/v1/accuracy/dependencies/decay?decay_rate=0.1&days_threshold=3"
+
+# Get dependency detection accuracy metrics
+curl "http://localhost:8000/api/v1/accuracy/dependencies/metrics?days=30"
+```
+
+**Multi-Source Verification Features:**
+- ✅ **Azure Infrastructure Verification**: IPs, backends, network topology, VNet connectivity
+- ✅ **Azure DevOps Code Analysis**: Deployment configs, connection strings, secrets, storage references
+- ✅ **Prometheus Metrics Verification**: HTTP requests, connection pools, network traffic patterns
+- ✅ **Tempo Trace Verification**: Distributed traces, service calls, transaction flows
+- ✅ **Weighted Confidence Scoring**: Different sources weighted by reliability
+- ✅ **Evidence Collection**: Detailed reasoning from each verification source
+- ✅ **Verification Score**: Based on number and quality of evidence sources
+- ✅ **Flexible Configuration**: Works with any available sources
+
+**Why Multi-Source Verification?**
+Single-source dependency detection can produce false positives. By requiring evidence from multiple independent sources, TopDeck dramatically improves accuracy:
+- 4 sources: Very High confidence (>85%) - All methods confirmed
+- 3 sources: High confidence (70-85%) - Strong evidence
+- 2 sources: Medium confidence (50-70%) - Some evidence
+- 1 source: Low confidence (<50%) - Likely false positive
+
+See **[Multi-Source Dependency Verification Guide](docs/DEPENDENCY_VERIFICATION.md)** and **[Quick Reference](docs/DEPENDENCY_VERIFICATION_QUICK_REF.md)** for complete documentation.
+
+**7. ML-Based Predictions** ✨ **NEW**
 ```bash
 # Predict resource failure probability
 curl "http://localhost:8000/api/v1/prediction/resources/{resource-id}/failure-risk"
@@ -464,7 +501,7 @@ curl "http://localhost:8000/api/v1/prediction/health"
 
 See **[ML Prediction Research](docs/ML_PREDICTION_RESEARCH.md)** for technical analysis and **[ML Prediction Guide](docs/ML_PREDICTION_GUIDE.md)** for usage examples.
 
-**7. Change Management** ✨ **NEW**
+**8. Change Management** ✨ **NEW**
 ```bash
 # Create a change request
 curl -X POST http://localhost:8000/api/v1/changes \
@@ -499,7 +536,7 @@ curl "http://localhost:8000/api/v1/changes/calendar?start_date=2024-11-01T00:00:
 
 See **[Change Management Guide](docs/CHANGE_MANAGEMENT_GUIDE.md)** for complete documentation.
 
-**7. Error Replay & Debugging** ✨ **NEW**
+**9. Error Replay & Debugging** ✨ **NEW**
 ```bash
 # Capture an error with full context
 curl -X POST http://localhost:8000/error-replay/capture \
@@ -545,7 +582,7 @@ curl "http://localhost:8000/error-replay/statistics?start_time=2024-01-01T00:00:
 
 See **[Error Replay Guide](docs/ERROR_REPLAY_GUIDE.md)** for complete documentation.
 
-**8. Reporting & Analysis** ✨ **NEW**
+**10. Reporting & Analysis** ✨ **NEW**
 ```bash
 # Generate comprehensive report for a resource
 curl -X POST http://localhost:8000/api/v1/reports/generate \
@@ -601,6 +638,7 @@ See **[Reporting Guide](docs/REPORTING_GUIDE.md)**, **[PDF Export Guide](docs/PD
 ### What's Next 🚀
 
 Recent additions:
+- **Multi-Source Dependency Verification** ✨ NEW: Verify dependencies across Azure infrastructure, ADO code, Prometheus, and Tempo for high-confidence dependency detection
 - **Reporting & Analysis** ✨ NEW: Generate comprehensive reports with charts showing changes, errors, and deployments
 - **Error Replay & Debugging** ✨ NEW: "DVR for cloud errors" with time-travel debugging and root cause analysis
 - **Change Management** ✨ NEW: Full change request tracking with ServiceNow/Jira integration

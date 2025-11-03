@@ -28,6 +28,7 @@ import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
 import ServiceDependencyGraph from '../components/topology/ServiceDependencyGraph';
 import ResourceSelector from '../components/topology/ResourceSelector';
+import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
 import type { TopologyGraph as TopologyGraphType } from '../types';
 
@@ -50,7 +51,7 @@ export default function Topology() {
   const [availableClusters, setAvailableClusters] = useState<string[]>([]);
   const [availableNamespaces, setAvailableNamespaces] = useState<string[]>([]);
   const [graphView, setGraphView] = useState<'standard' | 'dependency'>('dependency');
-  const [useMockData, setUseMockData] = useState(true); // Start with demo data
+  const [useMockData, setUseMockData] = useState(false); // Start with live data from API
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [filteredTopology, setFilteredTopology] = useState<TopologyGraphType | null>(null);
@@ -99,6 +100,24 @@ export default function Topology() {
     loadTopology();
   }, [loadTopology]);
 
+  // Helper function to apply a filter and update edges accordingly
+  const applyNodeFilter = useCallback((
+    data: TopologyGraphType,
+    predicate: (node: TopologyGraphType['nodes'][0]) => boolean
+  ): TopologyGraphType => {
+    const filteredNodes = data.nodes.filter(predicate);
+    const nodeIds = new Set(filteredNodes.map((n) => n.id));
+    const filteredEdges = data.edges.filter(
+      (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+    );
+    
+    return {
+      ...data,
+      nodes: filteredNodes,
+      edges: filteredEdges,
+    };
+  }, []);
+
   // Apply filters and resource selection
   useEffect(() => {
     if (!topology) {
@@ -124,34 +143,29 @@ export default function Topology() {
         }
       });
 
-      filtered.nodes = topology.nodes.filter((n) => relatedIds.has(n.id));
-      filtered.edges = topology.edges.filter(
-        (e) => relatedIds.has(e.source_id) && relatedIds.has(e.target_id)
-      );
+      filtered = applyNodeFilter(filtered, (n) => relatedIds.has(n.id));
     }
 
-    // Apply other filters
+    // Apply other filters using the helper function
+    if (filters.cloud_provider) {
+      filtered = applyNodeFilter(filtered, (n) => n.cloud_provider === filters.cloud_provider);
+    }
+
+    if (filters.resource_type) {
+      filtered = applyNodeFilter(filtered, (n) => n.resource_type === filters.resource_type);
+    }
+
     if (filters.cluster) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => 
-          (n.properties?.cluster as string) === filters.cluster ||
-          (n.metadata?.cluster as string) === filters.cluster
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      filtered = applyNodeFilter(filtered, (n) => 
+        (n.properties?.cluster as string) === filters.cluster ||
+        (n.metadata?.cluster as string) === filters.cluster
       );
     }
 
     if (filters.namespace) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => 
-          (n.properties?.namespace as string) === filters.namespace ||
-          (n.metadata?.namespace as string) === filters.namespace
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      filtered = applyNodeFilter(filtered, (n) => 
+        (n.properties?.namespace as string) === filters.namespace ||
+        (n.metadata?.namespace as string) === filters.namespace
       );
     }
 
@@ -162,7 +176,7 @@ export default function Topology() {
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters]);
+  }, [topology, selectedResourceIds, filters, applyNodeFilter]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);
@@ -191,6 +205,7 @@ export default function Topology() {
           Network Topology
         </Typography>
         <Stack direction="row" spacing={2} alignItems="center">
+          <DocLink href="docs/ENHANCED_TOPOLOGY_ANALYSIS.md" text="Topology Guide" />
           <Chip
             label={useMockData ? 'Demo Mode' : 'Live Data'}
             color={useMockData ? 'warning' : 'success'}

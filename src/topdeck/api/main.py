@@ -16,6 +16,7 @@ from topdeck.api.routes import (
     prediction,
     reporting,
     risk,
+    settings as settings_router,
     sla,
     spof_monitoring,
     topology,
@@ -48,15 +49,22 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
+    print("DEBUG: Starting application lifespan...")
     try:
+        print("DEBUG: About to start scheduler...")
         start_scheduler()
+        print("DEBUG: Scheduler started successfully")
     except Exception as e:
         print(f"Warning: Failed to start scheduler: {e}")
+    
+    print("DEBUG: Lifespan startup complete, app is ready")
 
     yield
 
     # Shutdown
+    print("DEBUG: Shutting down application...")
     stop_scheduler()
+    print("DEBUG: Scheduler stopped")
 
 
 # Create FastAPI application
@@ -108,7 +116,7 @@ app.include_router(webhooks.router)
 app.include_router(error_replay.router)
 app.include_router(sla.router)
 app.include_router(reporting.router)
-app.include_router(spof_monitoring.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/")

@@ -34,6 +34,7 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
+import DocLink from '../components/common/DocLink';
 
 interface Integration {
   id: string;
@@ -186,9 +187,12 @@ export default function Integrations() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        Integrations & Plugins
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+        <Typography variant="h4" fontWeight={600}>
+          Integrations & Plugins
+        </Typography>
+        <DocLink href=".env.example" text="Configuration Guide" />
+      </Box>
 
       <Typography variant="body1" color="text.secondary" paragraph>
         Manage your data sources and integrations

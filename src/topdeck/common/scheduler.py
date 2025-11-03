@@ -439,25 +439,15 @@ class DiscoveryScheduler:
         """
         status = {
             "scheduler_running": self.scheduler.running if self.scheduler else False,
-            "discovery": {
-                "in_progress": self.discovery_in_progress,
-                "last_run": (
-                    self.last_discovery_time.isoformat() if self.last_discovery_time else None
-                ),
-                "interval_seconds": settings.discovery_scan_interval,
-                "enabled_providers": {
-                    "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
-                    "aws": settings.enable_aws_discovery and self._has_aws_credentials(),
-                    "gcp": settings.enable_gcp_discovery and self._has_gcp_credentials(),
-                },
-            },
-            "spof_monitoring": {
-                "enabled": settings.enable_spof_monitoring,
-                "in_progress": self.spof_scan_in_progress,
-                "last_scan": (
-                    self.last_spof_scan_time.isoformat() if self.last_spof_scan_time else None
-                ),
-                "interval_seconds": settings.spof_scan_interval,
+            "discovery_in_progress": self.discovery_in_progress,
+            "last_discovery_time": (
+                self.last_discovery_time.isoformat() if self.last_discovery_time else None
+            ),
+            "interval_hours": settings.discovery_scan_interval // 3600,
+            "enabled_providers": {
+                "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
+                "aws": settings.enable_aws_discovery and self._has_aws_credentials(),
+                "gcp": settings.enable_gcp_discovery and self._has_gcp_credentials(),
             },
         }
         

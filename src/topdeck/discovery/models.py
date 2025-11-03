@@ -675,7 +675,7 @@ class DiscoveryResult:
     errors: list[str] = field(default_factory=list)
 
     subscription_id: str | None = None
-    discovery_started_at: datetime = field(default_factory=datetime.utcnow)
+    discovery_started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     discovery_completed_at: datetime | None = None
 
     # Internal tracking sets for efficient duplicate detection

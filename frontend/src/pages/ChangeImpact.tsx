@@ -29,6 +29,7 @@ import {
   People as UsersIcon,
 } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
+import DocLink from '../components/common/DocLink';
 
 export default function ChangeImpact() {
   const { topology } = useStore();
@@ -110,9 +111,12 @@ export default function ChangeImpact() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        Change Impact Analysis
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4" fontWeight={600}>
+          Change Impact Analysis
+        </Typography>
+        <DocLink href="docs/CHANGE_MANAGEMENT_GUIDE.md" text="Change Management Guide" />
+      </Box>
 
       <Typography variant="body1" color="text.secondary" paragraph>
         Analyze the impact of ServiceNow or Jira changes on your infrastructure

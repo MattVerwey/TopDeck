@@ -256,39 +256,65 @@ export interface ResourceAvailability {
   period_end: string;
 }
 
-/**
- * SPOF (Single Point of Failure) Monitoring types
- */
-export interface SPOF {
-  resource_id: string;
-  resource_name: string;
-  resource_type: string;
-  dependents_count: number;
-  blast_radius: number;
-  risk_score: number;
-  recommendations: string[];
+// Settings types
+export interface FeatureFlags {
+  azure_discovery: boolean;
+  aws_discovery: boolean;
+  gcp_discovery: boolean;
+  github_integration: boolean;
+  azure_devops_integration: boolean;
+  risk_analysis: boolean;
+  monitoring: boolean;
 }
 
-export interface SPOFChange {
-  change_type: 'new' | 'resolved';
-  resource_id: string;
-  resource_name: string;
-  resource_type: string;
-  detected_at: string;
-  risk_score: number;
-  blast_radius: number;
+export interface DiscoverySettings {
+  scan_interval: number;
+  parallel_workers: number;
+  timeout: number;
 }
 
-export interface SPOFStatistics {
-  status: string;
-  last_scan?: string;
-  total_spofs?: number;
-  high_risk_spofs?: number;
-  by_resource_type?: Record<string, number>;
-  total_changes?: number;
-  recent_changes?: {
-    new: number;
-    resolved: number;
-  };
-  message?: string;
+export interface CacheSettings {
+  ttl_resources: number;
+  ttl_risk_scores: number;
+  ttl_topology: number;
+}
+
+export interface SecuritySettings {
+  rbac_enabled: boolean;
+  audit_logging_enabled: boolean;
+  ssl_enabled: boolean;
+  neo4j_encrypted: boolean;
+  redis_ssl: boolean;
+  rabbitmq_ssl: boolean;
+}
+
+export interface RateLimitSettings {
+  enabled: boolean;
+  requests_per_minute: number;
+}
+
+export interface IntegrationStatus {
+  prometheus: boolean;
+  tempo: boolean;
+  loki: boolean;
+  elasticsearch: boolean;
+  azure_log_analytics: boolean;
+}
+
+export interface ApplicationSettings {
+  version: string;
+  environment: string;
+  features: FeatureFlags;
+  discovery: DiscoverySettings;
+  cache: CacheSettings;
+  security: SecuritySettings;
+  rate_limiting: RateLimitSettings;
+  integrations: IntegrationStatus;
+}
+
+export interface ConnectionStatus {
+  neo4j: Record<string, string>;
+  redis: Record<string, string>;
+  rabbitmq: Record<string, string>;
+  monitoring: Record<string, string>;
 }

@@ -19,9 +19,9 @@ import type {
   SLOCalculation,
   ErrorBudgetStatus,
   ResourceAvailability,
-  SPOF,
-  SPOFChange,
-  SPOFStatistics,
+  ApplicationSettings,
+  ConnectionStatus,
+  FeatureFlags,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -571,6 +571,28 @@ class ApiClient {
       const { data } = await this.client.get(`/api/v1/sla/resources/${resourceId}/availability`, {
         params,
       });
+      return data;
+    });
+  }
+
+  // Settings API
+  async getSettings() {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/settings');
+      return data;
+    });
+  }
+
+  async getConnectionStatus() {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/settings/connections');
+      return data;
+    });
+  }
+
+  async getFeatureFlags() {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/settings/feature-flags');
       return data;
     });
   }

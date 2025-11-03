@@ -21,6 +21,7 @@ import {
 import { useStore } from '../store/useStore';
 import apiClient from '../services/api';
 import ErrorDisplay from '../components/common/ErrorDisplay';
+import DocLink from '../components/common/DocLink';
 
 interface DashboardMetric {
   label: string;
@@ -101,9 +102,12 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        Dashboard Overview
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4" fontWeight={600}>
+          Dashboard Overview
+        </Typography>
+        <DocLink href="README.md" text="Getting Started" />
+      </Box>
 
       {/* Metrics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
