@@ -308,14 +308,6 @@ class AzureDiscoverer:
              "Application Gateway may use Key Vault for SSL certificates"),
             ("application_gateway", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
              "Application Gateway may use Managed Identity to access Key Vault"),
-            
-            # Service Bus messaging hierarchy
-            ("servicebus_topic", "servicebus_namespace", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
-             "Service Bus Topic is contained in Service Bus Namespace"),
-            ("servicebus_queue", "servicebus_namespace", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
-             "Service Bus Queue is contained in Service Bus Namespace"),
-            ("servicebus_subscription", "servicebus_topic", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
-             "Service Bus Subscription is attached to Service Bus Topic"),
         ]
 
     async def _discover_dependencies(

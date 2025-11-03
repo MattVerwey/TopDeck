@@ -485,6 +485,9 @@ class GCPDiscoverer:
         # Apply dependency patterns
         # GCP resources are typically grouped by project, not resource groups
         # We'll detect dependencies within the same project and region
+        # Build a set of existing dependency pairs for O(1) lookup performance
+        existing_pairs = {(d.source_id, d.target_id) for d in dependencies}
+        
         for source_resource in resources:
             for target_resource in resources:
                 # Skip self-dependencies
@@ -505,6 +508,11 @@ class GCPDiscoverer:
                     if (source_resource.resource_type == source_type and 
                         target_resource.resource_type == target_type):
                         
+                        # Skip if we already have a dependency (O(1) lookup using set)
+                        pair = (source_resource.id, target_resource.id)
+                        if pair in existing_pairs:
+                            continue
+                        
                         dep = ResourceDependency(
                             source_id=source_resource.id,
                             target_id=target_resource.id,
@@ -515,6 +523,7 @@ class GCPDiscoverer:
                             description=f"{description} in same region",
                         )
                         dependencies.append(dep)
+                        existing_pairs.add(pair)  # Track to avoid duplicates
 
         return dependencies
 

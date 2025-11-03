@@ -689,6 +689,9 @@ class AWSDiscoverer:
                             break
 
         # Second, apply heuristic-based dependency patterns
+        # Build a set of existing dependency pairs for O(1) lookup performance
+        existing_pairs = {(d.source_id, d.target_id) for d in dependencies}
+        
         # AWS resources are typically grouped by VPC or region
         for source_resource in resources:
             for target_resource in resources:
@@ -710,12 +713,9 @@ class AWSDiscoverer:
                     if (source_resource.resource_type == source_type and 
                         target_resource.resource_type == target_type):
                         
-                        # Skip if we already have a property-based dependency
-                        already_exists = any(
-                            d.source_id == source_resource.id and d.target_id == target_resource.id
-                            for d in dependencies
-                        )
-                        if already_exists:
+                        # Skip if we already have a dependency (O(1) lookup using set)
+                        pair = (source_resource.id, target_resource.id)
+                        if pair in existing_pairs:
                             continue
                         
                         dep = ResourceDependency(
@@ -728,6 +728,7 @@ class AWSDiscoverer:
                             description=f"{description} in same region",
                         )
                         dependencies.append(dep)
+                        existing_pairs.add(pair)  # Track to avoid duplicates
 
         return dependencies
 
