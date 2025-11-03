@@ -13,6 +13,9 @@ from topdeck.analysis.accuracy import (
     PredictionCalibrator,
     PredictionTracker,
 )
+from topdeck.analysis.accuracy.multi_source_verifier import (
+    MultiSourceDependencyVerifier,
+)
 from topdeck.storage.neo4j_client import Neo4jClient
 
 router = APIRouter(prefix="/api/v1/accuracy", tags=["accuracy"])
@@ -75,6 +78,29 @@ class DependencyValidationResponse(BaseModel):
     notes: str | None
 
 
+class VerificationEvidenceResponse(BaseModel):
+    """Response for a single verification evidence."""
+
+    source: str
+    evidence_type: str
+    confidence: float
+    details: dict[str, Any]
+    verified_at: str
+
+
+class MultiSourceVerificationResponse(BaseModel):
+    """Response with multi-source verification result."""
+
+    source_id: str
+    target_id: str
+    is_verified: bool
+    overall_confidence: float
+    verification_score: float
+    evidence: list[VerificationEvidenceResponse]
+    recommendations: list[str]
+    verified_at: str
+
+
 # Dependency injection
 def get_neo4j_client() -> Neo4jClient:
     """Get Neo4j client instance."""
@@ -108,6 +134,41 @@ def get_prediction_calibrator(
 ) -> PredictionCalibrator:
     """Get prediction calibrator instance."""
     return PredictionCalibrator(neo4j_client)
+
+
+def get_multi_source_verifier(
+    neo4j_client: Neo4jClient = Depends(get_neo4j_client),
+) -> MultiSourceDependencyVerifier:
+    """Get multi-source dependency verifier instance."""
+    import os
+    
+    from topdeck.discovery.azure.devops import AzureDevOpsDiscoverer
+    from topdeck.monitoring.collectors.prometheus import PrometheusCollector
+    from topdeck.monitoring.collectors.tempo import TempoCollector
+    
+    # Initialize optional collectors based on environment variables
+    ado_discoverer = None
+    if os.getenv("AZURE_DEVOPS_ORG") and os.getenv("AZURE_DEVOPS_PROJECT"):
+        ado_discoverer = AzureDevOpsDiscoverer(
+            organization=os.getenv("AZURE_DEVOPS_ORG"),
+            project=os.getenv("AZURE_DEVOPS_PROJECT"),
+            personal_access_token=os.getenv("AZURE_DEVOPS_PAT"),
+        )
+    
+    prometheus_collector = None
+    if os.getenv("PROMETHEUS_URL"):
+        prometheus_collector = PrometheusCollector(os.getenv("PROMETHEUS_URL"))
+    
+    tempo_collector = None
+    if os.getenv("TEMPO_URL"):
+        tempo_collector = TempoCollector(os.getenv("TEMPO_URL"))
+    
+    return MultiSourceDependencyVerifier(
+        neo4j_client=neo4j_client,
+        ado_discoverer=ado_discoverer,
+        prometheus_collector=prometheus_collector,
+        tempo_collector=tempo_collector,
+    )
 
 
 # Prediction accuracy endpoints
@@ -468,6 +529,64 @@ async def get_improvement_report(
     """
     result = await calibrator.generate_improvement_report()
     return result
+
+
+@router.get("/dependencies/verify", response_model=MultiSourceVerificationResponse)
+async def verify_dependency_multi_source(
+    source_id: str = Query(..., description="Source resource ID"),
+    target_id: str = Query(..., description="Target resource ID"),
+    duration_hours: int = Query(
+        24, ge=1, le=168, description="Time range for monitoring verification (hours)"
+    ),
+    verifier: MultiSourceDependencyVerifier = Depends(get_multi_source_verifier),
+) -> MultiSourceVerificationResponse:
+    """
+    Verify a dependency using multiple independent sources.
+    
+    This endpoint performs comprehensive dependency verification by checking:
+    1. Azure infrastructure (IPs, backends, network topology)
+    2. Azure DevOps code (deployment configs, secrets, storage)
+    3. Prometheus metrics (actual traffic patterns)
+    4. Tempo traces (distributed transaction flows)
+    
+    Multiple verification sources increase confidence and help catch false positives.
+    
+    Query Parameters:
+        source_id: Source resource ID
+        target_id: Target resource ID
+        duration_hours: Time range for monitoring data verification (default: 24)
+    
+    Returns:
+        Comprehensive verification result with evidence from all sources
+    
+    Example:
+        GET /api/v1/accuracy/dependencies/verify?source_id=app-1&target_id=db-1&duration_hours=48
+    """
+    result = await verifier.verify_dependency(
+        source_id=source_id,
+        target_id=target_id,
+        duration=timedelta(hours=duration_hours),
+    )
+    
+    return MultiSourceVerificationResponse(
+        source_id=result.source_id,
+        target_id=result.target_id,
+        is_verified=result.is_verified,
+        overall_confidence=result.overall_confidence,
+        verification_score=result.verification_score,
+        evidence=[
+            VerificationEvidenceResponse(
+                source=ev.source,
+                evidence_type=ev.evidence_type,
+                confidence=ev.confidence,
+                details=ev.details,
+                verified_at=ev.verified_at.isoformat(),
+            )
+            for ev in result.evidence
+        ],
+        recommendations=result.recommendations,
+        verified_at=result.verified_at.isoformat(),
+    )
 
 
 @router.get("/health")
