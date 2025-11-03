@@ -67,15 +67,16 @@ class DiscoveryScheduler:
                 max_instances=1,  # Ensure only one discovery runs at a time
             )
 
-            # Add SPOF monitoring job with configurable interval (default: 15 minutes)
-            self.scheduler.add_job(
-                self._run_spof_scan,
-                trigger=IntervalTrigger(seconds=settings.spof_scan_interval),
-                id="spof_monitoring",
-                name="SPOF Monitoring",
-                replace_existing=True,
-                max_instances=1,  # Ensure only one scan runs at a time
-            )
+            # Add SPOF monitoring job if enabled
+            if settings.enable_spof_monitoring:
+                self.scheduler.add_job(
+                    self._run_spof_scan,
+                    trigger=IntervalTrigger(seconds=settings.spof_scan_interval),
+                    id="spof_monitoring",
+                    name="SPOF Monitoring",
+                    replace_existing=True,
+                    max_instances=1,  # Ensure only one scan runs at a time
+                )
 
             self.scheduler.start()
             discovery_interval_display = (
@@ -83,24 +84,29 @@ class DiscoveryScheduler:
                 if settings.discovery_scan_interval >= 3600
                 else f"{settings.discovery_scan_interval} seconds"
             )
-            spof_interval_display = (
-                f"{settings.spof_scan_interval // 60} minutes"
-                if settings.spof_scan_interval >= 60
-                else f"{settings.spof_scan_interval} seconds"
-            )
-            logger.info(
-                f"Scheduler started - Discovery: {discovery_interval_display}, "
-                f"SPOF monitoring: {spof_interval_display}"
-            )
+            
+            if settings.enable_spof_monitoring:
+                spof_interval_display = (
+                    f"{settings.spof_scan_interval // 60} minutes"
+                    if settings.spof_scan_interval >= 60
+                    else f"{settings.spof_scan_interval} seconds"
+                )
+                logger.info(
+                    f"Scheduler started - Discovery: {discovery_interval_display}, "
+                    f"SPOF monitoring: {spof_interval_display}"
+                )
+            else:
+                logger.info(f"Scheduler started - Discovery: {discovery_interval_display}")
 
             # Run initial discovery immediately if configured
             if self._should_run_discovery():
                 logger.info("Running initial discovery on startup")
                 asyncio.create_task(self._run_discovery())
 
-            # Run initial SPOF scan on startup
-            logger.info("Running initial SPOF scan on startup")
-            asyncio.create_task(self._run_spof_scan())
+            # Run initial SPOF scan on startup if enabled
+            if settings.enable_spof_monitoring:
+                logger.info("Running initial SPOF scan on startup")
+                asyncio.create_task(self._run_spof_scan())
 
         except Exception as e:
             logger.error(f"Failed to start scheduler: {e}")
@@ -443,7 +449,7 @@ class DiscoveryScheduler:
                 },
             },
             "spof_monitoring": {
-                "enabled": True,
+                "enabled": settings.enable_spof_monitoring,
                 "in_progress": self.spof_scan_in_progress,
                 "last_scan": (
                     self.last_spof_scan_time.isoformat() if self.last_spof_scan_time else None

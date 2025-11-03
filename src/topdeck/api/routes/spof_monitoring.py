@@ -42,12 +42,13 @@ class SPOFStatisticsResponse(BaseModel):
     """Response model for SPOF statistics."""
 
     status: str
-    last_scan: str | None
-    total_spofs: int
-    high_risk_spofs: int
-    by_resource_type: dict[str, int]
-    total_changes: int
-    recent_changes: dict[str, int]
+    last_scan: str | None = None
+    total_spofs: int | None = None
+    high_risk_spofs: int | None = None
+    by_resource_type: dict[str, int] | None = None
+    total_changes: int | None = None
+    recent_changes: dict[str, int] | None = None
+    message: str | None = None
 
 
 @router.get("/current", response_model=list[SPOFResponse])

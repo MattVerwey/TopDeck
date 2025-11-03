@@ -267,7 +267,9 @@ class SPOFMonitor:
         Returns:
             List of recent changes as dictionaries
         """
-        recent_changes = self.changes[-limit:] if limit > 0 else []
+        if limit <= 0:
+            return []
+        recent_changes = self.changes[-limit:]
         
         return [
             {
