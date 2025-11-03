@@ -14,7 +14,8 @@ interface DocLinkProps {
 
 export default function DocLink({ href, text = 'Learn More', variant = 'button', size = 'small' }: DocLinkProps) {
   const isExternal = href.startsWith('http');
-  const fullHref = isExternal ? href : `https://github.com/MattVerwey/TopDeck/blob/main/${href}`;
+  const repoUrl = import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/MattVerwey/TopDeck';
+  const fullHref = isExternal ? href : `${repoUrl}/blob/main/${href}`;
 
   if (variant === 'link') {
     return (

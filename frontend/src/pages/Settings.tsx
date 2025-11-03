@@ -2,7 +2,7 @@
  * Settings page for viewing and managing application configuration
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -36,60 +36,8 @@ import {
 import { useStore } from '../store/useStore';
 import ErrorDisplay from '../components/common/ErrorDisplay';
 import DocLink from '../components/common/DocLink';
-
-interface FeatureFlags {
-  azure_discovery: boolean;
-  aws_discovery: boolean;
-  gcp_discovery: boolean;
-  github_integration: boolean;
-  azure_devops_integration: boolean;
-  risk_analysis: boolean;
-  monitoring: boolean;
-}
-
-interface DiscoverySettings {
-  scan_interval: number;
-  parallel_workers: number;
-  timeout: number;
-}
-
-interface CacheSettings {
-  ttl_resources: number;
-  ttl_risk_scores: number;
-  ttl_topology: number;
-}
-
-interface SecuritySettings {
-  rbac_enabled: boolean;
-  audit_logging_enabled: boolean;
-  ssl_enabled: boolean;
-  neo4j_encrypted: boolean;
-  redis_ssl: boolean;
-  rabbitmq_ssl: boolean;
-}
-
-interface RateLimitSettings {
-  enabled: boolean;
-  requests_per_minute: number;
-}
-
-interface ApplicationSettings {
-  version: string;
-  environment: string;
-  features: FeatureFlags;
-  discovery: DiscoverySettings;
-  cache: CacheSettings;
-  security: SecuritySettings;
-  rate_limiting: RateLimitSettings;
-  integrations: Record<string, boolean>;
-}
-
-interface ConnectionStatus {
-  neo4j: Record<string, string>;
-  redis: Record<string, string>;
-  rabbitmq: Record<string, string>;
-  monitoring: Record<string, string>;
-}
+import apiClient from '../services/api';
+import type { ApplicationSettings, ConnectionStatus } from '../types';
 
 export default function Settings() {
   const { setLoading, setError, loading, error } = useStore();
@@ -97,37 +45,28 @@ export default function Settings() {
   const [connections, setConnections] = useState<ConnectionStatus | null>(null);
   const [activeTab, setActiveTab] = useState(0);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      // Use apiClient for consistent error handling and retry logic
+      const [settingsData, connectionsData] = await Promise.all([
+        apiClient.getSettings(),
+        apiClient.getConnectionStatus(),
+      ]);
       
-      // Fetch settings from API
-      const settingsResponse = await fetch(`${API_BASE_URL}/api/v1/settings`);
-      if (!settingsResponse.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-      const settingsData = await settingsResponse.json();
       setSettings(settingsData);
-
-      // Fetch connection status
-      const connectionsResponse = await fetch(`${API_BASE_URL}/api/v1/settings/connections`);
-      if (!connectionsResponse.ok) {
-        throw new Error('Failed to fetch connection status');
-      }
-      const connectionsData = await connectionsResponse.json();
       setConnections(connectionsData);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, setError]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const formatInterval = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

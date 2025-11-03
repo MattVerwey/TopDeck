@@ -4,6 +4,8 @@ Settings API endpoints.
 Provides API endpoints for viewing application settings and configuration.
 """
 
+from urllib.parse import urlparse
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -11,6 +13,24 @@ from topdeck import __version__
 from topdeck.common.config import settings
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
+
+
+def redact_uri(uri: str) -> str:
+    """
+    Redact sensitive information from URIs.
+    
+    Only shows the scheme, host, and port, removing credentials and path.
+    """
+    if not uri:
+        return uri
+    try:
+        parsed = urlparse(uri)
+        # Return only scheme, hostname, and port (no credentials, path, or query)
+        port_part = f":{parsed.port}" if parsed.port else ""
+        return f"{parsed.scheme}://{parsed.hostname}{port_part}"
+    except Exception:
+        # If parsing fails, just show redacted
+        return "[redacted]"
 
 
 class FeatureFlags(BaseModel):
@@ -149,11 +169,12 @@ async def get_connection_status() -> ConnectionStatus:
     Get connection status for external services.
 
     Returns status and configuration details for database, cache, message queue,
-    and monitoring integrations.
+    and monitoring integrations. Sensitive information (credentials, full URIs)
+    is redacted for security.
     """
     return ConnectionStatus(
         neo4j={
-            "uri": settings.neo4j_uri,
+            "uri": redact_uri(settings.neo4j_uri),
             "encrypted": str(settings.neo4j_encrypted),
             "status": "configured",
         },
@@ -170,12 +191,11 @@ async def get_connection_status() -> ConnectionStatus:
             "status": "configured",
         },
         monitoring={
-            "prometheus": settings.prometheus_url or "not configured",
-            "tempo": settings.tempo_url or "not configured",
-            "loki": settings.loki_url or "not configured",
-            "elasticsearch": settings.elasticsearch_url or "not configured",
-            "azure_log_analytics": settings.azure_log_analytics_workspace_id
-            or "not configured",
+            "prometheus": redact_uri(settings.prometheus_url) if settings.prometheus_url else "not configured",
+            "tempo": redact_uri(settings.tempo_url) if settings.tempo_url else "not configured",
+            "loki": redact_uri(settings.loki_url) if settings.loki_url else "not configured",
+            "elasticsearch": redact_uri(settings.elasticsearch_url) if settings.elasticsearch_url else "not configured",
+            "azure_log_analytics": settings.azure_log_analytics_workspace_id[:8] + "..." if settings.azure_log_analytics_workspace_id else "not configured",
         },
     )
 

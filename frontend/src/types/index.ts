@@ -255,3 +255,66 @@ export interface ResourceAvailability {
   period_start: string;
   period_end: string;
 }
+
+// Settings types
+export interface FeatureFlags {
+  azure_discovery: boolean;
+  aws_discovery: boolean;
+  gcp_discovery: boolean;
+  github_integration: boolean;
+  azure_devops_integration: boolean;
+  risk_analysis: boolean;
+  monitoring: boolean;
+}
+
+export interface DiscoverySettings {
+  scan_interval: number;
+  parallel_workers: number;
+  timeout: number;
+}
+
+export interface CacheSettings {
+  ttl_resources: number;
+  ttl_risk_scores: number;
+  ttl_topology: number;
+}
+
+export interface SecuritySettings {
+  rbac_enabled: boolean;
+  audit_logging_enabled: boolean;
+  ssl_enabled: boolean;
+  neo4j_encrypted: boolean;
+  redis_ssl: boolean;
+  rabbitmq_ssl: boolean;
+}
+
+export interface RateLimitSettings {
+  enabled: boolean;
+  requests_per_minute: number;
+}
+
+export interface IntegrationStatus {
+  prometheus: boolean;
+  tempo: boolean;
+  loki: boolean;
+  elasticsearch: boolean;
+  azure_log_analytics: boolean;
+}
+
+export interface ApplicationSettings {
+  version: string;
+  environment: string;
+  features: FeatureFlags;
+  discovery: DiscoverySettings;
+  cache: CacheSettings;
+  security: SecuritySettings;
+  rate_limiting: RateLimitSettings;
+  integrations: IntegrationStatus;
+}
+
+export interface ConnectionStatus {
+  neo4j: Record<string, string>;
+  redis: Record<string, string>;
+  rabbitmq: Record<string, string>;
+  monitoring: Record<string, string>;
+}
