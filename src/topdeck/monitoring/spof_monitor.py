@@ -275,7 +275,7 @@ class SPOFMonitor:
         Get recent SPOF changes.
         
         Args:
-            limit: Maximum number of changes to return (default: 50, must be positive)
+            limit: Maximum number of changes to return (default: 50, must be at least 1)
             
         Returns:
             List of recent changes as dictionaries

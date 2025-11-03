@@ -20,7 +20,6 @@ import {
   TableRow,
   Chip,
   Alert,
-  IconButton,
   Tooltip,
   Tabs,
   Tab,
@@ -186,7 +185,7 @@ export default function SPOFMonitoring() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
               background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',

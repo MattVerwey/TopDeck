@@ -106,14 +106,14 @@ def test_detect_new_spofs(spof_monitor, sample_spofs):
     )
 
     # First scan
-    snapshot1 = spof_monitor.scan()
+    spof_monitor.scan()
     assert len(spof_monitor.changes) == 0
 
     # Second scan with additional SPOF
     spof_monitor.risk_analyzer.identify_single_points_of_failure = Mock(
         return_value=sample_spofs
     )
-    snapshot2 = spof_monitor.scan()
+    spof_monitor.scan()
 
     # Verify new SPOF was detected
     assert len(spof_monitor.changes) == 1
@@ -131,14 +131,14 @@ def test_detect_resolved_spofs(spof_monitor, sample_spofs):
     )
 
     # First scan with both SPOFs
-    snapshot1 = spof_monitor.scan()
+    spof_monitor.scan()
     assert len(spof_monitor.changes) == 0
 
     # Second scan with one SPOF resolved
     spof_monitor.risk_analyzer.identify_single_points_of_failure = Mock(
         return_value=[sample_spofs[0]]
     )
-    snapshot2 = spof_monitor.scan()
+    spof_monitor.scan()
 
     # Verify SPOF resolution was detected
     assert len(spof_monitor.changes) == 1
