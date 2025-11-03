@@ -29,6 +29,9 @@ import ResourceTester from '../components/risk/ResourceTester';
 import ResourceQuery from '../components/risk/ResourceQuery';
 import RemediationSuggestions from '../components/risk/RemediationSuggestions';
 import PredictionAnalysis from '../components/risk/PredictionAnalysis';
+import RiskDrilldownDialog from '../components/risk/RiskDrilldownDialog';
+import apiClient from '../services/api';
+import type { RiskAssessment } from '../types';
 
 interface RiskMetric {
   name: string;
@@ -37,12 +40,28 @@ interface RiskMetric {
 }
 
 // Memoized components for better performance
-const MemoizedRiskCard = memo(({ metric, nodeCount }: { metric: RiskMetric; nodeCount: number }) => (
+const MemoizedRiskCard = memo(({ 
+  metric, 
+  nodeCount, 
+  onClick 
+}: { 
+  metric: RiskMetric; 
+  nodeCount: number;
+  onClick: () => void;
+}) => (
   <Card
     sx={{
       background: 'linear-gradient(135deg, #132f4c 0%, #1a3e5e 100%)',
       borderLeft: `4px solid ${metric.color}`,
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+      '&:hover': {
+        transform: 'translateY(-4px)',
+        boxShadow: 4,
+        borderLeftWidth: '6px',
+      },
     }}
+    onClick={onClick}
   >
     <CardContent>
       <Typography variant="h4" fontWeight={700}>
@@ -56,6 +75,9 @@ const MemoizedRiskCard = memo(({ metric, nodeCount }: { metric: RiskMetric; node
         value={(metric.count / (nodeCount || 1)) * 100}
         sx={{ mt: 2, height: 6, borderRadius: 3 }}
       />
+      <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block' }}>
+        Click to view details
+      </Typography>
     </CardContent>
   </Card>
 ));
@@ -75,6 +97,8 @@ export default function RiskAnalysis() {
   const [riskData, setRiskData] = useState<RiskMetric[]>([]);
   const [defaultRisks, setDefaultRisks] = useState<DefaultRisk[]>([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [selectedRiskLevel, setSelectedRiskLevel] = useState<'critical' | 'high' | 'medium' | 'low'>('critical');
 
   useEffect(() => {
     loadRiskData();
@@ -102,40 +126,107 @@ export default function RiskAnalysis() {
 
       const nodeCount = topology?.nodes.length || 5;
       
-      // Simulate risk calculation based on topology
+      // Fetch real risk assessments from API
+      let allRisks: RiskAssessment[] = [];
+      if (topology?.nodes && topology.nodes.length > 0) {
+        try {
+          // Try to fetch all risks for each resource
+          const riskPromises = topology.nodes.map(node => 
+            apiClient.getRiskAssessment(node.id).catch(() => null)
+          );
+          const risks = await Promise.all(riskPromises);
+          allRisks = risks.filter((r): r is RiskAssessment => r !== null);
+        } catch {
+          // If API fails, continue with empty array
+          console.warn('Failed to fetch risk assessments from API');
+        }
+      }
+
+      // Calculate risk distribution from actual data
+      const riskCounts = {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+      };
+
+      allRisks.forEach(risk => {
+        const level = risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score);
+        if (level === 'critical') riskCounts.critical++;
+        else if (level === 'high') riskCounts.high++;
+        else if (level === 'medium') riskCounts.medium++;
+        else riskCounts.low++;
+      });
+
+      // If no API data, use estimates based on topology
+      if (allRisks.length === 0) {
+        riskCounts.critical = Math.max(Math.floor(nodeCount * 0.05), 1);
+        riskCounts.high = Math.max(Math.floor(nodeCount * 0.15), 2);
+        riskCounts.medium = Math.max(Math.floor(nodeCount * 0.30), 3);
+        riskCounts.low = Math.max(nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium, 1);
+      }
+
       const riskMetrics: RiskMetric[] = [
-        { name: 'Critical', count: 3, color: '#f44336' },
-        { name: 'High', count: 12, color: '#ff9800' },
-        { name: 'Medium', count: 25, color: '#ff9800' },
-        { name: 'Low', count: Math.max(nodeCount - 40, 10), color: '#4caf50' },
+        { name: 'Critical', count: riskCounts.critical, color: '#f44336' },
+        { name: 'High', count: riskCounts.high, color: '#ff9800' },
+        { name: 'Medium', count: riskCounts.medium, color: '#ffeb3b' },
+        { name: 'Low', count: riskCounts.low, color: '#4caf50' },
       ];
 
       setRiskData(riskMetrics);
 
-      // Default risks detected
-      const defaultRisksData = [
-        {
+      // Identify real risks from assessments
+      const spofResources = allRisks.filter(r => r.single_point_of_failure);
+      const highDependencyResources = allRisks.filter(r => r.dependents_count > 10);
+      const highBlastRadiusResources = allRisks.filter(r => r.blast_radius > 20);
+
+      const defaultRisksData: DefaultRisk[] = [];
+      
+      if (spofResources.length > 0) {
+        const totalAffected = spofResources.reduce((sum, r) => sum + r.dependents_count, 0);
+        defaultRisksData.push({
           id: 1,
           title: 'Single Point of Failure Detected',
-          description: 'Database instance has no redundancy',
+          description: `${spofResources.length} resource${spofResources.length > 1 ? 's have' : ' has'} no redundancy: ${spofResources.slice(0, 2).map(r => r.resource_name || r.resource_id).join(', ')}${spofResources.length > 2 ? '...' : ''}`,
           severity: 'critical',
-          affected: 15,
-        },
-        {
+          affected: totalAffected,
+        });
+      }
+
+      if (highDependencyResources.length > 0) {
+        const maxDeps = Math.max(...highDependencyResources.map(r => r.dependents_count));
+        const resource = highDependencyResources.find(r => r.dependents_count === maxDeps);
+        defaultRisksData.push({
           id: 2,
           title: 'High Dependency Count',
-          description: 'API Gateway has 25+ dependent services',
+          description: `${resource?.resource_name || 'Resource'} has ${maxDeps} dependent services`,
           severity: 'high',
-          affected: 25,
-        },
-        {
+          affected: maxDeps,
+        });
+      }
+
+      if (highBlastRadiusResources.length > 0) {
+        const maxBlast = Math.max(...highBlastRadiusResources.map(r => r.blast_radius));
+        const resource = highBlastRadiusResources.find(r => r.blast_radius === maxBlast);
+        defaultRisksData.push({
           id: 3,
-          title: 'No Backup Configuration',
-          description: 'Storage account missing backup policy',
-          severity: 'medium',
-          affected: 5,
-        },
-      ];
+          title: 'Large Blast Radius',
+          description: `${resource?.resource_name || 'Resource'} affects ${maxBlast} resources if it fails`,
+          severity: 'high',
+          affected: maxBlast,
+        });
+      }
+
+      // Add fallback risks if no real risks found
+      if (defaultRisksData.length === 0) {
+        defaultRisksData.push({
+          id: 1,
+          title: 'Risk Analysis Available',
+          description: 'Select a resource in the Risk Breakdown tab to analyze specific risks',
+          severity: 'info',
+          affected: 0,
+        });
+      }
 
       setDefaultRisks(defaultRisksData);
     } catch (err) {
@@ -144,6 +235,18 @@ export default function RiskAnalysis() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRiskLevelFromScore = (score: number): string => {
+    if (score >= 80) return 'critical';
+    if (score >= 60) return 'high';
+    if (score >= 40) return 'medium';
+    return 'low';
+  };
+
+  const handleRiskCardClick = (riskLevel: 'critical' | 'high' | 'medium' | 'low') => {
+    setSelectedRiskLevel(riskLevel);
+    setDrilldownOpen(true);
   };
 
   const getSeverityIcon = (severity: string) => {
@@ -212,7 +315,11 @@ export default function RiskAnalysis() {
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 {riskData.map((metric) => (
                   <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.name}>
-                    <MemoizedRiskCard metric={metric} nodeCount={nodeCount} />
+                    <MemoizedRiskCard 
+                      metric={metric} 
+                      nodeCount={nodeCount}
+                      onClick={() => handleRiskCardClick(metric.name.toLowerCase() as 'critical' | 'high' | 'medium' | 'low')}
+                    />
                   </Grid>
                 ))}
               </Grid>
@@ -292,7 +399,7 @@ export default function RiskAnalysis() {
                               </Typography>
                               <Box display="flex" alignItems="center" gap={2}>
                                 <Chip
-                                  label={`${risk.affected} services affected`}
+                                  label={risk.affected === 0 ? 'No services affected' : `${risk.affected} service${risk.affected !== 1 ? 's' : ''} affected`}
                                   size="small"
                                   variant="outlined"
                                   color="primary"
@@ -325,6 +432,13 @@ export default function RiskAnalysis() {
 
       {/* Risk Breakdown Tab */}
       {activeTab === 5 && <RiskBreakdown />}
+
+      {/* Drilldown Dialog */}
+      <RiskDrilldownDialog
+        open={drilldownOpen}
+        onClose={() => setDrilldownOpen(false)}
+        riskLevel={selectedRiskLevel}
+      />
     </Box>
   );
 }

@@ -298,7 +298,7 @@ export default function RiskBreakdown() {
                     {breakdownData.degradation.description}
                   </Typography>
                   <Chip
-                    label={`${breakdownData.degradation.affectedServices} services affected`}
+                    label={`${breakdownData.degradation.affectedServices} service${breakdownData.degradation.affectedServices !== 1 ? 's' : ''} affected`}
                     size="small"
                     color="warning"
                     sx={{ mt: 1 }}
@@ -327,7 +327,7 @@ export default function RiskBreakdown() {
                     {breakdownData.downtime.description}
                   </Typography>
                   <Chip
-                    label={`${breakdownData.downtime.affectedServices} services affected`}
+                    label={`${breakdownData.downtime.affectedServices} service${breakdownData.downtime.affectedServices !== 1 ? 's' : ''} affected`}
                     size="small"
                     color="error"
                     sx={{ mt: 1 }}
@@ -356,7 +356,7 @@ export default function RiskBreakdown() {
                     {breakdownData.misconfiguration.description}
                   </Typography>
                   <Chip
-                    label={`${breakdownData.misconfiguration.affectedServices} services affected`}
+                    label={`${breakdownData.misconfiguration.affectedServices} service${breakdownData.misconfiguration.affectedServices !== 1 ? 's' : ''} affected`}
                     size="small"
                     color="info"
                     sx={{ mt: 1 }}
@@ -400,40 +400,49 @@ export default function RiskBreakdown() {
             <Grid size={{ xs: 12, md: 6 }}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom fontWeight={600}>
-                  Services to be Taken Down
+                  Affected Services
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  The following services will be affected by this risk:
+                  {breakdownData.affectedServices.length} service{breakdownData.affectedServices.length !== 1 ? 's' : ''} will be affected by changes to this resource:
                 </Typography>
                 <Box sx={{ maxHeight: 280, overflowY: 'auto' }}>
-                  {breakdownData.affectedServices.map((service) => (
-                    <Card key={service.id} sx={{ mb: 1, background: '#132f4c' }}>
-                      <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                        <Box display="flex" alignItems="center" justifyContent="space-between">
-                          <Box display="flex" alignItems="center" gap={1}>
-                            {service.impactLevel === 'critical' ? (
-                              <ErrorIcon color="error" fontSize="small" />
-                            ) : (
-                              <WarningIcon color="warning" fontSize="small" />
-                            )}
-                            <Box>
-                              <Typography variant="body2" fontWeight={600}>
-                                {service.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {service.type}
-                              </Typography>
+                  {breakdownData.affectedServices.length > 0 ? (
+                    breakdownData.affectedServices.map((service) => (
+                      <Card key={service.id} sx={{ mb: 1, background: '#132f4c' }}>
+                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Box display="flex" alignItems="center" justifyContent="space-between">
+                            <Box display="flex" alignItems="center" gap={1} flex={1} minWidth={0}>
+                              {service.impactLevel === 'critical' ? (
+                                <ErrorIcon color="error" fontSize="small" sx={{ flexShrink: 0 }} />
+                              ) : service.impactLevel === 'high' ? (
+                                <WarningIcon color="warning" fontSize="small" sx={{ flexShrink: 0 }} />
+                              ) : (
+                                <WarningIcon color="info" fontSize="small" sx={{ flexShrink: 0 }} />
+                              )}
+                              <Box flex={1} minWidth={0}>
+                                <Typography variant="body2" fontWeight={600} noWrap title={service.name}>
+                                  {service.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" noWrap>
+                                  Type: {service.type}
+                                </Typography>
+                              </Box>
                             </Box>
+                            <Chip
+                              label={service.impactLevel.toUpperCase()}
+                              size="small"
+                              color={getImpactColor(service.impactLevel) as 'error' | 'warning' | 'info' | 'success'}
+                              sx={{ ml: 1, flexShrink: 0 }}
+                            />
                           </Box>
-                          <Chip
-                            label={service.impactLevel.toUpperCase()}
-                            size="small"
-                            color={getImpactColor(service.impactLevel) as 'error' | 'warning' | 'info' | 'success'}
-                          />
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Alert severity="info">
+                      No affected services identified for this resource
+                    </Alert>
+                  )}
                 </Box>
               </Paper>
             </Grid>
