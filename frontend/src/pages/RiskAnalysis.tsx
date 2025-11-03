@@ -137,9 +137,9 @@ export default function RiskAnalysis() {
           );
           const risks = await Promise.all(riskPromises);
           allRisks = risks.filter((r): r is RiskAssessment => r !== null);
-        } catch {
-          // If API fails, continue with empty array
-          console.warn('Failed to fetch risk assessments from API');
+        } catch (err) {
+          // Catch unexpected errors during Promise.all operation
+          console.warn('Unexpected error fetching risk assessments:', err);
         }
       }
 

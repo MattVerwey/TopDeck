@@ -33,3 +33,21 @@ export function getRiskColor(level: string): 'error' | 'warning' | 'info' | 'suc
       return 'success';
   }
 }
+
+/**
+ * Get impact level color
+ * @param impactLevel Impact level (critical, high, medium, low)
+ * @returns MUI color name
+ */
+export function getImpactColor(impactLevel: string): 'error' | 'warning' | 'info' | 'success' {
+  switch (impactLevel) {
+    case 'critical':
+      return 'error';
+    case 'high':
+      return 'warning';
+    case 'medium':
+      return 'info';
+    default:
+      return 'success';
+  }
+}

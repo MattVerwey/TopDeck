@@ -149,7 +149,7 @@ export default function RiskDrilldownDialog({
 
                     <Box display="flex" gap={2} flexWrap="wrap" mb={2}>
                       <Chip
-                        label={`Risk Score: ${risk.risk_score.toFixed(1)}`}
+                        label={`Risk Score: ${risk.risk_score != null ? risk.risk_score.toFixed(1) : 'N/A'}`}
                         size="small"
                         variant="outlined"
                       />

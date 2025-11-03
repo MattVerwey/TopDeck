@@ -31,6 +31,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
+import { getImpactColor } from '../../utils/riskUtils';
 
 interface RiskBreakdownData {
   degradation: {
@@ -175,16 +176,13 @@ export default function RiskBreakdown() {
       ]
     : [];
 
-  const getImpactColor = (level: string) => {
-    switch (level) {
-      case 'critical':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      default:
-        return 'success';
+  const getImpactIcon = (impactLevel: string) => {
+    if (impactLevel === 'critical') {
+      return <ErrorIcon color="error" fontSize="small" sx={{ flexShrink: 0 }} />;
+    } else if (impactLevel === 'high') {
+      return <WarningIcon color="warning" fontSize="small" sx={{ flexShrink: 0 }} />;
+    } else {
+      return <WarningIcon color="info" fontSize="small" sx={{ flexShrink: 0 }} />;
     }
   };
 
@@ -412,13 +410,7 @@ export default function RiskBreakdown() {
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                           <Box display="flex" alignItems="center" justifyContent="space-between">
                             <Box display="flex" alignItems="center" gap={1} flex={1} minWidth={0}>
-                              {service.impactLevel === 'critical' ? (
-                                <ErrorIcon color="error" fontSize="small" sx={{ flexShrink: 0 }} />
-                              ) : service.impactLevel === 'high' ? (
-                                <WarningIcon color="warning" fontSize="small" sx={{ flexShrink: 0 }} />
-                              ) : (
-                                <WarningIcon color="info" fontSize="small" sx={{ flexShrink: 0 }} />
-                              )}
+                              {getImpactIcon(service.impactLevel)}
                               <Box flex={1} minWidth={0}>
                                 <Typography variant="body2" fontWeight={600} noWrap title={service.name}>
                                   {service.name}
