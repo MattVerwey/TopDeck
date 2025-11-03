@@ -73,7 +73,7 @@ def test_revenue_loss_calculation(cost_analyzer):
 
 def test_sla_penalty_calculation():
     """Test SLA penalty calculation."""
-    annual_revenue = 10_000_000  # $10M
+    annual_revenue = 10_000_000  # £10M
 
     analyzer = CostImpactAnalyzer(annual_revenue=annual_revenue)
 
@@ -160,7 +160,7 @@ def test_recovery_cost_by_resource_type(cost_analyzer):
 
 def test_annual_risk_cost_estimation(cost_analyzer):
     """Test annual risk cost estimation."""
-    hourly_rate = 1000.0  # $1000/hour
+    hourly_rate = 1000.0  # £1000/hour
     failure_probability = 0.1  # 10% chance per year
     recovery_time = 2.0  # 2 hours MTTR
 
@@ -180,7 +180,7 @@ def test_annual_risk_cost_estimation(cost_analyzer):
 
 def test_mitigation_cost_comparison(cost_analyzer):
     """Test mitigation cost comparison."""
-    current_risk_cost = 100_000  # $100K annual risk
+    current_risk_cost = 100_000  # £100K annual risk
 
     mitigations = [
         {

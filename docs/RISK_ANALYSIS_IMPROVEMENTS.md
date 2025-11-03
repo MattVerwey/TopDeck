@@ -103,7 +103,7 @@ custom_scorer = TimeAwareRiskScorer(
 
 ### What is it?
 
-Cost impact analysis quantifies the **financial consequences** of resource failures. Instead of just knowing that "database failure affects 5 services," you now know "database failure costs $50,000 per hour."
+Cost impact analysis quantifies the **financial consequences** of resource failures. Instead of just knowing that "database failure affects 5 services," you now know "database failure costs £50,000 per hour."
 
 ### Cost Components
 
@@ -146,9 +146,9 @@ annual_revenue=10000000"
   "affected_users": 50000,
   "confidence_level": "high",
   "assumptions": [
-    "Revenue loss based on 50000 users at $0.50/user/hour",
-    "Engineering cost based on 3 engineers at $150/hour",
-    "Support cost based on 2 staff at $50/hour",
+    "Revenue loss based on 50000 users at £0.50/user/hour",
+    "Engineering cost based on 3 engineers at £150/hour",
+    "Support cost based on 2 staff at £50/hour",
     "SLA penalty at 1.0% of annual revenue per hour",
     "Reputation damage estimated at 30% of tangible costs",
     "Recovery costs estimated for api_gateway"
@@ -190,7 +190,7 @@ from topdeck.analysis.risk import CostImpactAnalyzer
 
 analyzer = CostImpactAnalyzer(industry="fintech", annual_revenue=10_000_000)
 
-current_risk_cost = 100_000  # $100K annual risk
+current_risk_cost = 100_000  # £100K annual risk
 
 mitigations = [
     {
@@ -242,9 +242,9 @@ Default rates can be customized per organization:
 
 ```python
 custom_rates = {
-    "revenue_per_user_hour": 1.50,  # $1.50 per user per hour
-    "engineering_hour_rate": 200.0,  # $200/hour
-    "support_hour_rate": 75.0,       # $75/hour
+    "revenue_per_user_hour": 1.50,  # £1.50 per user per hour
+    "engineering_hour_rate": 200.0,  # £200/hour
+    "support_hour_rate": 75.0,       # £75/hour
     "avg_engineers_per_incident": 5,
     "avg_support_per_incident": 3,
     "sla_penalty_rate_per_hour": 0.02,  # 2% per hour
@@ -476,8 +476,8 @@ alerts:
     critical: 80
   
   cost_impact:
-    hourly_warning: 5000  # $5K/hour
-    hourly_critical: 20000  # $20K/hour
+    hourly_warning: 5000  # £5K/hour
+    hourly_critical: 20000  # £20K/hour
   
   trend:
     degrading_percentage: 20  # Alert if risk increases >20%

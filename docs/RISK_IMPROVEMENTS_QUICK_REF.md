@@ -48,14 +48,14 @@ annual_revenue=10000000"
 ### Industry Multipliers
 | Industry | Multiplier | Example Impact |
 |----------|-----------|----------------|
-| fintech | 3.0x | $1K → $3K |
-| healthcare | 2.5x | $1K → $2.5K |
-| ecommerce | 2.0x | $1K → $2K |
-| gaming | 1.8x | $1K → $1.8K |
-| saas | 1.5x | $1K → $1.5K |
-| media | 1.3x | $1K → $1.3K |
-| enterprise | 1.2x | $1K → $1.2K |
-| default | 1.0x | $1K → $1K |
+| fintech | 3.0x | £1K → £3K |
+| healthcare | 2.5x | £1K → £2.5K |
+| ecommerce | 2.0x | £1K → £2K |
+| gaming | 1.8x | £1K → £1.8K |
+| saas | 1.5x | £1K → £1.5K |
+| media | 1.3x | £1K → £1.3K |
+| enterprise | 1.2x | £1K → £1.2K |
+| default | 1.0x | £1K → £1K |
 
 ### Cost Breakdown Components
 1. `revenue_loss`: Direct revenue impact
@@ -66,10 +66,10 @@ annual_revenue=10000000"
 6. `recovery_costs`: Infrastructure restoration
 
 ### Quick Estimates
-- **Small App**: ~$500-$2K/hour downtime
-- **Medium Service**: ~$5K-$20K/hour downtime  
-- **Critical System**: ~$50K-$200K/hour downtime
-- **Enterprise Platform**: $100K-$1M+/hour downtime
+- **Small App**: ~£500-£2K/hour downtime
+- **Medium Service**: ~£5K-£20K/hour downtime  
+- **Critical System**: ~£50K-£200K/hour downtime
+- **Enterprise Platform**: £100K-£1M+/hour downtime
 
 ---
 
@@ -148,8 +148,8 @@ done
 response = requests.get(f"{base_url}/cost-impact?downtime_hours=1&affected_users=10000")
 cost = response.json()["hourly_impact_rate"]
 
-if cost > 10000:  # Alert if > $10K/hour
-    send_alert(f"High cost impact: ${cost}/hour")
+if cost > 10000:  # Alert if > £10K/hour
+    send_alert(f"High cost impact: £{cost}/hour")
 ```
 
 ---
@@ -178,7 +178,7 @@ COST_DATA=$(curl "http://topdeck/api/v1/risk/resources/${ID}/cost-impact?downtim
 ANNUAL_COST=$(echo $COST_DATA | jq '.annual_risk_cost.expected_annual_cost')
 
 # 2. Compare with mitigation cost
-# If annual_cost ($100K) > mitigation_cost ($50K), it's justified
+# If annual_cost (£100K) > mitigation_cost (£50K), it's justified
 ```
 
 ### Pattern 3: Health Monitoring
@@ -214,8 +214,8 @@ time_multipliers:
   avoid_deployment: 1.5  # Don't deploy if multiplier > 1.5x
 
 cost_per_hour:
-  warning: 5000   # $5K/hour
-  critical: 20000  # $20K/hour
+  warning: 5000   # £5K/hour
+  critical: 20000  # £20K/hour
 
 trend_change:
   warning: 15   # Alert if risk increases > 15%
@@ -269,14 +269,14 @@ curl "http://localhost:8000/api/v1/risk/resources/db-prod-001/time-aware-risk?de
 # Expect: Low multiplier (0.5x), optimal time
 
 curl "http://localhost:8000/api/v1/risk/resources/db-prod-001/cost-impact?downtime_hours=1&affected_users=100000&has_sla=true"
-# Expect: High cost ($50K-$200K)
+# Expect: High cost (£50K-£200K)
 ```
 
 ### Cache Update
 ```bash
 # Lower risk, rebuild-able
 curl "http://localhost:8000/api/v1/risk/resources/redis-cache-001/cost-impact?downtime_hours=0.5&affected_users=10000"
-# Expect: Moderate cost ($2K-$10K)
+# Expect: Moderate cost (£2K-£10K)
 ```
 
 ### API Gateway Change

@@ -49,7 +49,7 @@ Successfully enhanced TopDeck's risk analysis engine with three major capabiliti
 
 ### 2. Cost Impact Analysis 💰
 
-**Purpose**: Quantify financial consequences of failures in dollars.
+**Purpose**: Quantify financial consequences of failures in pounds sterling.
 
 **Key Features**:
 - 6 cost components (revenue, engineering, support, SLA, reputation, recovery)
@@ -59,7 +59,7 @@ Successfully enhanced TopDeck's risk analysis engine with three major capabiliti
 - Confidence levels (low/medium/high)
 
 **Business Impact**:
-- **$10K-$200K+** per hour cost estimates for critical systems
+- **£10K-£200K+** per hour cost estimates for critical systems
 - Data-driven infrastructure investment justification
 - 300%+ ROI calculations for mitigations
 
@@ -218,7 +218,7 @@ Successfully enhanced TopDeck's risk analysis engine with three major capabiliti
 |--------|--------|-------------------|
 | **Risk Score** | 65/100 static | 84.5/100 (Wed 2PM) → 27.3/100 (Sun 2AM) |
 | **Timing** | No guidance | **Avoid Wed 2PM** (1.3x multiplier)<br>**Use Sun 2AM** (0.42x multiplier) |
-| **Cost Impact** | Unknown | **$43,675/hour** downtime<br>**$8,735/year** expected cost |
+| **Cost Impact** | Unknown | **£43,675/hour** downtime<br>**£8,735/year** expected cost |
 | **Trend** | No tracking | **Degrading +14%** over 3 weeks<br>Predicted: **54.3/100** in 7 days |
 
 **Decisions Made**:
@@ -229,8 +229,8 @@ Successfully enhanced TopDeck's risk analysis engine with three major capabiliti
    - Expected 40% reduction in incident probability
 
 2. **Infrastructure Investment**:
-   - Downtime costs $43K/hour
-   - Multi-AZ deployment: $50K implementation
+   - Downtime costs £43K/hour
+   - Multi-AZ deployment: £50K implementation
    - ROI: 6.7 month payback, 300% first year
    - **Decision**: Approved investment
 
@@ -240,7 +240,7 @@ Successfully enhanced TopDeck's risk analysis engine with three major capabiliti
    - Investigating new dependencies added recently
    - **Action**: Scheduled architecture review
 
-**Outcome**: Avoided potential $87K outage through better timing, justified $50K infrastructure spend with ROI analysis, and identified degrading trend before it became critical.
+**Outcome**: Avoided potential £87K outage through better timing, justified £50K infrastructure spend with ROI analysis, and identified degrading trend before it became critical.
 
 ---
 
@@ -369,8 +369,8 @@ time_multiplier:
   avoid_deployment: 1.5
 
 hourly_cost:
-  warning: 5000    # $5K/hour
-  critical: 20000  # $20K/hour
+  warning: 5000    # £5K/hour
+  critical: 20000  # £20K/hour
 
 trend_change:
   warning: 15%

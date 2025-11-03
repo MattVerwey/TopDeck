@@ -32,7 +32,7 @@ class CostImpact:
     Attributes:
         resource_id: ID of the resource
         resource_name: Name of the resource
-        total_cost: Total estimated cost in USD
+        total_cost: Total estimated cost in GBP
         cost_breakdown: Breakdown by cost category
         hourly_impact_rate: Cost per hour of downtime
         affected_users: Estimated number of affected users
@@ -353,12 +353,12 @@ class CostImpactAnalyzer:
 
         if expected_annual_cost > 100000:
             recommendations.append(
-                "💰 High annual risk cost ($100K+): Prioritize redundancy and failover capabilities"
+                "💰 High annual risk cost (£100K+): Prioritize redundancy and failover capabilities"
             )
 
         if hourly_impact_rate > 10000:
             recommendations.append(
-                "⚠️ High hourly impact ($10K+/hour): Implement 24/7 monitoring and on-call rotation"
+                "⚠️ High hourly impact (£10K+/hour): Implement 24/7 monitoring and on-call rotation"
             )
 
         if expected_annual_cost > 50000:
