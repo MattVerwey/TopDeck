@@ -106,7 +106,7 @@ export default function Topology() {
       return;
     }
 
-    let filtered = { ...topology };
+    const filtered = { ...topology };
 
     // Filter by selected resources if any
     if (selectedResourceIds.length > 0) {
