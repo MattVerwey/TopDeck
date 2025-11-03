@@ -185,38 +185,22 @@ class AzureDiscoverer:
 
         return result
 
-    async def _discover_dependencies(
-        self,
-        resources: list[DiscoveredResource],
-    ) -> list[ResourceDependency]:
+    def _get_dependency_patterns(self):
         """
-        Discover dependencies between resources.
-
-        This implementation uses a comprehensive mapping of common Azure resource
-        dependencies to detect relationships between resources. It considers:
-        - Compute resources depending on data stores
-        - Application services depending on caching and configuration
-        - Container orchestration depending on storage and networking
-        - Network dependencies between components
-
-        Args:
-            resources: List of discovered resources
-
+        Get comprehensive Azure resource dependency patterns.
+        
+        Returns a list of tuples defining common dependency relationships:
+        (source_type, target_type, category, dependency_type, strength, description)
+        
+        These patterns represent typical Azure infrastructure relationships based on
+        common usage patterns and architectural best practices.
+        
         Returns:
-            List of discovered dependencies
+            List of dependency pattern tuples
         """
-        from .resources import detect_servicebus_dependencies
-        from ..models import (
-            DependencyCategory,
-            DependencyType,
-            ResourceDependency,
-        )
-
-        dependencies = []
-
-        # Define comprehensive and precise dependency patterns
-        # Format: (source_type, target_type, category, dependency_type, strength, description)
-        dependency_patterns = [
+        from ..models import DependencyCategory, DependencyType
+        
+        return [
             # App Service dependencies - Web applications
             ("app_service", "sql_database", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
              "App Service likely depends on SQL Database"),
@@ -336,7 +320,42 @@ class AzureDiscoverer:
              "Service Bus Subscription is attached to Service Bus Topic"),
         ]
 
-        # First, detect precise hierarchical dependencies based on resource IDs
+    async def _discover_dependencies(
+        self,
+        resources: list[DiscoveredResource],
+    ) -> list[ResourceDependency]:
+        """
+        Discover dependencies between resources using a two-phase approach.
+        
+        Phase 1: Hierarchical Detection (Precise)
+        - Analyzes resource IDs to detect parent-child relationships
+        - Examples: SQL Database → SQL Server, Service Bus Topic → Namespace
+        - High confidence (strength=1.0) based on resource structure
+        
+        Phase 2: Pattern-Based Detection (Heuristic)
+        - Applies common infrastructure patterns to detect likely dependencies
+        - Scoped to same resource group (Azure best practice)
+        - Confidence based on typical usage patterns (strength 0.6-0.9)
+
+        Args:
+            resources: List of discovered resources
+
+        Returns:
+            List of discovered dependencies
+        """
+        from .resources import detect_servicebus_dependencies
+        from ..models import (
+            DependencyCategory,
+            DependencyType,
+            ResourceDependency,
+        )
+
+        dependencies = []
+
+        # Get dependency patterns
+        dependency_patterns = self._get_dependency_patterns()
+
+        # Phase 1: Detect precise hierarchical dependencies based on resource IDs
         # These are the most accurate as they're based on actual Azure resource structure
         for resource in resources:
             resource_id = resource.id.lower()
@@ -390,7 +409,10 @@ class AzureDiscoverer:
                         dependencies.append(dep)
                         break
 
-        # Second, apply heuristic-based dependency patterns
+        # Phase 2: Apply heuristic-based dependency patterns
+        # Build a set of existing dependency pairs for O(1) lookup performance
+        existing_pairs = {(d.source_id, d.target_id) for d in dependencies}
+        
         for source_resource in resources:
             for target_resource in resources:
                 # Skip self-dependencies
@@ -412,12 +434,9 @@ class AzureDiscoverer:
                     if (source_resource.resource_type == source_type and 
                         target_resource.resource_type == target_type):
                         
-                        # Skip if we already have a hierarchical dependency
-                        already_exists = any(
-                            d.source_id == source_resource.id and d.target_id == target_resource.id
-                            for d in dependencies
-                        )
-                        if already_exists:
+                        # Skip if we already have a dependency (O(1) lookup using set)
+                        pair = (source_resource.id, target_resource.id)
+                        if pair in existing_pairs:
                             continue
                         
                         dep = ResourceDependency(
@@ -430,6 +449,7 @@ class AzureDiscoverer:
                             description=f"{description} in same resource group",
                         )
                         dependencies.append(dep)
+                        existing_pairs.add(pair)  # Track to avoid duplicates
 
         # Detect Service Bus messaging dependencies (more specific detection)
         servicebus_deps = await detect_servicebus_dependencies(
