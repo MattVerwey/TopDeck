@@ -131,6 +131,26 @@ export default function Topology() {
     }
 
     // Apply other filters
+    if (filters.cloud_provider) {
+      filtered.nodes = filtered.nodes.filter(
+        (n) => n.cloud_provider === filters.cloud_provider
+      );
+      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
+      filtered.edges = filtered.edges.filter(
+        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      );
+    }
+
+    if (filters.resource_type) {
+      filtered.nodes = filtered.nodes.filter(
+        (n) => n.resource_type === filters.resource_type
+      );
+      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
+      filtered.edges = filtered.edges.filter(
+        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      );
+    }
+
     if (filters.cluster) {
       filtered.nodes = filtered.nodes.filter(
         (n) => 
