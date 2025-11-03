@@ -15,7 +15,6 @@ from topdeck.analysis.accuracy import (
 )
 from topdeck.analysis.accuracy.multi_source_verifier import (
     MultiSourceDependencyVerifier,
-    VerificationEvidence,
 )
 from topdeck.storage.neo4j_client import Neo4jClient
 

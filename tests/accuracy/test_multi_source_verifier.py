@@ -3,7 +3,7 @@ Tests for multi-source dependency verification.
 """
 
 import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from topdeck.analysis.accuracy.multi_source_verifier import (
@@ -414,7 +414,7 @@ def test_calculate_verification_score_all_sources(verifier):
 
     score = verifier._calculate_verification_score(evidence)
 
-    assert score == 1.0  # 4 sources = perfect score (adjusted by avg confidence)
+    assert score == 0.8125  # 4 sources = base score 1.0, adjusted by avg confidence (0.8125)
 
 
 def test_calculate_verification_score_partial(verifier):
@@ -438,7 +438,7 @@ def test_calculate_verification_score_partial(verifier):
 
     score = verifier._calculate_verification_score(evidence)
 
-    assert 0.4 < score < 0.8  # 2 sources = 0.70 base, adjusted by confidence
+    assert 0.4 < score < 0.8  # 2 sources: base score is 0.70, but final score is base × avg confidence (can be as low as ~0.45)
 
 
 def test_calculate_overall_confidence(verifier):

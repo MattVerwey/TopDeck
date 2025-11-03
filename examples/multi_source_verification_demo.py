@@ -39,7 +39,7 @@ class MultiSourceVerificationDemo:
         Returns:
             Verification result or None if error
         """
-        endpoint = f"{self.api_base_url}/api/v1/dependencies/verify"
+        endpoint = f"{self.api_base_url}/api/v1/accuracy/dependencies/verify"
         params = {
             "source_id": source_id,
             "target_id": target_id,

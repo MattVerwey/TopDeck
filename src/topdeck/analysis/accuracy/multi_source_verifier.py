@@ -15,10 +15,15 @@ from typing import Any
 
 import structlog
 
-from topdeck.discovery.azure.devops import AzureDevOpsDiscoverer
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.monitoring.collectors.tempo import TempoCollector
 from topdeck.storage.neo4j_client import Neo4jClient
+
+# AzureDevOpsDiscoverer is an optional dependency for ADO verification
+try:
+    from topdeck.discovery.azure.devops import AzureDevOpsDiscoverer
+except ImportError:
+    AzureDevOpsDiscoverer = None
 
 logger = structlog.get_logger(__name__)
 
@@ -274,7 +279,6 @@ class MultiSourceDependencyVerifier:
         confidence = 0.0
         evidence_items = []
 
-        source_name = source.get("name")
         target_name = target.get("name")
 
         # Query Neo4j for ADO deployments related to source
