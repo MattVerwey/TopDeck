@@ -1,7 +1,7 @@
 """
 Background Scheduler Service for TopDeck.
 
-Handles periodic background tasks like automated resource discovery.
+Handles periodic background tasks like automated resource discovery and SPOF monitoring.
 """
 
 import asyncio
@@ -13,6 +13,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from topdeck.common.config import settings
 from topdeck.discovery.models import DiscoveryResult
+from topdeck.monitoring.spof_monitor import SPOFMonitor
 from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = logging.getLogger(__name__)
@@ -20,9 +21,10 @@ logger = logging.getLogger(__name__)
 
 class DiscoveryScheduler:
     """
-    Scheduler for automated resource discovery.
+    Scheduler for automated resource discovery and SPOF monitoring.
 
     Runs discovery tasks on a configurable interval (default: 8 hours).
+    Runs SPOF monitoring on a configurable interval (default: 15 minutes).
     Only runs discovery if credentials are configured and feature is enabled.
     """
 
@@ -30,8 +32,11 @@ class DiscoveryScheduler:
         """Initialize the discovery scheduler."""
         self.scheduler = AsyncIOScheduler()
         self.neo4j_client: Neo4jClient | None = None
+        self.spof_monitor: SPOFMonitor | None = None
         self.last_discovery_time: datetime | None = None
+        self.last_spof_scan_time: datetime | None = None
         self.discovery_in_progress = False
+        self.spof_scan_in_progress = False
 
     def start(self) -> None:
         """Start the scheduler."""
@@ -44,7 +49,12 @@ class DiscoveryScheduler:
                     password=settings.neo4j_password,
                 )
                 self.neo4j_client.connect()
-                logger.info("Connected to Neo4j for scheduled discovery")
+                logger.info("Connected to Neo4j for scheduled tasks")
+
+            # Initialize SPOF monitor
+            if not self.spof_monitor:
+                self.spof_monitor = SPOFMonitor(self.neo4j_client)
+                logger.info("Initialized SPOF monitor")
 
             # Add discovery job with configurable interval
             # Use seconds parameter to support sub-hour intervals
@@ -57,21 +67,44 @@ class DiscoveryScheduler:
                 max_instances=1,  # Ensure only one discovery runs at a time
             )
 
+            # Add SPOF monitoring job with configurable interval (default: 15 minutes)
+            spof_interval = getattr(settings, "spof_scan_interval", 900)  # 15 minutes default
+            self.scheduler.add_job(
+                self._run_spof_scan,
+                trigger=IntervalTrigger(seconds=spof_interval),
+                id="spof_monitoring",
+                name="SPOF Monitoring",
+                replace_existing=True,
+                max_instances=1,  # Ensure only one scan runs at a time
+            )
+
             self.scheduler.start()
-            interval_display = (
+            discovery_interval_display = (
                 f"{settings.discovery_scan_interval // 3600} hours"
                 if settings.discovery_scan_interval >= 3600
                 else f"{settings.discovery_scan_interval} seconds"
             )
-            logger.info(f"Discovery scheduler started with {interval_display} interval")
+            spof_interval_display = (
+                f"{spof_interval // 60} minutes"
+                if spof_interval >= 60
+                else f"{spof_interval} seconds"
+            )
+            logger.info(
+                f"Scheduler started - Discovery: {discovery_interval_display}, "
+                f"SPOF monitoring: {spof_interval_display}"
+            )
 
             # Run initial discovery immediately if configured
             if self._should_run_discovery():
                 logger.info("Running initial discovery on startup")
                 asyncio.create_task(self._run_discovery())
 
+            # Run initial SPOF scan on startup
+            logger.info("Running initial SPOF scan on startup")
+            asyncio.create_task(self._run_spof_scan())
+
         except Exception as e:
-            logger.error(f"Failed to start discovery scheduler: {e}")
+            logger.error(f"Failed to start scheduler: {e}")
             raise
 
     def stop(self) -> None:
@@ -301,6 +334,40 @@ class DiscoveryScheduler:
 
         logger.info(f"Stored {total_stored} resources in Neo4j")
 
+    async def _run_spof_scan(self) -> None:
+        """
+        Run SPOF monitoring scan.
+
+        This is the scheduled task that scans for single points of failure.
+        """
+        if self.spof_scan_in_progress:
+            logger.warning("SPOF scan already in progress, skipping this run")
+            return
+
+        if not self.spof_monitor:
+            logger.error("SPOF monitor not initialized")
+            return
+
+        self.spof_scan_in_progress = True
+        start_time = datetime.now()
+
+        try:
+            logger.info("Starting SPOF scan...")
+            snapshot = self.spof_monitor.scan()
+            self.last_spof_scan_time = datetime.now()
+            elapsed = (self.last_spof_scan_time - start_time).total_seconds()
+
+            logger.info(
+                f"SPOF scan completed in {elapsed:.2f}s - "
+                f"{snapshot.total_count} total SPOFs, "
+                f"{snapshot.high_risk_count} high-risk"
+            )
+
+        except Exception as e:
+            logger.error(f"SPOF scan failed: {e}", exc_info=True)
+        finally:
+            self.spof_scan_in_progress = False
+
     async def trigger_manual_discovery(self) -> dict:
         """
         Trigger a manual discovery run.
@@ -325,6 +392,36 @@ class DiscoveryScheduler:
             ),
         }
 
+    async def trigger_manual_spof_scan(self) -> dict:
+        """
+        Trigger a manual SPOF scan.
+
+        Returns:
+            Status information about the scan
+        """
+        if self.spof_scan_in_progress:
+            return {
+                "status": "already_running",
+                "message": "SPOF scan is already in progress",
+            }
+
+        if not self.spof_monitor:
+            return {
+                "status": "error",
+                "message": "SPOF monitor not initialized",
+            }
+
+        # Schedule the scan to run immediately
+        asyncio.create_task(self._run_spof_scan())
+
+        return {
+            "status": "scheduled",
+            "message": "SPOF scan has been scheduled to run",
+            "last_scan": (
+                self.last_spof_scan_time.isoformat() if self.last_spof_scan_time else None
+            ),
+        }
+
     def get_status(self) -> dict:
         """
         Get scheduler status.
@@ -332,19 +429,37 @@ class DiscoveryScheduler:
         Returns:
             Dictionary with scheduler status information
         """
-        return {
+        spof_interval = getattr(settings, "spof_scan_interval", 900)
+        
+        status = {
             "scheduler_running": self.scheduler.running if self.scheduler else False,
-            "discovery_in_progress": self.discovery_in_progress,
-            "last_discovery_time": (
-                self.last_discovery_time.isoformat() if self.last_discovery_time else None
-            ),
-            "interval_seconds": settings.discovery_scan_interval,
-            "enabled_providers": {
-                "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
-                "aws": settings.enable_aws_discovery and self._has_aws_credentials(),
-                "gcp": settings.enable_gcp_discovery and self._has_gcp_credentials(),
+            "discovery": {
+                "in_progress": self.discovery_in_progress,
+                "last_run": (
+                    self.last_discovery_time.isoformat() if self.last_discovery_time else None
+                ),
+                "interval_seconds": settings.discovery_scan_interval,
+                "enabled_providers": {
+                    "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
+                    "aws": settings.enable_aws_discovery and self._has_aws_credentials(),
+                    "gcp": settings.enable_gcp_discovery and self._has_gcp_credentials(),
+                },
+            },
+            "spof_monitoring": {
+                "enabled": True,
+                "in_progress": self.spof_scan_in_progress,
+                "last_scan": (
+                    self.last_spof_scan_time.isoformat() if self.last_spof_scan_time else None
+                ),
+                "interval_seconds": spof_interval,
             },
         }
+        
+        # Add SPOF statistics if available
+        if self.spof_monitor:
+            status["spof_monitoring"]["statistics"] = self.spof_monitor.get_statistics()
+        
+        return status
 
 
 # Global scheduler instance

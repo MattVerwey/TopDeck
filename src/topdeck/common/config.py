@@ -133,6 +133,22 @@ class Settings(BaseSettings):
     )
     discovery_timeout: int = Field(default=300, description="Discovery timeout in seconds")
 
+    # SPOF Monitoring Configuration
+    enable_spof_monitoring: bool = Field(
+        default=True, description="Enable automated SPOF monitoring"
+    )
+    spof_scan_interval: int = Field(
+        default=900,
+        description="SPOF scan interval in seconds (default: 15 minutes)",
+        ge=60,  # Minimum 1 minute
+    )
+    spof_high_risk_threshold: float = Field(
+        default=80.0,
+        description="Risk score threshold for high-risk SPOFs",
+        ge=0.0,
+        le=100.0,
+    )
+
     # Cache Configuration
     cache_ttl_resources: int = Field(default=300, description="Cache TTL for resources in seconds")
     cache_ttl_risk_scores: int = Field(
