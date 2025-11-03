@@ -41,15 +41,18 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      // Load topology data
-      const topology = await apiClient.getTopology();
+      // Load topology data and SPOF statistics
+      const [topology, spofStats] = await Promise.all([
+        apiClient.getTopology(),
+        apiClient.getSPOFStatistics().catch(() => ({ status: 'error', total_spofs: 0, high_risk_spofs: 0 })),
+      ]);
       setTopology(topology);
 
       // Calculate metrics
       const totalResources = topology.nodes.length;
-      const highRiskCount = 0; // Would calculate from risk API
-      const spofCount = 0; // Would calculate from risk API
-      const healthyPercent = 98;
+      const highRiskCount = spofStats.high_risk_spofs ?? 0;
+      const spofCount = spofStats.total_spofs ?? 0;
+      const healthyPercent = spofCount === 0 ? 100 : Math.round((1 - spofCount / totalResources) * 100);
 
       setMetrics([
         {

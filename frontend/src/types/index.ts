@@ -255,3 +255,40 @@ export interface ResourceAvailability {
   period_start: string;
   period_end: string;
 }
+
+/**
+ * SPOF (Single Point of Failure) Monitoring types
+ */
+export interface SPOF {
+  resource_id: string;
+  resource_name: string;
+  resource_type: string;
+  dependents_count: number;
+  blast_radius: number;
+  risk_score: number;
+  recommendations: string[];
+}
+
+export interface SPOFChange {
+  change_type: 'new' | 'resolved';
+  resource_id: string;
+  resource_name: string;
+  resource_type: string;
+  detected_at: string;
+  risk_score: number;
+  blast_radius: number;
+}
+
+export interface SPOFStatistics {
+  status: string;
+  last_scan?: string;
+  total_spofs?: number;
+  high_risk_spofs?: number;
+  by_resource_type?: Record<string, number>;
+  total_changes?: number;
+  recent_changes?: {
+    new: number;
+    resolved: number;
+  };
+  message?: string;
+}

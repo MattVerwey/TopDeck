@@ -11,6 +11,7 @@ import RiskAnalysis from './pages/RiskAnalysis';
 import ChangeImpact from './pages/ChangeImpact';
 import SLAManagement from './pages/SLAManagement';
 import Integrations from './pages/Integrations';
+import SPOFMonitoring from './pages/SPOFMonitoring';
 
 const theme = createTheme({
   palette: {
@@ -43,6 +44,7 @@ function App() {
             <Route path="/risk" element={<RiskAnalysis />} />
             <Route path="/impact" element={<ChangeImpact />} />
             <Route path="/sla" element={<SLAManagement />} />
+            <Route path="/spof" element={<SPOFMonitoring />} />
             <Route path="/integrations" element={<Integrations />} />
           </Routes>
         </Layout>

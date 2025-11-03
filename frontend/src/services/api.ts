@@ -19,6 +19,9 @@ import type {
   SLOCalculation,
   ErrorBudgetStatus,
   ResourceAvailability,
+  SPOF,
+  SPOFChange,
+  SPOFStatistics,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -576,6 +579,39 @@ class ApiClient {
   async checkHealth() {
     const { data } = await this.client.get('/health');
     return data;
+  }
+
+  /**
+   * SPOF Monitoring Methods
+   */
+  async getCurrentSPOFs(): Promise<SPOF[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/current');
+      return data;
+    });
+  }
+
+  async getSPOFHistory(limit: number = 50): Promise<SPOFChange[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/history', {
+        params: { limit },
+      });
+      return data;
+    });
+  }
+
+  async getSPOFStatistics(): Promise<SPOFStatistics> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/statistics');
+      return data;
+    });
+  }
+
+  async triggerSPOFScan(): Promise<{ status: string; message: string }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post('/api/v1/monitoring/spof/scan');
+      return data;
+    });
   }
 }
 
