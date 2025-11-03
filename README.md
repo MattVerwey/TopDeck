@@ -53,6 +53,7 @@ TopDeck provides that answer by:
 - **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)** - ✨ NEW! Circular dependencies, health scoring, and cascading failures
 - **[Risk Analysis Quick Reference](docs/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
 - **[SLA/SLO Management](docs/SLA_SLO_MANAGEMENT.md)** - ✨ NEW! Service Level Agreements, Objectives, and Error Budget tracking
+- **[SPOF Monitoring Guide](docs/SPOF_MONITORING_GUIDE.md)** - ✨ NEW! Continuous monitoring for single points of failure
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
 
 ### Deployment & Readiness
