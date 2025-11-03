@@ -11,6 +11,7 @@ import RiskAnalysis from './pages/RiskAnalysis';
 import ChangeImpact from './pages/ChangeImpact';
 import SLAManagement from './pages/SLAManagement';
 import Integrations from './pages/Integrations';
+import Settings from './pages/Settings';
 
 const theme = createTheme({
   palette: {
@@ -44,6 +45,7 @@ function App() {
             <Route path="/impact" element={<ChangeImpact />} />
             <Route path="/sla" element={<SLAManagement />} />
             <Route path="/integrations" element={<Integrations />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
       </Router>

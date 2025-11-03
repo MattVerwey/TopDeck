@@ -51,6 +51,7 @@ const menuItems = [
 ];
 
 const bottomMenuItems = [
+  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   { text: 'API Documentation', icon: <ApiIcon />, path: '/api/docs', external: true },
   { text: 'Documentation', icon: <DescriptionIcon />, path: '/docs' },
 ];
@@ -95,6 +96,7 @@ export default function Layout({ children }: LayoutProps) {
               color="inherit"
               sx={{ mr: 1 }}
               aria-label="settings"
+              onClick={() => navigate('/settings')}
             >
               <SettingsIcon />
             </IconButton>

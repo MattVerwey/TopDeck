@@ -45,6 +45,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import apiClient from '../services/api';
+import DocLink from '../components/common/DocLink';
 import type { SLAConfig, ErrorBudgetStatus } from '../types';
 
 interface SLAFormData {
@@ -214,9 +215,12 @@ export default function SLAManagement() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          SLA/SLO Management
-        </Typography>
+        <Box>
+          <Typography variant="h4" component="h1">
+            SLA/SLO Management
+          </Typography>
+          <DocLink href="docs/SLA_SLO_MANAGEMENT.md" text="SLA/SLO Guide" size="small" />
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
