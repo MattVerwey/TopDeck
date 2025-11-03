@@ -16,15 +16,22 @@ Track change requests throughout their lifecycle:
 - **Schedule changes** with maintenance windows
 - **Integrate with external systems** (ServiceNow, Jira)
 
-### 2. Impact Assessment
+### 2. Impact Assessment ✨ Enhanced
 
-Automatically analyze the impact of proposed changes:
+Automatically analyze the impact of proposed changes with **resource-specific intelligence**:
 
 - **Blast radius calculation** - identify directly and indirectly affected resources
-- **Risk scoring** - understand the risk level of changes
-- **Performance impact** - estimate degradation during changes
-- **Downtime estimation** - predict required downtime
-- **Approval routing** - determine if additional approvals are needed
+- **Smart risk scoring** - adjusts based on change type AND resource characteristics
+- **Performance impact** - non-linear estimation based on actual risk levels
+- **Context-aware downtime estimation** - considers:
+  - Resource type (databases take longer than function apps)
+  - Resource risk score and criticality
+  - Number of dependent resources
+  - Whether resource is on critical path
+  - Specific change type + resource type combinations
+- **Intelligent approval routing** - determines approvals based on actual impact
+
+**Key Improvement**: Impact now varies based on actual resource characteristics, not just change type. A database deployment will show significantly different impact than a function app deployment, even though both are "deployments".
 
 ### 3. Change Calendar
 
@@ -367,6 +374,105 @@ View in the web UI:
 3. Check that monitoring data is being collected
 4. Review risk scoring configuration
 
+## Enhanced Impact Analysis Details
+
+### Resource-Aware Impact Calculation
+
+The impact analysis system now considers multiple factors to provide accurate, resource-specific impact estimates:
+
+#### 1. Resource Type Multipliers
+
+Different resource types have different change complexity:
+
+| Resource Type | Multiplier | Reason |
+|---------------|------------|--------|
+| Database (SQL, PostgreSQL, etc.) | 2.0x | Requires careful handling, backups, validation |
+| Virtual Machines | 1.5x | Moderate complexity, longer boot times |
+| Kubernetes Clusters | 1.8x | Complex orchestration, many moving parts |
+| Storage Accounts | 1.5x | Data integrity concerns |
+| Web Apps | 1.0x | Standard complexity |
+| Function Apps | 0.8x | Fast deployments, minimal downtime |
+| Logic Apps | 0.7x | Lightweight, quick to change |
+
+#### 2. Risk Score Factor
+
+Higher risk resources get longer estimated downtime (1.0x to 2.0x multiplier):
+- Risk score 0: 1.0x multiplier
+- Risk score 50: 1.5x multiplier  
+- Risk score 100: 2.0x multiplier
+
+#### 3. Dependency Consideration
+
+More dependent resources means more coordination:
+- Every 5 dependents adds 10% to downtime estimate
+- Ensures time for proper communication and coordination
+
+#### 4. Critical Path Multiplier
+
+Single points of failure get extra care:
+- Critical resources: 1.5x multiplier
+- Non-critical resources: 1.0x multiplier
+
+#### 5. Change Type Risk
+
+Different change types have inherent risk levels:
+
+| Change Type | Risk Multiplier | Notes |
+|-------------|-----------------|-------|
+| Emergency | 1.4x | Rushed, higher risk |
+| Infrastructure | 1.3x | Complex, affects many resources |
+| Update | 1.2x | Version compatibility risks |
+| Deployment | 1.1x | New code always carries risk |
+| Patch | 1.0x | Standard risk baseline |
+| Configuration | 1.1x | Can have unexpected impacts |
+| Scaling | 0.9x | Well-tested, lower risk |
+| Restart | 0.8x | Lowest risk, well-understood |
+
+### Example Impact Differences
+
+For a **DEPLOYMENT** change (base: 15 minutes):
+
+```
+Critical Database:     102 minutes (6.8x base)
+  - Database: 2.0x
+  - High risk (75): 1.75x
+  - Many dependencies (15): 1.3x
+  - Critical: 1.5x
+  - Deployment type: 1.1x
+  = 6.8x total
+
+Standard Web App:      29 minutes (1.9x base)
+  - Web app: 1.0x
+  - Medium risk (60): 1.6x
+  - Moderate dependencies (10): 1.2x
+  - Non-critical: 1.0x
+  - Deployment type: 1.1x
+  = 1.9x total
+
+Low-Risk Function App: 16 minutes (1.2x base)
+  - Function app: 0.8x
+  - Low risk (40): 1.4x
+  - Few dependencies (3): 1.06x
+  - Non-critical: 1.0x
+  - Deployment type: 1.1x
+  = 1.2x total
+```
+
+### Performance Impact Estimation
+
+Non-linear performance degradation based on risk:
+- **Low risk (0-40)**: 0-5% degradation (minimal impact)
+- **Medium risk (40-70)**: 5-15% degradation (moderate impact)
+- **High risk (70-100)**: 15-30% degradation (significant impact)
+
+### Demonstration
+
+Run the demonstration script to see the improvements:
+
+```bash
+python examples/change_impact_comparison_standalone.py
+```
+
 ## Future Enhancements
 
 Planned features for future releases:
@@ -374,7 +480,7 @@ Planned features for future releases:
 - **Automated approval workflows** - route changes based on risk level
 - **Change templates** - pre-defined change types with defaults
 - **Change success/failure tracking** - learn from past changes
-- **Predictive impact analysis** - ML-based impact prediction
+- **Historical learning** - refine estimates based on actual downtime data
 - **Change conflict detection** - prevent overlapping changes
 - **Automated rollback** - trigger rollback on failure detection
 - **Change metrics dashboard** - track change management KPIs
