@@ -53,7 +53,10 @@ class DiscoveryScheduler:
 
             # Initialize SPOF monitor
             if not self.spof_monitor:
-                self.spof_monitor = SPOFMonitor(self.neo4j_client)
+                self.spof_monitor = SPOFMonitor(
+                    self.neo4j_client,
+                    high_risk_threshold=settings.spof_high_risk_threshold
+                )
                 logger.info("Initialized SPOF monitor")
 
             # Add discovery job with configurable interval

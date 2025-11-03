@@ -95,15 +95,20 @@ class SPOFMonitor:
     for alerting and trending.
     """
 
-    def __init__(self, neo4j_client: Neo4jClient):
+    # Window for recent changes analysis (number of changes to consider)
+    RECENT_CHANGES_WINDOW = 100
+
+    def __init__(self, neo4j_client: Neo4jClient, high_risk_threshold: float = 80.0):
         """
         Initialize SPOF monitor.
         
         Args:
             neo4j_client: Neo4j client for graph database access
+            high_risk_threshold: Risk score threshold for high-risk SPOFs (default: 80.0)
         """
         self.neo4j_client = neo4j_client
         self.risk_analyzer = RiskAnalyzer(neo4j_client)
+        self.high_risk_threshold = high_risk_threshold
         self.last_snapshot: SPOFSnapshot | None = None
         self.changes: list[SPOFChange] = []
         self._previous_resource_types: set[str] = set()
@@ -122,7 +127,7 @@ class SPOFMonitor:
         
         # Calculate statistics
         total_count = len(spofs)
-        high_risk_count = sum(1 for spof in spofs if spof.risk_score > 80)
+        high_risk_count = sum(1 for spof in spofs if spof.risk_score > self.high_risk_threshold)
         
         # Count by resource type
         by_resource_type: dict[str, int] = {}
@@ -279,8 +284,8 @@ class SPOFMonitor:
         if limit <= 0:
             return []
         
-        # Return the last N changes (limit to positive values only)
-        recent_changes = self.changes[-abs(limit):]
+        # Return the last N changes
+        recent_changes = self.changes[-limit:]
         
         return [
             {
@@ -316,7 +321,7 @@ class SPOFMonitor:
             "by_resource_type": self.last_snapshot.by_resource_type,
             "total_changes": len(self.changes),
             "recent_changes": {
-                "new": len([c for c in self.changes[-100:] if c.change_type == "new"]),
-                "resolved": len([c for c in self.changes[-100:] if c.change_type == "resolved"]),
+                "new": len([c for c in self.changes[-self.RECENT_CHANGES_WINDOW:] if c.change_type == "new"]),
+                "resolved": len([c for c in self.changes[-self.RECENT_CHANGES_WINDOW:] if c.change_type == "resolved"]),
             },
         }
