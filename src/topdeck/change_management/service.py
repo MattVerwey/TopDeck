@@ -18,6 +18,12 @@ from topdeck.change_management.models import (
 )
 from topdeck.storage.neo4j_client import Neo4jClient
 
+# Constants for downtime estimation
+MIN_DOWNTIME_SECONDS = 30  # Minimum estimated downtime (30 seconds)
+MAX_DOWNTIME_SECONDS = 14400  # Maximum estimated downtime (4 hours)
+DEPENDENCY_IMPACT_THRESHOLD = 5  # Number of dependencies that adds 10% to downtime
+DEPENDENCY_IMPACT_PERCENTAGE = 0.1  # Percentage increase per threshold
+
 
 class ChangeManagementService:
     """Service for managing change requests and impact assessments"""
@@ -321,6 +327,20 @@ class ChangeManagementService:
             result = session.run(query, resource_id=resource_id)
             return [dict(record) for record in result]
 
+    def _normalize_resource_type(self, resource_type: str) -> str:
+        """
+        Normalize resource type string for consistent lookups.
+
+        Converts resource type to lowercase and replaces spaces with underscores.
+
+        Args:
+            resource_type: Raw resource type string
+
+        Returns:
+            Normalized resource type string
+        """
+        return resource_type.lower().replace(" ", "_")
+
     def _estimate_downtime(self, change_type: ChangeType) -> int:
         """Estimate downtime in seconds based on change type (legacy method for backward compatibility)"""
         downtime_map = {
@@ -399,17 +419,17 @@ class ChangeManagementService:
             "subscription": 2.0,
         }
 
-        resource_multiplier = resource_multipliers.get(
-            resource_type.lower().replace(" ", "_"), 1.0
-        )
+        normalized_type = self._normalize_resource_type(resource_type)
+        resource_multiplier = resource_multipliers.get(normalized_type, 1.0)
 
         # Risk score multiplier (higher risk = more careful, slower changes)
         # Risk scores: 0-100, map to multipliers 1.0-2.0
         risk_multiplier = 1.0 + (risk_score / 100.0)
 
         # Dependency multiplier (more dependents = more coordination needed)
-        # Each 5 dependents adds 10% to downtime
-        dependency_multiplier = 1.0 + (dependent_count / 5) * 0.1
+        dependency_multiplier = (
+            1.0 + (dependent_count / DEPENDENCY_IMPACT_THRESHOLD) * DEPENDENCY_IMPACT_PERCENTAGE
+        )
 
         # Critical path multiplier (critical resources need extra care)
         critical_multiplier = 1.5 if is_critical else 1.0
@@ -432,7 +452,7 @@ class ChangeManagementService:
             (ChangeType.DEPLOYMENT, "function_app"): 0.8,
         }
 
-        complexity_key = (change_type, resource_type.lower().replace(" ", "_"))
+        complexity_key = (change_type, normalized_type)
         complexity_multiplier = complexity_adjustments.get(complexity_key, 1.0)
 
         # Calculate final downtime
@@ -445,8 +465,8 @@ class ChangeManagementService:
             * complexity_multiplier
         )
 
-        # Cap at reasonable maximum (4 hours) and minimum (30 seconds)
-        return max(30, min(int(estimated_downtime), 14400))
+        # Cap at reasonable bounds
+        return max(MIN_DOWNTIME_SECONDS, min(int(estimated_downtime), MAX_DOWNTIME_SECONDS))
 
     def _get_change_type_risk_multiplier(self, change_type: ChangeType) -> float:
         """
