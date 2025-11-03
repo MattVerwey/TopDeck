@@ -192,10 +192,12 @@ class AzureDiscoverer:
         """
         Discover dependencies between resources.
 
-        This is a simplified implementation. In production, this would:
-        - Parse resource configurations
-        - Analyze network connections
-        - Check resource relationships in Azure
+        This implementation uses a comprehensive mapping of common Azure resource
+        dependencies to detect relationships between resources. It considers:
+        - Compute resources depending on data stores
+        - Application services depending on caching and configuration
+        - Container orchestration depending on storage and networking
+        - Network dependencies between components
 
         Args:
             resources: List of discovered resources
@@ -204,66 +206,232 @@ class AzureDiscoverer:
             List of discovered dependencies
         """
         from .resources import detect_servicebus_dependencies
+        from ..models import (
+            DependencyCategory,
+            DependencyType,
+            ResourceDependency,
+        )
 
         dependencies = []
 
-        # Create resource lookup by ID
-        {r.id: r for r in resources}
+        # Define comprehensive and precise dependency patterns
+        # Format: (source_type, target_type, category, dependency_type, strength, description)
+        dependency_patterns = [
+            # App Service dependencies - Web applications
+            ("app_service", "sql_database", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "App Service likely depends on SQL Database"),
+            ("app_service", "sql_server", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "App Service may depend on SQL Server"),
+            ("app_service", "postgresql_server", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "App Service may depend on PostgreSQL Server"),
+            ("app_service", "mysql_server", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "App Service may depend on MySQL Server"),
+            ("app_service", "cosmos_db", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "App Service may depend on Cosmos DB"),
+            ("app_service", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "App Service may use Storage Account for files/blobs"),
+            ("app_service", "redis_cache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "App Service may use Redis Cache for caching"),
+            ("app_service", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "App Service may use Key Vault for secrets"),
+            ("app_service", "servicebus_namespace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "App Service may use Service Bus for messaging"),
+            ("app_service", "application_gateway", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.6,
+             "App Service may be behind Application Gateway"),
+            ("app_service", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "App Service may use Managed Identity for authentication"),
+            
+            # Function App dependencies - Serverless compute
+            ("function_app", "sql_database", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "Function App may depend on SQL Database"),
+            ("function_app", "storage_account", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "Function App requires Storage Account for state and triggers"),
+            ("function_app", "cosmos_db", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Function App may depend on Cosmos DB"),
+            ("function_app", "redis_cache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "Function App may use Redis Cache"),
+            ("function_app", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Function App may use Key Vault for secrets"),
+            ("function_app", "servicebus_namespace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "Function App may be triggered by Service Bus"),
+            ("function_app", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Function App may use Managed Identity"),
+            
+            # AKS dependencies - Container orchestration
+            ("aks", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS may use Storage Account for persistent volumes"),
+            ("aks", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "AKS requires Virtual Network for pod networking"),
+            ("aks", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "AKS may use Key Vault for secrets via CSI driver"),
+            ("aks", "redis_cache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may use Redis Cache"),
+            ("aks", "sql_database", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may depend on SQL Database"),
+            ("aks", "postgresql_server", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may depend on PostgreSQL Server"),
+            ("aks", "mysql_server", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may depend on MySQL Server"),
+            ("aks", "cosmos_db", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may depend on Cosmos DB"),
+            ("aks", "servicebus_namespace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "AKS workloads may use Service Bus for messaging"),
+            ("aks", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "AKS uses Managed Identity for Azure resource access"),
+            ("aks", "load_balancer", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "AKS may use Load Balancer for service exposure"),
+            
+            # Virtual Machine dependencies - IaaS compute
+            ("virtual_machine", "storage_account", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "Virtual Machine uses Storage Account for OS and data disks"),
+            ("virtual_machine", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Virtual Machine requires Virtual Network for connectivity"),
+            ("virtual_machine", "network_security_group", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "Virtual Machine may use Network Security Group for firewall rules"),
+            ("virtual_machine", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Virtual Machine may use Key Vault for secrets"),
+            ("virtual_machine", "load_balancer", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "Virtual Machine may be behind Load Balancer"),
+            ("virtual_machine", "public_ip", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.6,
+             "Virtual Machine may have Public IP"),
+            ("virtual_machine", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Virtual Machine may use Managed Identity"),
+            
+            # Container Instance dependencies
+            ("container_instance", "virtual_network", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "Container Instance may use Virtual Network"),
+            ("container_instance", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "Container Instance may mount Storage Account volumes"),
+            ("container_instance", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Container Instance may use Managed Identity"),
+            
+            # Database hierarchies - SQL Server contains databases
+            ("sql_database", "sql_server", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
+             "SQL Database is hosted on SQL Server"),
+            
+            # Load Balancer dependencies
+            ("load_balancer", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Load Balancer requires Virtual Network"),
+            ("load_balancer", "public_ip", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.8,
+             "Load Balancer may use Public IP for external access"),
+            ("load_balancer", "network_security_group", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.6,
+             "Load Balancer may use Network Security Group"),
+            
+            # Application Gateway dependencies - Layer 7 load balancer
+            ("application_gateway", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Application Gateway requires dedicated Virtual Network subnet"),
+            ("application_gateway", "public_ip", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Application Gateway requires Public IP"),
+            ("application_gateway", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Application Gateway may use Key Vault for SSL certificates"),
+            ("application_gateway", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Application Gateway may use Managed Identity to access Key Vault"),
+            
+            # Service Bus messaging hierarchy
+            ("servicebus_topic", "servicebus_namespace", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
+             "Service Bus Topic is contained in Service Bus Namespace"),
+            ("servicebus_queue", "servicebus_namespace", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
+             "Service Bus Queue is contained in Service Bus Namespace"),
+            ("servicebus_subscription", "servicebus_topic", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
+             "Service Bus Subscription is attached to Service Bus Topic"),
+        ]
 
-        # Simple heuristic-based dependency detection
-        # In production, this would use Azure SDK to get detailed configurations
-
+        # First, detect precise hierarchical dependencies based on resource IDs
+        # These are the most accurate as they're based on actual Azure resource structure
         for resource in resources:
-            # Example: App Services typically depend on SQL databases in same resource group
-            if resource.resource_type == "app_service":
+            resource_id = resource.id.lower()
+            
+            # SQL Database -> SQL Server (precise: database ID contains server ID)
+            if resource.resource_type == "sql_database":
+                # Resource ID format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Sql/servers/{server}/databases/{db}
                 for other in resources:
-                    if (
-                        other.resource_type == "sql_database"
-                        and other.resource_group == resource.resource_group
-                    ):
-                        # Create a dependency
-                        from ..models import (
-                            DependencyCategory,
-                            DependencyType,
-                            ResourceDependency,
-                        )
-
+                    if other.resource_type == "sql_server" and other.id.lower() in resource_id:
                         dep = ResourceDependency(
                             source_id=resource.id,
                             target_id=other.id,
-                            category=DependencyCategory.DATA,
-                            dependency_type=DependencyType.REQUIRED,
-                            strength=0.9,
-                            discovered_method="heuristic",
-                            description="App Service likely depends on SQL Database in same RG",
+                            category=DependencyCategory.COMPUTE,
+                            dependency_type=DependencyType.STRONG,
+                            strength=1.0,
+                            discovered_method="resource_hierarchy",
+                            description="SQL Database is hosted on SQL Server (verified by resource ID)",
                         )
                         dependencies.append(dep)
-
-            # Example: AKS typically depends on storage accounts
-            if resource.resource_type == "aks":
+                        break
+            
+            # Service Bus Topic -> Service Bus Namespace (precise: topic ID contains namespace ID)
+            elif resource.resource_type == "servicebus_topic":
                 for other in resources:
-                    if (
-                        other.resource_type == "storage_account"
-                        and other.resource_group == resource.resource_group
-                    ):
-                        from ..models import (
-                            DependencyCategory,
-                            DependencyType,
-                            ResourceDependency,
-                        )
-
+                    if other.resource_type == "servicebus_namespace" and other.id.lower() in resource_id:
                         dep = ResourceDependency(
                             source_id=resource.id,
                             target_id=other.id,
-                            category=DependencyCategory.DATA,
-                            dependency_type=DependencyType.OPTIONAL,
-                            strength=0.6,
-                            discovered_method="heuristic",
-                            description="AKS may use Storage Account for persistent volumes",
+                            category=DependencyCategory.COMPUTE,
+                            dependency_type=DependencyType.STRONG,
+                            strength=1.0,
+                            discovered_method="resource_hierarchy",
+                            description="Service Bus Topic is in Namespace (verified by resource ID)",
+                        )
+                        dependencies.append(dep)
+                        break
+            
+            # Service Bus Queue -> Service Bus Namespace
+            elif resource.resource_type == "servicebus_queue":
+                for other in resources:
+                    if other.resource_type == "servicebus_namespace" and other.id.lower() in resource_id:
+                        dep = ResourceDependency(
+                            source_id=resource.id,
+                            target_id=other.id,
+                            category=DependencyCategory.COMPUTE,
+                            dependency_type=DependencyType.STRONG,
+                            strength=1.0,
+                            discovered_method="resource_hierarchy",
+                            description="Service Bus Queue is in Namespace (verified by resource ID)",
+                        )
+                        dependencies.append(dep)
+                        break
+
+        # Second, apply heuristic-based dependency patterns
+        for source_resource in resources:
+            for target_resource in resources:
+                # Skip self-dependencies
+                if source_resource.id == target_resource.id:
+                    continue
+                
+                # Check if resources are in the same resource group (common pattern in Azure)
+                same_rg = source_resource.resource_group == target_resource.resource_group
+                
+                # Only create dependencies for resources in the same resource group
+                # This is a reasonable heuristic as Azure resources typically interact within the same RG
+                if not same_rg:
+                    continue
+                
+                # Check each dependency pattern
+                for pattern in dependency_patterns:
+                    source_type, target_type, category, dep_type, strength, description = pattern
+                    
+                    if (source_resource.resource_type == source_type and 
+                        target_resource.resource_type == target_type):
+                        
+                        # Skip if we already have a hierarchical dependency
+                        already_exists = any(
+                            d.source_id == source_resource.id and d.target_id == target_resource.id
+                            for d in dependencies
+                        )
+                        if already_exists:
+                            continue
+                        
+                        dep = ResourceDependency(
+                            source_id=source_resource.id,
+                            target_id=target_resource.id,
+                            category=category,
+                            dependency_type=dep_type,
+                            strength=strength,
+                            discovered_method="heuristic_same_rg",
+                            description=f"{description} in same resource group",
                         )
                         dependencies.append(dep)
 
-        # Detect Service Bus messaging dependencies
+        # Detect Service Bus messaging dependencies (more specific detection)
         servicebus_deps = await detect_servicebus_dependencies(
             resources, self.subscription_id, self.credential
         )

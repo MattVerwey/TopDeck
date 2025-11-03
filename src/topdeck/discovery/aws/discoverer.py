@@ -567,11 +567,12 @@ class AWSDiscoverer:
         """
         Discover dependencies between AWS resources.
 
-        This analyzes relationships like:
-        - EC2 instances in VPCs
-        - Lambda functions accessing RDS/DynamoDB
-        - Load Balancers targeting EC2 instances
-        - EKS clusters in VPCs
+        This implementation uses a comprehensive mapping of common AWS resource
+        dependencies to detect relationships. It considers:
+        - Compute resources depending on data stores
+        - Application services depending on caching and storage
+        - Container orchestration depending on storage and networking
+        - Network dependencies and VPC relationships
 
         Args:
             resources: List of discovered resources
@@ -579,27 +580,155 @@ class AWSDiscoverer:
         Returns:
             List of ResourceDependency objects
         """
+        from ..models import (
+            DependencyCategory,
+            DependencyType,
+            ResourceDependency,
+        )
+
         dependencies = []
 
-        # Analyze EC2 -> VPC dependencies
+        # Define comprehensive dependency patterns for AWS
+        # Format: (source_type, target_type, category, dependency_type, strength, description)
+        dependency_patterns = [
+            # Lambda dependencies
+            ("lambda", "rds", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "Lambda function may depend on RDS database"),
+            ("lambda", "dynamodb", DependencyCategory.DATA, DependencyType.REQUIRED, 0.8,
+             "Lambda function may depend on DynamoDB table"),
+            ("lambda", "s3", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Lambda function may use S3 bucket"),
+            ("lambda", "elasticache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "Lambda function may use ElastiCache"),
+            ("lambda", "secrets_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Lambda function may use Secrets Manager"),
+            ("lambda", "vpc", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.6,
+             "Lambda function may run in VPC"),
+            
+            # EC2 dependencies
+            ("ec2", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "EC2 instance requires VPC for networking"),
+            ("ec2", "ebs", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "EC2 instance uses EBS for storage"),
+            ("ec2", "s3", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EC2 instance may use S3 bucket"),
+            ("ec2", "rds", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "EC2 instance may connect to RDS database"),
+            ("ec2", "elasticache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EC2 instance may use ElastiCache"),
+            ("ec2", "secrets_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "EC2 instance may use Secrets Manager"),
+            ("ec2", "security_group", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "EC2 instance may use Security Group"),
+            
+            # EKS dependencies
+            ("eks", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "EKS cluster requires VPC for networking"),
+            ("eks", "s3", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EKS workloads may use S3 bucket"),
+            ("eks", "rds", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EKS workloads may depend on RDS database"),
+            ("eks", "dynamodb", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EKS workloads may depend on DynamoDB table"),
+            ("eks", "elasticache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "EKS workloads may use ElastiCache"),
+            ("eks", "secrets_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "EKS workloads may use Secrets Manager"),
+            ("eks", "elb", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "EKS may use ELB for service exposure"),
+            
+            # ECS dependencies
+            ("ecs", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "ECS task requires VPC for networking"),
+            ("ecs", "s3", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "ECS task may use S3 bucket"),
+            ("ecs", "rds", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "ECS task may depend on RDS database"),
+            ("ecs", "dynamodb", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "ECS task may depend on DynamoDB table"),
+            ("ecs", "elasticache", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "ECS task may use ElastiCache"),
+            ("ecs", "secrets_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "ECS task may use Secrets Manager"),
+            ("ecs", "elb", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "ECS service may use ELB"),
+            
+            # Load Balancer dependencies
+            ("elb", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "ELB requires VPC for networking"),
+            ("elb", "security_group", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "ELB may use Security Group"),
+            
+            # RDS dependencies
+            ("rds", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "RDS instance requires VPC for networking"),
+            ("rds", "security_group", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "RDS instance may use Security Group"),
+            ("rds", "s3", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.5,
+             "RDS may backup to S3"),
+        ]
+
+        # First, detect precise dependencies based on properties (VPC IDs, etc.)
         for resource in resources:
+            # EC2 -> VPC (precise based on vpc_id property)
             if resource.resource_type == "ec2":
                 vpc_id = resource.properties.get("vpc_id")
                 if vpc_id:
-                    # Find VPC resource
                     for vpc_resource in resources:
                         if vpc_resource.resource_type == "vpc" and vpc_id in vpc_resource.id:
                             dep = ResourceDependency(
                                 source_id=resource.id,
                                 target_id=vpc_resource.id,
-                                dependency_type="network",
-                                strength=0.9,
-                                properties={"relationship": "instance_in_vpc"},
+                                category=DependencyCategory.NETWORK,
+                                dependency_type=DependencyType.REQUIRED,
+                                strength=1.0,
+                                discovered_method="property_reference",
+                                description="EC2 instance in VPC (verified by vpc_id property)",
                             )
                             dependencies.append(dep)
                             break
 
-        # Add more dependency detection as needed
+        # Second, apply heuristic-based dependency patterns
+        # AWS resources are typically grouped by VPC or region
+        for source_resource in resources:
+            for target_resource in resources:
+                # Skip self-dependencies
+                if source_resource.id == target_resource.id:
+                    continue
+                
+                # Check if resources are in the same region (common pattern in AWS)
+                same_region = source_resource.region == target_resource.region
+                
+                # Only create dependencies for resources in the same region
+                if not same_region:
+                    continue
+                
+                # Check each dependency pattern
+                for pattern in dependency_patterns:
+                    source_type, target_type, category, dep_type, strength, description = pattern
+                    
+                    if (source_resource.resource_type == source_type and 
+                        target_resource.resource_type == target_type):
+                        
+                        # Skip if we already have a property-based dependency
+                        already_exists = any(
+                            d.source_id == source_resource.id and d.target_id == target_resource.id
+                            for d in dependencies
+                        )
+                        if already_exists:
+                            continue
+                        
+                        dep = ResourceDependency(
+                            source_id=source_resource.id,
+                            target_id=target_resource.id,
+                            category=category,
+                            dependency_type=dep_type,
+                            strength=strength,
+                            discovered_method="heuristic_same_region",
+                            description=f"{description} in same region",
+                        )
+                        dependencies.append(dep)
+
         return dependencies
 
     async def _infer_applications(

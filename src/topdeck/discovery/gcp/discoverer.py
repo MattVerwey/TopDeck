@@ -399,11 +399,12 @@ class GCPDiscoverer:
         """
         Discover dependencies between GCP resources.
 
-        This analyzes relationships like:
-        - Compute instances in VPCs
-        - GKE clusters in VPCs
-        - Cloud Functions accessing Cloud SQL
-        - Cloud Run services accessing Cloud Storage
+        This implementation uses a comprehensive mapping of common GCP resource
+        dependencies to detect relationships between resources. It considers:
+        - Compute resources depending on data stores
+        - Application services depending on caching and storage
+        - Container orchestration depending on storage and networking
+        - Network dependencies between components
 
         Args:
             resources: List of discovered resources
@@ -411,16 +412,110 @@ class GCPDiscoverer:
         Returns:
             List of ResourceDependency objects
         """
+        from ..models import (
+            DependencyCategory,
+            DependencyType,
+            ResourceDependency,
+        )
+
         dependencies = []
 
-        # Analyze Compute -> VPC dependencies
-        for resource in resources:
-            if resource.resource_type == "compute_engine":
-                # In GCP, instances are in VPCs by network configuration
-                # This is a simplified version
-                pass
+        # Define comprehensive dependency patterns for GCP
+        # Format: (source_type, target_type, category, dependency_type, strength, description)
+        dependency_patterns = [
+            # Cloud Run dependencies
+            ("cloud_run", "cloud_sql", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "Cloud Run service may depend on Cloud SQL"),
+            ("cloud_run", "cloud_storage", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Cloud Run service may use Cloud Storage"),
+            ("cloud_run", "memorystore_redis", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Cloud Run service may use Memorystore Redis"),
+            ("cloud_run", "secret_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "Cloud Run service may use Secret Manager"),
+            
+            # Cloud Functions dependencies
+            ("cloud_function", "cloud_sql", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "Cloud Function may depend on Cloud SQL"),
+            ("cloud_function", "cloud_storage", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "Cloud Function may use Cloud Storage"),
+            ("cloud_function", "firestore", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Cloud Function may use Firestore"),
+            ("cloud_function", "memorystore_redis", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "Cloud Function may use Memorystore Redis"),
+            
+            # GKE dependencies
+            ("gke", "cloud_storage", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "GKE cluster may use Cloud Storage for persistent volumes"),
+            ("gke", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "GKE cluster requires VPC for networking"),
+            ("gke", "secret_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "GKE workloads may use Secret Manager"),
+            ("gke", "memorystore_redis", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "GKE workloads may use Memorystore Redis"),
+            ("gke", "cloud_sql", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "GKE workloads may depend on Cloud SQL"),
+            ("gke", "firestore", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "GKE workloads may use Firestore"),
+            
+            # Compute Engine dependencies
+            ("compute_engine", "cloud_storage", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Compute Engine instance may use Cloud Storage"),
+            ("compute_engine", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Compute Engine instance requires VPC"),
+            ("compute_engine", "cloud_sql", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Compute Engine instance may depend on Cloud SQL"),
+            ("compute_engine", "secret_manager", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Compute Engine instance may use Secret Manager"),
+            
+            # App Engine dependencies
+            ("app_engine", "cloud_sql", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "App Engine service may depend on Cloud SQL"),
+            ("app_engine", "cloud_storage", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "App Engine service may use Cloud Storage"),
+            ("app_engine", "memorystore_redis", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "App Engine service may use Memorystore Redis"),
+            ("app_engine", "firestore", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "App Engine service may use Firestore"),
+            
+            # Load Balancer dependencies
+            ("load_balancer", "vpc", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "Load Balancer requires VPC"),
+        ]
 
-        # Add more dependency detection as needed
+        # Apply dependency patterns
+        # GCP resources are typically grouped by project, not resource groups
+        # We'll detect dependencies within the same project and region
+        for source_resource in resources:
+            for target_resource in resources:
+                # Skip self-dependencies
+                if source_resource.id == target_resource.id:
+                    continue
+                
+                # Check if resources are in the same region (common pattern in GCP)
+                same_region = source_resource.region == target_resource.region
+                
+                # Only create dependencies for resources in the same region
+                if not same_region:
+                    continue
+                
+                # Check each dependency pattern
+                for pattern in dependency_patterns:
+                    source_type, target_type, category, dep_type, strength, description = pattern
+                    
+                    if (source_resource.resource_type == source_type and 
+                        target_resource.resource_type == target_type):
+                        
+                        dep = ResourceDependency(
+                            source_id=source_resource.id,
+                            target_id=target_resource.id,
+                            category=category,
+                            dependency_type=dep_type,
+                            strength=strength,
+                            discovered_method="heuristic",
+                            description=f"{description} in same region",
+                        )
+                        dependencies.append(dep)
+
         return dependencies
 
     async def _infer_applications(
