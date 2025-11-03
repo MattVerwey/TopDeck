@@ -338,7 +338,7 @@ class DiscoveryScheduler:
             "last_discovery_time": (
                 self.last_discovery_time.isoformat() if self.last_discovery_time else None
             ),
-            "interval_seconds": settings.discovery_scan_interval,
+            "interval_hours": settings.discovery_scan_interval // 3600,
             "enabled_providers": {
                 "azure": settings.enable_azure_discovery and self._has_azure_credentials(),
                 "aws": settings.enable_aws_discovery and self._has_aws_credentials(),

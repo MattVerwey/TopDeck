@@ -88,7 +88,7 @@ def get_reporting_service(neo4j_client: Neo4jClient = Depends(get_neo4j_client))
 # API Endpoints
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=None)
 async def generate_report(
     request: GenerateReportRequest,
     reporting_service: ReportingService = Depends(get_reporting_service),
@@ -206,7 +206,7 @@ async def get_report_formats() -> list[str]:
     return [f.value for f in ReportFormat]
 
 
-@router.post("/resource/{resource_id}")
+@router.post("/resource/{resource_id}", response_model=None)
 async def generate_resource_report(
     resource_id: str,
     reporting_service: ReportingService = Depends(get_reporting_service),
