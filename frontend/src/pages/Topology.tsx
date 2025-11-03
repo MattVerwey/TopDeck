@@ -99,6 +99,24 @@ export default function Topology() {
     loadTopology();
   }, [loadTopology]);
 
+  // Helper function to apply a filter and update edges accordingly
+  const applyNodeFilter = useCallback((
+    data: TopologyGraphType,
+    predicate: (node: TopologyGraphType['nodes'][0]) => boolean
+  ): TopologyGraphType => {
+    const filteredNodes = data.nodes.filter(predicate);
+    const nodeIds = new Set(filteredNodes.map((n) => n.id));
+    const filteredEdges = data.edges.filter(
+      (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+    );
+    
+    return {
+      ...data,
+      nodes: filteredNodes,
+      edges: filteredEdges,
+    };
+  }, []);
+
   // Apply filters and resource selection
   useEffect(() => {
     if (!topology) {
@@ -106,7 +124,7 @@ export default function Topology() {
       return;
     }
 
-    const filtered = { ...topology };
+    let filtered = { ...topology };
 
     // Filter by selected resources if any
     if (selectedResourceIds.length > 0) {
@@ -124,54 +142,29 @@ export default function Topology() {
         }
       });
 
-      filtered.nodes = topology.nodes.filter((n) => relatedIds.has(n.id));
-      filtered.edges = topology.edges.filter(
-        (e) => relatedIds.has(e.source_id) && relatedIds.has(e.target_id)
-      );
+      filtered = applyNodeFilter(filtered, (n) => relatedIds.has(n.id));
     }
 
-    // Apply other filters
+    // Apply other filters using the helper function
     if (filters.cloud_provider) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => n.cloud_provider === filters.cloud_provider
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
-      );
+      filtered = applyNodeFilter(filtered, (n) => n.cloud_provider === filters.cloud_provider);
     }
 
     if (filters.resource_type) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => n.resource_type === filters.resource_type
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
-      );
+      filtered = applyNodeFilter(filtered, (n) => n.resource_type === filters.resource_type);
     }
 
     if (filters.cluster) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => 
-          (n.properties?.cluster as string) === filters.cluster ||
-          (n.metadata?.cluster as string) === filters.cluster
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      filtered = applyNodeFilter(filtered, (n) => 
+        (n.properties?.cluster as string) === filters.cluster ||
+        (n.metadata?.cluster as string) === filters.cluster
       );
     }
 
     if (filters.namespace) {
-      filtered.nodes = filtered.nodes.filter(
-        (n) => 
-          (n.properties?.namespace as string) === filters.namespace ||
-          (n.metadata?.namespace as string) === filters.namespace
-      );
-      const nodeIds = new Set(filtered.nodes.map((n) => n.id));
-      filtered.edges = filtered.edges.filter(
-        (e) => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)
+      filtered = applyNodeFilter(filtered, (n) => 
+        (n.properties?.namespace as string) === filters.namespace ||
+        (n.metadata?.namespace as string) === filters.namespace
       );
     }
 
@@ -182,7 +175,7 @@ export default function Topology() {
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters]);
+  }, [topology, selectedResourceIds, filters, applyNodeFilter]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);
