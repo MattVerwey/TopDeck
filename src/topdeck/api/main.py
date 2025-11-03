@@ -47,15 +47,22 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
+    print("DEBUG: Starting application lifespan...")
     try:
+        print("DEBUG: About to start scheduler...")
         start_scheduler()
+        print("DEBUG: Scheduler started successfully")
     except Exception as e:
         print(f"Warning: Failed to start scheduler: {e}")
+    
+    print("DEBUG: Lifespan startup complete, app is ready")
 
     yield
 
     # Shutdown
+    print("DEBUG: Shutting down application...")
     stop_scheduler()
+    print("DEBUG: Scheduler stopped")
 
 
 # Create FastAPI application

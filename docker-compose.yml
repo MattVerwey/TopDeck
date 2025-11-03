@@ -1,4 +1,71 @@
 services:
+  # TopDeck API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: topdeck-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Load from .env file
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=topdeck123
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=topdeck123
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=topdeck
+      - RABBITMQ_PASSWORD=topdeck123
+      - ENABLE_AZURE_DISCOVERY=${ENABLE_AZURE_DISCOVERY:-true}
+      - ENABLE_AWS_DISCOVERY=${ENABLE_AWS_DISCOVERY:-false}
+      - ENABLE_GCP_DISCOVERY=${ENABLE_GCP_DISCOVERY:-false}
+      - ENABLE_GITHUB_INTEGRATION=${ENABLE_GITHUB_INTEGRATION:-true}
+      - ENABLE_AZURE_DEVOPS_INTEGRATION=${ENABLE_AZURE_DEVOPS_INTEGRATION:-true}
+      - ENABLE_RISK_ANALYSIS=${ENABLE_RISK_ANALYSIS:-true}
+      - ENABLE_MONITORING=${ENABLE_MONITORING:-true}
+      - APP_ENV=development
+      - LOG_LEVEL=INFO
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # TopDeck Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: topdeck-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
   # Neo4j Graph Database
   neo4j:
     image: neo4j:5.13
