@@ -354,12 +354,12 @@ class DiscoveryScheduler:
             return
 
         self.spof_scan_in_progress = True
-        start_time = datetime.now()
+        start_time = datetime.now(UTC)
 
         try:
             logger.info("Starting SPOF scan...")
             snapshot = self.spof_monitor.scan()
-            self.last_spof_scan_time = datetime.now()
+            self.last_spof_scan_time = datetime.now(UTC)
             elapsed = (self.last_spof_scan_time - start_time).total_seconds()
 
             logger.info(

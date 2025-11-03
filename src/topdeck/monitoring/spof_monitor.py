@@ -106,6 +106,7 @@ class SPOFMonitor:
         self.risk_analyzer = RiskAnalyzer(neo4j_client)
         self.last_snapshot: SPOFSnapshot | None = None
         self.changes: list[SPOFChange] = []
+        self._previous_resource_types: set[str] = set()
 
     def scan(self) -> SPOFSnapshot:
         """
@@ -229,10 +230,17 @@ class SPOFMonitor:
         spof_high_risk.set(snapshot.high_risk_count)
         
         # Update counts by resource type
-        # Note: Prometheus collectors automatically handle label removal
-        # We only need to set current values
+        # First, reset metrics for resource types that are no longer present
+        current_types = set(snapshot.by_resource_type.keys())
+        for resource_type in self._previous_resource_types - current_types:
+            spof_by_type.labels(resource_type=resource_type).set(0)
+        
+        # Set current values
         for resource_type, count in snapshot.by_resource_type.items():
             spof_by_type.labels(resource_type=resource_type).set(count)
+        
+        # Update tracking set
+        self._previous_resource_types = current_types
 
     def get_current_spofs(self) -> list[dict[str, Any]]:
         """
@@ -262,14 +270,17 @@ class SPOFMonitor:
         Get recent SPOF changes.
         
         Args:
-            limit: Maximum number of changes to return (default: 50)
+            limit: Maximum number of changes to return (default: 50, must be positive)
             
         Returns:
             List of recent changes as dictionaries
         """
+        # Return empty list for non-positive limits
         if limit <= 0:
             return []
-        recent_changes = self.changes[-limit:]
+        
+        # Return the last N changes (limit to positive values only)
+        recent_changes = self.changes[-abs(limit):]
         
         return [
             {

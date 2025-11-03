@@ -6,7 +6,7 @@ Provides API endpoints for accessing SPOF monitoring data, metrics, and history.
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from topdeck.common.scheduler import get_scheduler
@@ -84,12 +84,14 @@ async def get_current_spofs() -> list[SPOFResponse]:
 
 
 @router.get("/history", response_model=list[SPOFChangeResponse])
-async def get_spof_history(limit: int = 50) -> list[SPOFChangeResponse]:
+async def get_spof_history(
+    limit: int = Query(default=50, ge=1, le=1000, description="Maximum number of changes to return")
+) -> list[SPOFChangeResponse]:
     """
     Get SPOF change history.
 
     Args:
-        limit: Maximum number of changes to return (default: 50)
+        limit: Maximum number of changes to return (default: 50, min: 1, max: 1000)
 
     Returns:
         List of recent SPOF changes (new SPOFs detected, SPOFs resolved)
