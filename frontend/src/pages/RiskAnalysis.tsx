@@ -133,7 +133,10 @@ export default function RiskAnalysis() {
         try {
           // Try to fetch all risks for each resource
           const riskPromises = topology.nodes.map(node => 
-            apiClient.getRiskAssessment(node.id).catch(() => null)
+            apiClient.getRiskAssessment(node.id).catch(err => {
+              console.warn('Failed to fetch risk for resource', node.id, err);
+              return null;
+            })
           );
           const risks = await Promise.all(riskPromises);
           allRisks = risks.filter((r): r is RiskAssessment => r !== null);
@@ -160,11 +163,24 @@ export default function RiskAnalysis() {
       });
 
       // If no API data, use estimates based on topology
+      // These percentages provide reasonable defaults based on typical risk distribution:
+      // - 5% critical: high-impact resources (databases, core services)
+      // - 15% high: important but not critical resources
+      // - 30% medium: standard resources with some dependencies
+      // - Remainder: low-risk resources
       if (allRisks.length === 0) {
-        riskCounts.critical = Math.max(Math.floor(nodeCount * 0.05), 1);
-        riskCounts.high = Math.max(Math.floor(nodeCount * 0.15), 2);
-        riskCounts.medium = Math.max(Math.floor(nodeCount * 0.30), 3);
-        riskCounts.low = Math.max(nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium, 1);
+        const CRITICAL_PERCENTAGE = 0.05;
+        const HIGH_PERCENTAGE = 0.15;
+        const MEDIUM_PERCENTAGE = 0.30;
+        const MIN_CRITICAL = 1;
+        const MIN_HIGH = 2;
+        const MIN_MEDIUM = 3;
+        const MIN_LOW = 1;
+
+        riskCounts.critical = Math.max(Math.floor(nodeCount * CRITICAL_PERCENTAGE), MIN_CRITICAL);
+        riskCounts.high = Math.max(Math.floor(nodeCount * HIGH_PERCENTAGE), MIN_HIGH);
+        riskCounts.medium = Math.max(Math.floor(nodeCount * MEDIUM_PERCENTAGE), MIN_MEDIUM);
+        riskCounts.low = Math.max(nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium, MIN_LOW);
       }
 
       const riskMetrics: RiskMetric[] = [
