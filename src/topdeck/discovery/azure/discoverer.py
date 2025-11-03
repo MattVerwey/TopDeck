@@ -290,8 +290,6 @@ class AzureDiscoverer:
              "Container Instance may use Managed Identity"),
             
             # Database hierarchies - SQL Server contains databases
-            ("sql_database", "sql_server", DependencyCategory.COMPUTE, DependencyType.STRONG, 1.0,
-             "SQL Database is hosted on SQL Server"),
             
             # Load Balancer dependencies
             ("load_balancer", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
