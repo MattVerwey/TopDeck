@@ -83,7 +83,8 @@ class TimeAwareRiskScorer:
             Dictionary with multiplier and reasoning
         """
         if deployment_time is None:
-            deployment_time = datetime.utcnow()
+            from datetime import timezone
+            deployment_time = datetime.now(timezone.utc)
 
         multiplier = 1.0
         factors = []
@@ -145,7 +146,8 @@ class TimeAwareRiskScorer:
             List of optimal time windows with risk multipliers
         """
         if current_time is None:
-            current_time = datetime.utcnow()
+            from datetime import timezone
+            current_time = datetime.now(timezone.utc)
 
         suggestions = []
 

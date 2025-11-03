@@ -873,14 +873,14 @@ async def add_risk_snapshot(
         Snapshot details
     """
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         from topdeck.analysis.risk import RiskSnapshot
 
         analyzer = get_risk_analyzer()
         assessment = analyzer.analyze_resource(resource_id)
 
         snapshot = RiskSnapshot(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             risk_score=assessment.risk_score,
             risk_level=assessment.risk_level.value,
             factors=assessment.factors,
@@ -904,10 +904,16 @@ async def add_risk_snapshot(
         ) from e
 
 
+class SnapshotRequest(BaseModel):
+    """Request model for trend analysis."""
+
+    snapshots: list[dict]
+
+
 @router.post("/resources/{resource_id}/analyze-trend")
 async def analyze_risk_trend(
     resource_id: str,
-    snapshots: list[dict] = Query(..., description="List of historical snapshots"),
+    request: SnapshotRequest,
 ) -> dict:
     """
     Analyze risk trend from historical snapshots.
@@ -916,7 +922,7 @@ async def analyze_risk_trend(
 
     Args:
         resource_id: Resource to analyze
-        snapshots: List of historical risk snapshots
+        request: Request containing list of historical risk snapshots
 
     Returns:
         Trend analysis with recommendations
@@ -939,7 +945,7 @@ async def analyze_risk_trend(
                 risk_level=s["risk_level"],
                 factors=s.get("factors", {}),
             )
-            for s in snapshots
+            for s in request.snapshots
         ]
 
         trend_analyzer = RiskTrendAnalyzer()

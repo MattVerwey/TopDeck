@@ -9,6 +9,10 @@ from enum import Enum
 from typing import Any
 
 
+# Constants
+MONTHS_PER_YEAR = 12
+
+
 class CostCategory(str, Enum):
     """Categories of costs associated with incidents."""
 
@@ -282,7 +286,7 @@ class CostImpactAnalyzer:
             # Calculate ROI
             if total_first_year_cost > 0:
                 roi = ((annual_savings - total_first_year_cost) / total_first_year_cost) * 100
-                payback_months = (implementation_cost / (annual_savings / 12)) if annual_savings > 0 else float('inf')
+                payback_months = (implementation_cost / (annual_savings / MONTHS_PER_YEAR)) if annual_savings > 0 else float('inf')
             else:
                 roi = float('inf')
                 payback_months = 0

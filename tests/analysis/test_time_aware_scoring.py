@@ -1,6 +1,6 @@
 """Tests for time-aware risk scoring."""
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 
 import pytest
 

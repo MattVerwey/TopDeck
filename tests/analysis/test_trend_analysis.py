@@ -6,7 +6,6 @@ import pytest
 
 from topdeck.analysis.risk.trend_analysis import (
     RiskSnapshot,
-    RiskTrend,
     RiskTrendAnalyzer,
     TrendDirection,
     TrendSeverity,
