@@ -45,6 +45,7 @@ export default function RiskDrilldownDialog({
     if (open && topology?.nodes) {
       loadRisks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, riskLevel, topology?.nodes]);
 
   const loadRisks = async () => {
