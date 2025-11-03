@@ -68,10 +68,9 @@ class DiscoveryScheduler:
             )
 
             # Add SPOF monitoring job with configurable interval (default: 15 minutes)
-            spof_interval = getattr(settings, "spof_scan_interval", 900)  # 15 minutes default
             self.scheduler.add_job(
                 self._run_spof_scan,
-                trigger=IntervalTrigger(seconds=spof_interval),
+                trigger=IntervalTrigger(seconds=settings.spof_scan_interval),
                 id="spof_monitoring",
                 name="SPOF Monitoring",
                 replace_existing=True,
@@ -85,9 +84,9 @@ class DiscoveryScheduler:
                 else f"{settings.discovery_scan_interval} seconds"
             )
             spof_interval_display = (
-                f"{spof_interval // 60} minutes"
-                if spof_interval >= 60
-                else f"{spof_interval} seconds"
+                f"{settings.spof_scan_interval // 60} minutes"
+                if settings.spof_scan_interval >= 60
+                else f"{settings.spof_scan_interval} seconds"
             )
             logger.info(
                 f"Scheduler started - Discovery: {discovery_interval_display}, "
@@ -429,8 +428,6 @@ class DiscoveryScheduler:
         Returns:
             Dictionary with scheduler status information
         """
-        spof_interval = getattr(settings, "spof_scan_interval", 900)
-        
         status = {
             "scheduler_running": self.scheduler.running if self.scheduler else False,
             "discovery": {
@@ -451,7 +448,7 @@ class DiscoveryScheduler:
                 "last_scan": (
                     self.last_spof_scan_time.isoformat() if self.last_spof_scan_time else None
                 ),
-                "interval_seconds": spof_interval,
+                "interval_seconds": settings.spof_scan_interval,
             },
         }
         

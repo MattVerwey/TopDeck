@@ -229,11 +229,8 @@ class SPOFMonitor:
         spof_high_risk.set(snapshot.high_risk_count)
         
         # Update counts by resource type
-        # First, reset all existing type metrics to 0
-        for resource_type in snapshot.by_resource_type:
-            spof_by_type.labels(resource_type=resource_type).set(0)
-        
-        # Then set current counts
+        # Note: Prometheus collectors automatically handle label removal
+        # We only need to set current values
         for resource_type, count in snapshot.by_resource_type.items():
             spof_by_type.labels(resource_type=resource_type).set(count)
 
@@ -265,12 +262,12 @@ class SPOFMonitor:
         Get recent SPOF changes.
         
         Args:
-            limit: Maximum number of changes to return
+            limit: Maximum number of changes to return (default: 50)
             
         Returns:
             List of recent changes as dictionaries
         """
-        recent_changes = self.changes[-limit:] if limit else self.changes
+        recent_changes = self.changes[-limit:] if limit > 0 else []
         
         return [
             {
