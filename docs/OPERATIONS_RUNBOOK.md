@@ -112,6 +112,45 @@ This runbook provides step-by-step procedures for operating TopDeck in productio
 - Resource counts increase or stay stable
 - No critical discovery errors
 
+### 3. SPOF Monitoring Check
+
+**Frequency**: Daily at 10:00 AM  
+**Owner**: On-call engineer  
+**Duration**: 10 minutes
+
+#### Steps:
+
+1. Check current SPOFs:
+   ```bash
+   curl http://localhost:8000/api/v1/monitoring/spof/current
+   ```
+
+2. Review SPOF statistics:
+   ```bash
+   curl http://localhost:8000/api/v1/monitoring/spof/statistics
+   ```
+
+3. Check for new high-risk SPOFs:
+   ```bash
+   curl http://localhost:8000/api/v1/monitoring/spof/current | \
+     jq '[.[] | select(.risk_score > 80)]'
+   ```
+
+4. Review recent SPOF changes:
+   ```bash
+   curl "http://localhost:8000/api/v1/monitoring/spof/history?limit=10"
+   ```
+
+#### Expected Results:
+- No new high-risk SPOFs (risk_score > 80)
+- Decreasing or stable SPOF count
+- SPOF scan completed within last 20 minutes
+
+#### If Issues Found:
+- High-risk SPOF detected: Create incident ticket, escalate to team
+- SPOF count increasing: Review recent infrastructure changes
+- SPOF scan not running: Check scheduler status and logs
+
 ---
 
 ## Monitoring & Alerts
@@ -196,7 +235,68 @@ kubectl exec -n topdeck-prod <api-pod> -- curl -I http://rabbitmq:15672
 kubectl edit configmap topdeck-config -n topdeck-prod
 ```
 
-#### 4. Disk Space Low
+#### 4. High-Risk SPOF Detected
+
+**Severity**: Critical  
+**Trigger**: High-risk SPOF (risk_score > 80) detected
+
+**Response**:
+```bash
+# 1. Get details of high-risk SPOFs
+curl http://localhost:8000/api/v1/monitoring/spof/current | \
+  jq '[.[] | select(.risk_score > 80)]'
+
+# 2. Check blast radius and dependencies
+curl http://localhost:8000/api/v1/risk/resources/<resource-id>
+
+# 3. Review recommendations
+curl http://localhost:8000/api/v1/monitoring/spof/current | \
+  jq '.[] | select(.risk_score > 80) | .recommendations'
+
+# 4. Create incident ticket
+# Include: resource details, blast radius, recommendations
+
+# 5. Plan and implement redundancy
+# Follow recommendations (add replicas, failover, etc.)
+
+# 6. Verify SPOF is resolved
+curl http://localhost:8000/api/v1/monitoring/spof/history | \
+  jq '.[] | select(.resource_id == "<resource-id>")'
+```
+
+**Prevention**:
+- Review architecture for single points of failure
+- Implement redundancy for critical resources
+- Add automated failover mechanisms
+- Set up monitoring and alerting
+
+#### 5. SPOF Count Increasing
+
+**Severity**: High  
+**Trigger**: SPOF count increased by > 2 in last hour
+
+**Response**:
+```bash
+# 1. Check recent SPOF changes
+curl "http://localhost:8000/api/v1/monitoring/spof/history?limit=20"
+
+# 2. Identify new SPOFs
+curl "http://localhost:8000/api/v1/monitoring/spof/history?limit=20" | \
+  jq '.[] | select(.change_type == "new")'
+
+# 3. Review recent infrastructure changes
+kubectl get events -n topdeck-prod --sort-by='.lastTimestamp' | tail -50
+
+# 4. Check if deployments removed redundancy
+kubectl get deployments -n topdeck-prod
+kubectl get statefulsets -n topdeck-prod
+
+# 5. Investigate and plan remediation
+# Review why redundancy was lost
+# Plan to restore redundant resources
+```
+
+#### 6. Disk Space Low
 
 **Severity**: High  
 **Trigger**: Disk usage > 80%

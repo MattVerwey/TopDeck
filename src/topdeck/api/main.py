@@ -18,6 +18,7 @@ from topdeck.api.routes import (
     risk,
     settings as settings_router,
     sla,
+    spof_monitoring,
     topology,
     webhooks,
 )

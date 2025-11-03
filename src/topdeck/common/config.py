@@ -6,6 +6,9 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Configuration constants
+MIN_SCAN_INTERVAL_SECONDS = 60  # Minimum interval for any periodic scan
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -126,12 +129,28 @@ class Settings(BaseSettings):
     discovery_scan_interval: int = Field(
         default=28800,
         description="Discovery scan interval in seconds (default: 8 hours)",
-        ge=60,  # Minimum 1 minute
+        ge=MIN_SCAN_INTERVAL_SECONDS,
     )
     discovery_parallel_workers: int = Field(
         default=5, description="Number of parallel discovery workers"
     )
     discovery_timeout: int = Field(default=300, description="Discovery timeout in seconds")
+
+    # SPOF Monitoring Configuration
+    enable_spof_monitoring: bool = Field(
+        default=True, description="Enable automated SPOF monitoring"
+    )
+    spof_scan_interval: int = Field(
+        default=900,
+        description="SPOF scan interval in seconds (default: 15 minutes)",
+        ge=MIN_SCAN_INTERVAL_SECONDS,
+    )
+    spof_high_risk_threshold: float = Field(
+        default=80.0,
+        description="Risk score threshold for high-risk SPOFs",
+        ge=0.0,
+        le=100.0,
+    )
 
     # Cache Configuration
     cache_ttl_resources: int = Field(default=300, description="Cache TTL for resources in seconds")

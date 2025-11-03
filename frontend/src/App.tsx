@@ -44,6 +44,7 @@ function App() {
             <Route path="/risk" element={<RiskAnalysis />} />
             <Route path="/impact" element={<ChangeImpact />} />
             <Route path="/sla" element={<SLAManagement />} />
+            <Route path="/spof" element={<SPOFMonitoring />} />
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

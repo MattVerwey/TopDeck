@@ -602,6 +602,39 @@ class ApiClient {
     const { data } = await this.client.get('/health');
     return data;
   }
+
+  /**
+   * SPOF Monitoring Methods
+   */
+  async getCurrentSPOFs(): Promise<SPOF[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/current');
+      return data;
+    });
+  }
+
+  async getSPOFHistory(limit: number = 50): Promise<SPOFChange[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/history', {
+        params: { limit },
+      });
+      return data;
+    });
+  }
+
+  async getSPOFStatistics(): Promise<SPOFStatistics> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/monitoring/spof/statistics');
+      return data;
+    });
+  }
+
+  async triggerSPOFScan(): Promise<{ status: string; message: string }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post('/api/v1/monitoring/spof/scan');
+      return data;
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

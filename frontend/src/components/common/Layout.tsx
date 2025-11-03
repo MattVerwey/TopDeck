@@ -32,6 +32,7 @@ import {
   Description as DescriptionIcon,
   Api as ApiIcon,
   Speed as SpeedIcon,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -47,6 +48,7 @@ const menuItems = [
   { text: 'Risk Analysis', icon: <RiskIcon />, path: '/risk' },
   { text: 'Change Impact', icon: <ImpactIcon />, path: '/impact' },
   { text: 'SLA/SLO', icon: <SpeedIcon />, path: '/sla' },
+  { text: 'SPOF Monitoring', icon: <ErrorIcon />, path: '/spof' },
   { text: 'Integrations', icon: <IntegrationsIcon />, path: '/integrations' },
 ];
 
