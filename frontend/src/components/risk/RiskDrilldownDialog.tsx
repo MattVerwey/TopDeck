@@ -24,6 +24,7 @@ import { Close as CloseIcon } from '@mui/icons-material';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import type { RiskAssessment } from '../../types';
+import { getRiskLevelFromScore, getRiskColor } from '../../utils/riskUtils';
 
 interface RiskDrilldownDialogProps {
   open: boolean;
@@ -77,26 +78,6 @@ export default function RiskDrilldownDialog({
       setError('Failed to load risk details');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getRiskLevelFromScore = (score: number): string => {
-    if (score >= 80) return 'critical';
-    if (score >= 60) return 'high';
-    if (score >= 40) return 'medium';
-    return 'low';
-  };
-
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'critical':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      default:
-        return 'success';
     }
   };
 

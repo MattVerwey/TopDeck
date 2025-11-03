@@ -32,6 +32,7 @@ import PredictionAnalysis from '../components/risk/PredictionAnalysis';
 import RiskDrilldownDialog from '../components/risk/RiskDrilldownDialog';
 import apiClient from '../services/api';
 import type { RiskAssessment } from '../types';
+import { getRiskLevelFromScore } from '../utils/riskUtils';
 
 interface RiskMetric {
   name: string;
@@ -235,13 +236,6 @@ export default function RiskAnalysis() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getRiskLevelFromScore = (score: number): string => {
-    if (score >= 80) return 'critical';
-    if (score >= 60) return 'high';
-    if (score >= 40) return 'medium';
-    return 'low';
   };
 
   const handleRiskCardClick = (riskLevel: 'critical' | 'high' | 'medium' | 'low') => {
