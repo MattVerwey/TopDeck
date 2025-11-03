@@ -27,12 +27,12 @@ const colorMap: Record<string, string> = {
   gateway: '#00bcd4',
 };
 
-// Node sizing constants
-const NODE_WIDTH = 50;
-const NODE_HEIGHT = 50;
-const NODE_BORDER_WIDTH = 2;
-// Text max width derived from node width minus padding (50 - 18 = 32)
-const NODE_TEXT_PADDING = 18;
+// Node sizing constants - increased for better readability
+const NODE_WIDTH = 80;
+const NODE_HEIGHT = 80;
+const NODE_BORDER_WIDTH = 3;
+// Text max width derived from node width minus padding
+const NODE_TEXT_PADDING = 24;
 const NODE_TEXT_MAX_WIDTH = NODE_WIDTH - NODE_TEXT_PADDING;
 
 export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
@@ -75,16 +75,19 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
         {
           selector: 'node',
           style: {
-            shape: 'rectangle',
+            shape: 'roundrectangle',
             'background-color': (ele: any) =>
               colorMap[ele.data('provider')] || colorMap[ele.data('type')] || '#2196f3',
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': `${NODE_TEXT_MAX_WIDTH}px`, // Derived from NODE_WIDTH - NODE_TEXT_PADDING
+            'text-max-width': `${NODE_TEXT_MAX_WIDTH}px`,
             color: '#fff',
-            'font-size': '9px',
+            'font-size': '11px', // Increased from 9px
+            'font-weight': 600, // Added for better visibility
+            'text-outline-width': 1, // Add text outline for better contrast
+            'text-outline-color': '#000',
             width: NODE_WIDTH,
             height: NODE_HEIGHT,
             'border-width': NODE_BORDER_WIDTH,
@@ -102,14 +105,22 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
           selector: 'edge',
           style: {
             width: 2,
-            'line-color': '#666',
-            'target-arrow-color': '#666',
+            'line-color': '#64748b',
+            'target-arrow-color': '#64748b',
             'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
+            'curve-style': 'unbundled-bezier',
+            'control-point-distances': [20, -20],
+            'control-point-weights': [0.25, 0.75],
             label: 'data(label)',
-            'font-size': '10px',
-            color: '#999',
+            'font-size': '9px',
+            color: '#cbd5e1',
+            'font-weight': 500,
             'text-rotation': 'autorotate',
+            'text-margin-y': -12,
+            'text-background-opacity': 0.9,
+            'text-background-color': '#0a1929',
+            'text-background-padding': '4px',
+            'text-background-shape': 'roundrectangle',
           },
         },
         {
@@ -123,11 +134,17 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
       layout: {
         name: 'cose',
         animate: true,
-        animationDuration: 500,
-        nodeRepulsion: 8000,
-        idealEdgeLength: 100,
-        edgeElasticity: 100,
+        animationDuration: 800,
+        animationEasing: 'ease-in-out-cubic',
+        nodeRepulsion: 16000, // Increased for better spacing
+        idealEdgeLength: 140, // Increased for more spread
+        edgeElasticity: 80,
         nestingFactor: 5,
+        gravity: 60,
+        numIter: 1500,
+        initialTemp: 200,
+        coolingFactor: 0.95,
+        minTemp: 1.0,
       },
       minZoom: 0.1,
       maxZoom: 3,

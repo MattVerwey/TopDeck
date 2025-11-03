@@ -36,9 +36,9 @@ import { useStore } from '../../store/useStore';
 
 
 // Constants for node sizing and padding
-const NODE_BASE_SIZE = 40;
-const NODE_IMPORTANCE_MULTIPLIER = 10;
-const NODE_TEXT_PADDING = 20; // Padding to account for text margins within node
+const NODE_BASE_SIZE = 80; // Increased from 40 for better readability
+const NODE_IMPORTANCE_MULTIPLIER = 15; // Increased from 10 for better visual distinction
+const NODE_TEXT_PADDING = 24; // Increased padding for better text margins
 
 // Helper function to calculate node size based on importance
 const getNodeSize = (ele: cytoscape.NodeSingular): number => {
@@ -167,7 +167,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         {
           selector: 'node',
           style: {
-            shape: 'rectangle',
+            shape: 'roundrectangle',
             'background-color': (ele: cytoscape.NodeSingular) =>
               getNodeColor(ele.data() as Resource),
             label: 'data(label)',
@@ -177,8 +177,10 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             // Text width calculated as node width minus padding for readability
             'text-max-width': (ele: cytoscape.NodeSingular) => `${getNodeSize(ele) - NODE_TEXT_PADDING}px`,
             color: '#fff',
-            'font-size': '9px',
-            'font-weight': 500,
+            'font-size': '11px', // Increased from 9px for better readability
+            'font-weight': 600, // Increased from 500 for better visibility
+            'text-outline-width': 1, // Add text outline for better contrast
+            'text-outline-color': '#000',
             width: getNodeSize,
             height: getNodeSize,
             'border-width': 3,
@@ -202,21 +204,23 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         {
           selector: 'edge',
           style: {
-            width: 3,
-            'line-color': '#475569',
-            'target-arrow-color': '#475569',
+            width: 2, // Reduced from 3 to declutter
+            'line-color': '#64748b',
+            'target-arrow-color': '#64748b',
             'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-            'arrow-scale': 1.5,
+            'curve-style': 'unbundled-bezier', // Changed from 'bezier' for better edge routing
+            'control-point-distances': [20, -20], // Add control points for better curve
+            'control-point-weights': [0.25, 0.75],
+            'arrow-scale': 1.3, // Reduced from 1.5
             label: 'data(label)',
-            'font-size': '10px',
+            'font-size': '9px', // Reduced from 10px to declutter
             'font-weight': 500,
-            color: '#94a3b8',
+            color: '#cbd5e1',
             'text-rotation': 'autorotate',
-            'text-margin-y': -10,
-            'text-background-opacity': 0.8,
+            'text-margin-y': -12,
+            'text-background-opacity': 0.9,
             'text-background-color': '#0f172a',
-            'text-background-padding': '3px',
+            'text-background-padding': '4px',
             'text-background-shape': 'roundrectangle',
             'overlay-opacity': 0,
           },
@@ -242,12 +246,12 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         animate: true,
         animationDuration: 800,
         animationEasing: 'ease-in-out-cubic',
-        nodeRepulsion: 12000,
-        idealEdgeLength: 120,
-        edgeElasticity: 100,
+        nodeRepulsion: 20000, // Increased from 12000 for better spacing
+        idealEdgeLength: 150, // Increased from 120 for more spread
+        edgeElasticity: 80, // Reduced from 100 for less bouncing
         nestingFactor: 5,
-        gravity: 80,
-        numIter: 1000,
+        gravity: 60, // Reduced from 80 for looser clustering
+        numIter: 1500, // Increased from 1000 for better convergence
         initialTemp: 200,
         coolingFactor: 0.95,
         minTemp: 1.0,
