@@ -50,7 +50,7 @@ export default function Topology() {
   const [availableClusters, setAvailableClusters] = useState<string[]>([]);
   const [availableNamespaces, setAvailableNamespaces] = useState<string[]>([]);
   const [graphView, setGraphView] = useState<'standard' | 'dependency'>('dependency');
-  const [useMockData, setUseMockData] = useState(true); // Start with demo data
+  const [useMockData, setUseMockData] = useState(false); // Start with live data from API
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [filteredTopology, setFilteredTopology] = useState<TopologyGraphType | null>(null);
