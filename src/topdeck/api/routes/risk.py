@@ -715,3 +715,262 @@ async def analyze_cascading_failure(
         raise HTTPException(
             status_code=500, detail=f"Failed to analyze cascading failure: {str(e)}"
         ) from e
+
+
+@router.get("/resources/{resource_id}/time-aware-risk")
+async def get_time_aware_risk(
+    resource_id: str,
+    deployment_time: str | None = Query(None, description="ISO format deployment time (defaults to now)"),
+) -> dict:
+    """
+    Get time-aware risk assessment for a deployment.
+
+    Adjusts risk scores based on deployment timing - business hours,
+    weekends, maintenance windows, etc.
+
+    Args:
+        resource_id: Resource to assess
+        deployment_time: Planned deployment time in ISO format
+
+    Returns:
+        Risk assessment with time-based adjustments
+    """
+    try:
+        from datetime import datetime
+        from topdeck.analysis.risk import TimeAwareRiskScorer, adjust_risk_score_for_timing
+
+        analyzer = get_risk_analyzer()
+        base_assessment = analyzer.analyze_resource(resource_id)
+
+        # Parse deployment time if provided
+        dt = None
+        if deployment_time:
+            dt = datetime.fromisoformat(deployment_time.replace('Z', '+00:00'))
+
+        # Get time-aware risk adjustment
+        time_aware_scorer = TimeAwareRiskScorer()
+        adjusted_risk = adjust_risk_score_for_timing(
+            base_assessment.risk_score,
+            dt,
+            time_aware_scorer
+        )
+
+        # Get optimal deployment windows
+        optimal_windows = time_aware_scorer.suggest_optimal_deployment_window(dt, days_ahead=7)
+
+        return {
+            "resource_id": resource_id,
+            "resource_name": base_assessment.resource_name,
+            "base_risk_score": base_assessment.risk_score,
+            "adjusted_risk_score": adjusted_risk["adjusted_risk_score"],
+            "time_multiplier": adjusted_risk["time_multiplier"],
+            "timing_factors": adjusted_risk["timing_factors"],
+            "recommendation": adjusted_risk["recommendation"],
+            "day_type": adjusted_risk["day_type"],
+            "time_window": adjusted_risk["time_window"],
+            "optimal_deployment_windows": optimal_windows,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate time-aware risk: {str(e)}"
+        ) from e
+
+
+@router.get("/resources/{resource_id}/cost-impact")
+async def get_cost_impact(
+    resource_id: str,
+    downtime_hours: float = Query(1.0, ge=0.1, description="Expected downtime in hours"),
+    affected_users: int = Query(1000, ge=0, description="Number of affected users"),
+    is_revenue_generating: bool = Query(True, description="Whether resource generates revenue"),
+    has_sla: bool = Query(False, description="Whether SLA penalties apply"),
+    industry: str = Query("default", description="Industry type for cost multipliers"),
+    annual_revenue: float | None = Query(None, ge=0, description="Annual revenue for SLA calculations"),
+) -> dict:
+    """
+    Estimate financial impact of a resource failure.
+
+    Calculates costs including revenue loss, engineering time, support costs,
+    SLA penalties, and reputation damage.
+
+    Args:
+        resource_id: Resource to analyze
+        downtime_hours: Expected downtime duration
+        affected_users: Number of users affected
+        is_revenue_generating: Whether resource directly generates revenue
+        has_sla: Whether SLA penalties apply
+        industry: Industry type (ecommerce, fintech, saas, healthcare, gaming, media, enterprise, default)
+        annual_revenue: Annual revenue for SLA penalty calculations
+
+    Returns:
+        Cost impact analysis with detailed breakdown
+    """
+    try:
+        from topdeck.analysis.risk import CostImpactAnalyzer
+
+        analyzer = get_risk_analyzer()
+        resource = analyzer._get_resource_details(resource_id)
+
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        cost_analyzer = CostImpactAnalyzer(
+            industry=industry,
+            annual_revenue=annual_revenue,
+        )
+
+        cost_impact = cost_analyzer.calculate_cost_impact(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            resource_type=resource["resource_type"],
+            downtime_hours=downtime_hours,
+            affected_users=affected_users,
+            is_revenue_generating=is_revenue_generating,
+            has_sla=has_sla,
+        )
+
+        # Calculate annual risk cost
+        # Assume 1% failure probability per year for example
+        annual_risk = cost_analyzer.estimate_annual_risk_cost(
+            hourly_impact_rate=cost_impact.hourly_impact_rate,
+            failure_probability_per_year=0.01,
+            mean_time_to_recovery_hours=downtime_hours,
+        )
+
+        return {
+            "resource_id": cost_impact.resource_id,
+            "resource_name": cost_impact.resource_name,
+            "total_cost": cost_impact.total_cost,
+            "cost_breakdown": cost_impact.cost_breakdown,
+            "hourly_impact_rate": cost_impact.hourly_impact_rate,
+            "affected_users": cost_impact.affected_users,
+            "confidence_level": cost_impact.confidence_level,
+            "assumptions": cost_impact.assumptions,
+            "annual_risk_cost": annual_risk,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate cost impact: {str(e)}"
+        ) from e
+
+
+@router.post("/resources/{resource_id}/trend-snapshot")
+async def add_risk_snapshot(
+    resource_id: str,
+) -> dict:
+    """
+    Create a risk snapshot for trend analysis.
+
+    Captures current risk state for tracking changes over time.
+
+    Args:
+        resource_id: Resource to snapshot
+
+    Returns:
+        Snapshot details
+    """
+    try:
+        from datetime import datetime
+        from topdeck.analysis.risk import RiskSnapshot
+
+        analyzer = get_risk_analyzer()
+        assessment = analyzer.analyze_resource(resource_id)
+
+        snapshot = RiskSnapshot(
+            timestamp=datetime.utcnow(),
+            risk_score=assessment.risk_score,
+            risk_level=assessment.risk_level.value,
+            factors=assessment.factors,
+        )
+
+        return {
+            "resource_id": resource_id,
+            "snapshot": {
+                "timestamp": snapshot.timestamp.isoformat(),
+                "risk_score": snapshot.risk_score,
+                "risk_level": snapshot.risk_level,
+                "factors": snapshot.factors,
+            },
+            "message": "Snapshot created successfully. Store this for trend analysis.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create snapshot: {str(e)}"
+        ) from e
+
+
+@router.post("/resources/{resource_id}/analyze-trend")
+async def analyze_risk_trend(
+    resource_id: str,
+    snapshots: list[dict] = Query(..., description="List of historical snapshots"),
+) -> dict:
+    """
+    Analyze risk trend from historical snapshots.
+
+    Identifies whether risk is improving, degrading, stable, or volatile.
+
+    Args:
+        resource_id: Resource to analyze
+        snapshots: List of historical risk snapshots
+
+    Returns:
+        Trend analysis with recommendations
+    """
+    try:
+        from datetime import datetime
+        from topdeck.analysis.risk import RiskSnapshot, RiskTrendAnalyzer
+
+        analyzer = get_risk_analyzer()
+        resource = analyzer._get_resource_details(resource_id)
+
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        # Convert dict snapshots to RiskSnapshot objects
+        snapshot_objects = [
+            RiskSnapshot(
+                timestamp=datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00')),
+                risk_score=s["risk_score"],
+                risk_level=s["risk_level"],
+                factors=s.get("factors", {}),
+            )
+            for s in snapshots
+        ]
+
+        trend_analyzer = RiskTrendAnalyzer()
+        trend = trend_analyzer.analyze_trend(
+            resource_id=resource_id,
+            resource_name=resource["name"],
+            snapshots=snapshot_objects,
+        )
+
+        # Detect anomalies
+        anomalies = trend_analyzer.detect_anomalies(snapshot_objects)
+
+        # Predict future risk
+        prediction = trend_analyzer.predict_future_risk(snapshot_objects, days_ahead=7)
+
+        return {
+            "resource_id": trend.resource_id,
+            "resource_name": trend.resource_name,
+            "current_risk_score": trend.current_risk_score,
+            "previous_risk_score": trend.previous_risk_score,
+            "trend_direction": trend.trend_direction.value,
+            "trend_severity": trend.trend_severity.value,
+            "change_percentage": trend.change_percentage,
+            "contributing_factors": trend.contributing_factors,
+            "recommendations": trend.recommendations,
+            "anomalies": anomalies,
+            "prediction": prediction,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze trend: {str(e)}"
+        ) from e
