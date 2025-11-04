@@ -25,6 +25,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStore } from '../store/useStore';
 import RiskBreakdown from '../components/risk/RiskBreakdown';
+import RiskDrilldownDialog from '../components/risk/RiskDrilldownDialog';
 import ResourceTester from '../components/risk/ResourceTester';
 import ResourceQuery from '../components/risk/ResourceQuery';
 import RemediationSuggestions from '../components/risk/RemediationSuggestions';
