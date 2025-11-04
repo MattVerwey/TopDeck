@@ -36,7 +36,8 @@ from topdeck.common.health import (
 )
 from topdeck.common.metrics import get_metrics_handler
 from topdeck.common.middleware import RequestIDMiddleware, RequestLoggingMiddleware
-from topdeck.common.rate_limiter import RateLimiter, RateLimitMiddleware
+from topdeck.common.rate_limiter import RateLimiter, RedisRateLimiter, RateLimitMiddleware
+import asyncio
 from topdeck.common.scheduler import start_scheduler, stop_scheduler
 
 
@@ -49,6 +50,26 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     print("DEBUG: Starting application lifespan...")
+    
+    # Initialize Redis client for rate limiting if enabled
+    redis_client = None
+    if settings.rate_limit_enabled:
+        try:
+            import redis.asyncio as aioredis
+            redis_client = aioredis.Redis(
+                host=settings.redis_host,
+                port=settings.redis_port,
+                password=settings.redis_password if settings.redis_password else None,
+                db=settings.redis_db,
+                decode_responses=False,  # We handle encoding in rate limiter
+            )
+            await redis_client.ping()
+            print("DEBUG: Redis connected for rate limiting")
+            app.state.redis_client = redis_client
+        except Exception as e:
+            print(f"Warning: Failed to connect to Redis for rate limiting: {e}")
+            app.state.redis_client = None
+    
     try:
         print("DEBUG: About to start scheduler...")
         start_scheduler()
@@ -64,6 +85,11 @@ async def lifespan(app: FastAPI):
     print("DEBUG: Shutting down application...")
     stop_scheduler()
     print("DEBUG: Scheduler stopped")
+    
+    # Close Redis connection
+    if redis_client:
+        await redis_client.close()
+        print("DEBUG: Redis connection closed")
 
 
 # Create FastAPI application
@@ -96,11 +122,59 @@ app.add_middleware(RequestIDMiddleware)
 
 # Add rate limiting middleware (configurable via environment)
 if settings.rate_limit_enabled:
-    rate_limiter = RateLimiter(requests_per_minute=settings.rate_limit_requests_per_minute)
+    # Create rate limiter based on Redis availability
+    # Redis client will be available after lifespan startup
+    # Using a factory pattern to defer Redis client initialization
+    
+    # Define scope mapping for different endpoint types
+    scope_mapping = {
+        "/api/v1/topology": "topology",
+        "/api/v1/risk": "risk",
+        "/api/v1/monitoring": "monitoring",
+        "/api/v1/prediction": "prediction",
+        "/api/v1/changes": "changes",
+    }
+    
+    # Create a lazy rate limiter that checks app.state for Redis client
+    class LazyRateLimiterMiddleware(RateLimitMiddleware):
+        """Rate limiter middleware that uses Redis if available, falls back to in-memory."""
+        
+        def __init__(self, app, **kwargs):
+            # Start with in-memory limiter
+            super().__init__(
+                app,
+                rate_limiter=RateLimiter(requests_per_minute=settings.rate_limit_requests_per_minute),
+                **kwargs
+            )
+            self._redis_limiter = None
+            self._initialized = False
+            self._init_lock = asyncio.Lock()
+        
+        async def dispatch(self, request, call_next):
+            # Initialize Redis limiter on first request if available (thread-safe)
+            if not self._initialized and hasattr(request.app.state, "redis_client"):
+                async with self._init_lock:
+                    # Double-check after acquiring lock
+                    if not self._initialized:
+                        redis_client = request.app.state.redis_client
+                        if redis_client and settings.rate_limit_use_redis:
+                            # Set burst_size to None so RedisRateLimiter will auto-set to 2x requests_per_minute
+                            burst_size = settings.rate_limit_burst_size if settings.rate_limit_burst_size > 0 else None
+                            self._redis_limiter = RedisRateLimiter(
+                                redis_client=redis_client,
+                                requests_per_minute=settings.rate_limit_requests_per_minute,
+                                burst_size=burst_size,
+                            )
+                            self.rate_limiter = self._redis_limiter
+                            self.is_redis_limiter = True
+                        self._initialized = True
+            
+            return await super().dispatch(request, call_next)
+    
     app.add_middleware(
-        RateLimitMiddleware,
-        rate_limiter=rate_limiter,
+        LazyRateLimiterMiddleware,
         exempt_paths=["/health", "/health/detailed", "/metrics", "/", "/api/info"],
+        scope_mapping=scope_mapping,
     )
 
 # Include routers

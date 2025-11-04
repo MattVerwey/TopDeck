@@ -43,6 +43,7 @@ export class ApiError extends Error {
   statusCode?: number;
   requestId?: string;
   code?: string;
+  axiosError?: AxiosError;
 
   constructor(
     message: string,
@@ -100,12 +101,17 @@ class ApiClient {
         const requestId = error.response?.headers['x-request-id'];
         const errorData = error.response?.data;
         
-        throw new ApiError(
+        const apiError = new ApiError(
           errorData?.error?.message || error.message || 'An error occurred',
           error.response?.status,
           requestId,
           errorData?.error?.code,
         );
+        
+        // Preserve the original axios error for accessing headers in retry logic
+        apiError.axiosError = error;
+        
+        throw apiError;
       }
     );
   }
@@ -126,8 +132,19 @@ class ApiClient {
           error.statusCode &&
           this.retryConfig.retryableStatuses.includes(error.statusCode)
         ) {
-          // Calculate delay with exponential backoff
-          const delay = this.retryConfig.retryDelay * Math.pow(2, retries);
+          // For 429 (rate limit), respect Retry-After header if present
+          let delay = this.retryConfig.retryDelay * Math.pow(2, retries);
+          
+          if (error.statusCode === 429 && error.axiosError) {
+            const retryAfterHeader = error.axiosError.response?.headers['retry-after'];
+            if (retryAfterHeader) {
+              const retryAfter = parseInt(retryAfterHeader, 10);
+              if (!isNaN(retryAfter)) {
+                // Convert to milliseconds and add small buffer
+                delay = retryAfter * 1000 + 100;
+              }
+            }
+          }
           
           console.warn(
             `Request failed with ${error.statusCode}. Retrying in ${delay}ms... (attempt ${retries + 1}/${this.retryConfig.maxRetries})`

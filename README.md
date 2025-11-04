@@ -67,6 +67,10 @@ TopDeck provides that answer by:
 - **[Azure Testing Guide](docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
 - **[Scripts Documentation](scripts/README.md)** - Available testing and management scripts
 
+### API & Performance
+- **[Rate Limiting Guide](docs/RATE_LIMITING.md)** - ✨ NEW! Redis-based distributed rate limiting with token bucket algorithm
+- **[Rate Limiting Quick Reference](docs/RATE_LIMITING_QUICK_REF.md)** - Quick rate limiting configuration and troubleshooting
+
 ### Project Status
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
 - **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks
