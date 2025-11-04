@@ -110,30 +110,33 @@ export default function RiskAnalysis() {
     setLoading(true);
     setError(null);
     try {
-      // Create mock topology if not available
-      if (!topology) {
-        const mockTopology = {
-          nodes: [
-            { id: '1', name: 'API Gateway', resource_type: 'gateway', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
-            { id: '2', name: 'Database Primary', resource_type: 'database', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
-            { id: '3', name: 'Cache Service', resource_type: 'cache', cloud_provider: 'aws' as const, properties: {}, metadata: {} },
-            { id: '4', name: 'Auth Service', resource_type: 'service', cloud_provider: 'azure' as const, properties: {}, metadata: {} },
-            { id: '5', name: 'Storage Account', resource_type: 'storage', cloud_provider: 'gcp' as const, properties: {}, metadata: {} },
-          ],
-          edges: [],
-          metadata: { total_nodes: 5, total_edges: 0 },
-        };
-        useStore.getState().setTopology(mockTopology);
+      // Load topology if not available
+      let currentTopology = topology;
+      if (!currentTopology) {
+        try {
+          console.log('Loading topology for risk analysis...');
+          currentTopology = await apiClient.getTopology();
+          useStore.getState().setTopology(currentTopology);
+        } catch (err) {
+          console.warn('Failed to load topology, using empty state:', err);
+          // If topology loading fails, use empty state
+          currentTopology = {
+            nodes: [],
+            edges: [],
+            metadata: { total_nodes: 0, total_edges: 0 },
+          };
+        }
       }
 
-      const nodeCount = topology?.nodes.length || 5;
+      const nodeCount = currentTopology?.nodes.length || 0;
       
       // Fetch real risk assessments from API
       let allRisks: RiskAssessment[] = [];
-      if (topology?.nodes && topology.nodes.length > 0) {
+      if (currentTopology?.nodes && currentTopology.nodes.length > 0) {
         try {
+          console.log(`Fetching risk assessments for ${currentTopology.nodes.length} resources...`);
           // Try to fetch all risks for each resource
-          const riskPromises = topology.nodes.map(node => 
+          const riskPromises = currentTopology.nodes.map(node => 
             apiClient.getRiskAssessment(node.id).catch(err => {
               console.warn('Failed to fetch risk for resource', node.id, err);
               return null;
@@ -141,6 +144,7 @@ export default function RiskAnalysis() {
           );
           const risks = await Promise.all(riskPromises);
           allRisks = risks.filter((r): r is RiskAssessment => r !== null);
+          console.log(`Successfully fetched ${allRisks.length} risk assessments`);
         } catch (err) {
           // Catch unexpected errors during Promise.all operation
           console.warn('Unexpected error fetching risk assessments:', err);
@@ -163,25 +167,23 @@ export default function RiskAnalysis() {
         else riskCounts.low++;
       });
 
-      // If no API data, use estimates based on topology
+      // If no API data but we have nodes, use estimates based on topology
       // These percentages provide reasonable defaults based on typical risk distribution:
       // - 5% critical: high-impact resources (databases, core services)
       // - 15% high: important but not critical resources
       // - 30% medium: standard resources with some dependencies
       // - Remainder: low-risk resources
-      if (allRisks.length === 0) {
+      // Only use estimates if we actually have resources in topology
+      if (allRisks.length === 0 && nodeCount > 0) {
+        console.log('No risk assessments available, using estimates based on topology');
         const CRITICAL_PERCENTAGE = 0.05;
         const HIGH_PERCENTAGE = 0.15;
         const MEDIUM_PERCENTAGE = 0.30;
-        const MIN_CRITICAL = 1;
-        const MIN_HIGH = 2;
-        const MIN_MEDIUM = 3;
-        const MIN_LOW = 1;
 
-        riskCounts.critical = Math.max(Math.floor(nodeCount * CRITICAL_PERCENTAGE), MIN_CRITICAL);
-        riskCounts.high = Math.max(Math.floor(nodeCount * HIGH_PERCENTAGE), MIN_HIGH);
-        riskCounts.medium = Math.max(Math.floor(nodeCount * MEDIUM_PERCENTAGE), MIN_MEDIUM);
-        riskCounts.low = Math.max(nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium, MIN_LOW);
+        riskCounts.critical = Math.floor(nodeCount * CRITICAL_PERCENTAGE);
+        riskCounts.high = Math.floor(nodeCount * HIGH_PERCENTAGE);
+        riskCounts.medium = Math.floor(nodeCount * MEDIUM_PERCENTAGE);
+        riskCounts.low = nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium;
       }
 
       const riskMetrics: RiskMetric[] = [
@@ -237,13 +239,31 @@ export default function RiskAnalysis() {
 
       // Add fallback risks if no real risks found
       if (defaultRisksData.length === 0) {
-        defaultRisksData.push({
-          id: 1,
-          title: 'Risk Analysis Available',
-          description: 'Select a resource in the Risk Breakdown tab to analyze specific risks',
-          severity: 'info',
-          affected: 0,
-        });
+        if (nodeCount === 0) {
+          defaultRisksData.push({
+            id: 1,
+            title: 'No Resources Discovered',
+            description: 'No resources found in topology. Run resource discovery to populate the system.',
+            severity: 'info',
+            affected: 0,
+          });
+        } else if (allRisks.length === 0) {
+          defaultRisksData.push({
+            id: 1,
+            title: 'Risk Analysis Unavailable',
+            description: `Found ${nodeCount} resources but could not fetch risk assessments. Check API connectivity.`,
+            severity: 'info',
+            affected: 0,
+          });
+        } else {
+          defaultRisksData.push({
+            id: 1,
+            title: 'No Critical Risks Detected',
+            description: 'No significant risks found. All resources appear healthy.',
+            severity: 'info',
+            affected: 0,
+          });
+        }
       }
 
       setDefaultRisks(defaultRisksData);
