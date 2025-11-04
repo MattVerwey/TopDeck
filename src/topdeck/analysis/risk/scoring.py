@@ -91,33 +91,57 @@ class RiskScorer:
         Returns:
             Risk score from 0-100
         """
-        score = 0.0
-
-        # Factor 1: Dependency impact (more dependents = higher risk)
-        # Normalize to 0-100 scale (assume max 50 dependents is very high risk)
-        dependency_impact = min(100, (dependents_count / 50) * 100)
-        score += dependency_impact * self.weights["dependency_count"]
-
-        # Factor 2: Criticality based on resource type
+        # Start with criticality as the base score (this ensures different resource types 
+        # have different base risk levels)
         criticality = self._calculate_criticality(
             resource_type, is_single_point_of_failure, dependents_count
         )
-        score += criticality * self.weights["criticality"]
+        # Criticality contributes its full value (30% weight applied later)
+        base_score = criticality
+        
+        # Factor 1: Dependency impact (more dependents = higher risk)
+        # Normalize to 0-100 scale (assume max 50 dependents is very high risk)
+        dependency_impact = min(100, (dependents_count / 50) * 100)
+        dependency_contribution = dependency_impact * (self.weights["dependency_count"] / self.weights["criticality"])
 
-        # Factor 3: Historical failure rate
+        # Factor 2: Historical failure rate
         # Already normalized to 0-1, scale to 0-100
         failure_impact = deployment_failure_rate * 100
-        score += failure_impact * self.weights["failure_rate"]
+        failure_contribution = failure_impact * (self.weights["failure_rate"] / self.weights["criticality"])
 
-        # Factor 4: Time since last change (reduces risk over time)
+        # Factor 3: Time since last change (reduces risk over time)
+        time_contribution = 0.0
         if time_since_last_change_hours is not None:
             # Normalize: 0 hours = full risk, 720+ hours (30 days) = minimal risk
             time_factor = max(0, min(100, 100 - (time_since_last_change_hours / 720) * 100))
-            score += time_factor * self.weights["time_since_change"]
+            time_contribution = time_factor * (self.weights["time_since_change"] / self.weights["criticality"])
 
-        # Factor 5: Redundancy (reduces risk)
-        redundancy_factor = 0 if has_redundancy else 100
-        score += redundancy_factor * self.weights["redundancy"]
+        # Factor 4: Redundancy (reduces risk)
+        # Instead of a negative contribution, treat lack of redundancy as a multiplier
+        redundancy_multiplier = 1.0
+        if not has_redundancy:
+            # No redundancy increases risk by 20%
+            redundancy_multiplier = 1.2
+        elif has_redundancy:
+            # Having redundancy reduces risk by 15%
+            redundancy_multiplier = 0.85
+        
+        # Calculate total score: base score modified by other factors and redundancy
+        score = (base_score + dependency_contribution + failure_contribution + time_contribution) * redundancy_multiplier
+        
+        # Store individual contributions for debugging
+        criticality_contribution = base_score
+        redundancy_contribution = (redundancy_multiplier - 1.0) * base_score
+
+        # Log score calculation breakdown for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"Risk score breakdown for {resource_type}: "
+            f"total={score:.2f}, dep_contrib={dependency_contribution:.2f}, "
+            f"crit_contrib={criticality_contribution:.2f}, fail_contrib={failure_contribution:.2f}, "
+            f"time_contrib={time_contribution:.2f}, redund_contrib={redundancy_contribution:.2f}"
+        )
 
         # Ensure score is within bounds
         return max(0.0, min(100.0, score))

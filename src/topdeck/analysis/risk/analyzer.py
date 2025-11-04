@@ -96,6 +96,16 @@ class RiskAnalyzer:
 
         # Get risk level
         risk_level = self.risk_scorer.get_risk_level(risk_score)
+        
+        # Log risk calculation details for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"Risk calculated for {resource_id} ({resource['name']}): "
+            f"score={risk_score:.2f}, level={risk_level.value}, "
+            f"deps={dependencies_count}, dependents={dependents_count}, "
+            f"type={resource['resource_type']}, spof={is_spof}, redundancy={has_redundancy}"
+        )
 
         # Calculate criticality
         criticality_score = self.risk_scorer._calculate_criticality(
