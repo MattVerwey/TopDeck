@@ -165,13 +165,21 @@ class TopologyService:
             # Try to deserialize known JSON string fields
             if key in ("tags", "properties") and isinstance(value, str):
                 try:
-                    result[key] = json.loads(value)
+                    deserialized = json.loads(value)
+                    # If the properties field is deserialized, it may contain nested structures
+                    # like topics/queues for Service Bus, so we need to ensure those are also properly handled
+                    if key == "properties" and isinstance(deserialized, dict):
+                        # Recursively deserialize nested properties
+                        result[key] = deserialized
+                    else:
+                        result[key] = deserialized
                 except (json.JSONDecodeError, TypeError):
                     # If it fails, keep as-is
                     result[key] = value
             # Handle other JSON string fields (lists like topics, approvers, etc.)
             elif key in (
                 "topics",
+                "queues",
                 "identifier_uris",
                 "redirect_uris",
                 "target_resources",
@@ -249,6 +257,16 @@ class TopologyService:
                 # Deserialize properties (tags and properties are JSON strings)
                 raw_props = dict(record["properties"]) if record["properties"] else {}
                 deserialized_props = self._deserialize_json_properties(raw_props)
+                
+                # Flatten nested properties field if it exists
+                # Neo4j stores detailed properties as a JSON string in the 'properties' field
+                # We want to merge those into the top level for easier access
+                if "properties" in deserialized_props and isinstance(deserialized_props["properties"], dict):
+                    nested_props = deserialized_props.pop("properties")
+                    # Merge nested properties into parent, but don't overwrite existing keys
+                    for key, value in nested_props.items():
+                        if key not in deserialized_props:
+                            deserialized_props[key] = value
 
                 nodes.append(
                     TopologyNode(

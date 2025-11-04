@@ -5,6 +5,8 @@ Provides API endpoints for risk assessment, blast radius calculation,
 failure simulation, and single point of failure detection.
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -13,6 +15,8 @@ from topdeck.analysis.risk import (
 )
 from topdeck.common.config import settings
 from topdeck.storage.neo4j_client import Neo4jClient
+
+logger = logging.getLogger(__name__)
 
 
 # Pydantic models for API responses
@@ -137,6 +141,55 @@ def get_risk_analyzer() -> RiskAnalyzer:
     )
     neo4j_client.connect()
     return RiskAnalyzer(neo4j_client)
+
+
+@router.get("/all", response_model=list[RiskAssessmentResponse])
+async def get_all_risk_assessments() -> list[RiskAssessmentResponse]:
+    """
+    Get risk assessments for all resources.
+    
+    Returns a list of risk assessments for all resources in the infrastructure.
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        # Get all resources from Neo4j
+        query = """
+        MATCH (r:Resource)
+        RETURN r.id as id
+        """
+        
+        assessments = []
+        with analyzer.neo4j_client.session() as session:
+            result = session.run(query)
+            for record in result:
+                resource_id = record["id"]
+                try:
+                    assessment = analyzer.analyze_resource(resource_id)
+                    assessments.append(RiskAssessmentResponse(
+                        resource_id=assessment.resource_id,
+                        resource_name=assessment.resource_name,
+                        resource_type=assessment.resource_type,
+                        risk_score=assessment.risk_score,
+                        risk_level=assessment.risk_level.value,
+                        criticality_score=assessment.criticality_score,
+                        dependencies_count=assessment.dependencies_count,
+                        dependents_count=assessment.dependents_count,
+                        blast_radius=assessment.blast_radius,
+                        single_point_of_failure=assessment.single_point_of_failure,
+                        deployment_failure_rate=assessment.deployment_failure_rate,
+                        time_since_last_change=assessment.time_since_last_change,
+                        recommendations=assessment.recommendations,
+                        factors=assessment.factors,
+                        assessed_at=assessment.assessed_at.isoformat(),
+                    ))
+                except Exception as e:
+                    # Skip resources that fail to analyze
+                    logger.warning(f"Failed to analyze resource {resource_id}: {str(e)}")
+                    continue
+        
+        return assessments
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get all risk assessments: {str(e)}") from e
 
 
 @router.get("/resources/{resource_id}", response_model=RiskAssessmentResponse)

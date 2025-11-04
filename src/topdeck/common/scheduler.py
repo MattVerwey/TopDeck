@@ -232,7 +232,31 @@ class DiscoveryScheduler:
             max_workers=settings.discovery_parallel_workers,
         )
 
-        return await discoverer.discover_all_resources()
+        # First discover all resources using generic Azure API
+        logger.info("Phase 1: Discovering all Azure resources...")
+        result = await discoverer.discover_all_resources()
+        logger.info(f"Phase 1 complete: {result.resource_count} resources discovered")
+        
+        # Then enrich with specialized discovery for detailed properties
+        logger.info("Phase 2: Enriching resources with specialized discovery...")
+        specialized_result = await discoverer.discover_specialized_resources_parallel()
+        
+        # Merge specialized resources into main result (they have more detailed properties)
+        # Use specialized resource if it exists, otherwise keep the generic one
+        specialized_by_id = {r.id: r for r in specialized_result.resources}
+        
+        # Update existing resources with specialized versions
+        for i, resource in enumerate(result.resources):
+            if resource.id in specialized_by_id:
+                result.resources[i] = specialized_by_id[resource.id]
+                del specialized_by_id[resource.id]
+        
+        # Add any new resources from specialized discovery
+        for specialized_resource in specialized_by_id.values():
+            result.add_resource(specialized_resource)
+        
+        logger.info(f"Phase 2 complete: Final count = {result.resource_count} resources")
+        return result
 
     async def _discover_aws(self) -> DiscoveryResult:
         """Discover AWS resources."""

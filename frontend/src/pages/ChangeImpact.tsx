@@ -14,10 +14,6 @@ import {
   CardContent,
   Alert,
   Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Divider,
   Chip,
   LinearProgress,
@@ -33,12 +29,25 @@ import DocLink from '../components/common/DocLink';
 
 export default function ChangeImpact() {
   const { topology } = useStore();
+  const [selectedResourceType, setSelectedResourceType] = useState<string>('');
   const [selectedService, setSelectedService] = useState<string>('');
-  const [changeType, setChangeType] = useState<string>('deployment');
   const [impactResult, setImpactResult] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
-  const services = topology?.nodes.map((n) => n.name) || [];
+  // Get unique resource types for filtering
+  const resourceTypes = [...new Set(topology?.nodes.map((n) => n.resource_type) || [])].sort();
+  
+  // Filter services by selected resource type
+  const filteredNodes = selectedResourceType
+    ? topology?.nodes.filter((n) => n.resource_type === selectedResourceType) || []
+    : topology?.nodes || [];
+  
+  // Create service list with resource type labels
+  const services = filteredNodes.map((n) => ({
+    label: `${n.name} (${n.resource_type})`,
+    value: n.name,
+    type: n.resource_type,
+  }));
 
   const analyzeImpact = async () => {
     if (!selectedService) return;
@@ -46,53 +55,60 @@ export default function ChangeImpact() {
     setAnalyzing(true);
     
     try {
-      // Import API client
-      const { default: apiClient } = await import('../services/api');
+      // Find the selected service node in the topology
+      const selectedNode = topology?.nodes.find(n => n.name === selectedService);
       
-      // First, create a temporary change request to get an ID
-      const changeRequest = await apiClient.createChangeRequest({
-        title: `Impact Analysis for ${selectedService}`,
-        description: `Analyzing impact of ${changeType} on ${selectedService}`,
-        change_type: changeType,
-        affected_resources: [], // Would need actual resource IDs
-      });
+      if (!selectedNode) {
+        throw new Error('Selected service not found in topology');
+      }
+
+      // Get all edges where this node is the source (things it depends on)
+      // or target (things that depend on it)
+      const directDependents = topology?.edges?.filter(
+        e => e.source_id === selectedNode.id
+      ) || [];
       
-      // Then assess the impact
-      const assessment = await apiClient.assessChangeImpact(changeRequest.id);
+      const indirectDependents = topology?.edges?.filter(
+        e => e.target_id === selectedNode.id
+      ) || [];
+
+      // Get the actual resource nodes
+      const directResources = directDependents
+        .map(edge => topology?.nodes.find(n => n.id === edge.target_id))
+        .filter(n => n != null);
       
-      // Map API response to component state
+      const indirectResources = indirectDependents
+        .map(edge => topology?.nodes.find(n => n.id === edge.source_id))
+        .filter(n => n != null);
+
+      const allAffectedResources = [...directResources, ...indirectResources];
+      const totalAffected = allAffectedResources.length;
+
+      // Calculate impact metrics based on dependencies
+      const criticalPath = totalAffected > 10 || directResources.length > 5;
+      const performanceDegradation = Math.min(totalAffected * 2, 25);
+      const estimatedDowntime = Math.min(totalAffected * 30, 600);
+      
       setImpactResult({
         service: selectedService,
-        changeType,
-        affectedServices: assessment.total_affected_count,
-        performanceDegradation: assessment.performance_degradation_pct,
-        estimatedDowntime: assessment.estimated_downtime_seconds,
-        userImpact: assessment.user_impact_level,
+        changeType: 'deployment',
+        affectedServices: totalAffected,
+        performanceDegradation,
+        estimatedDowntime,
+        userImpact: totalAffected > 15 ? 'high' : totalAffected > 8 ? 'medium' : 'low',
         breakdown: {
-          directDependents: assessment.directly_affected_resources.length,
-          indirectDependents: assessment.indirectly_affected_resources.length,
-          criticalPath: assessment.critical_path_affected,
-          recommendedWindow: assessment.recommended_window,
+          directDependents: directResources.length,
+          indirectDependents: indirectResources.length,
+          criticalPath,
+          recommendedWindow: criticalPath ? 'maintenance' : 'normal',
         },
-        recommendations: assessment.recommendations,
+        affectedResourcesList: allAffectedResources,
       });
     } catch (error) {
       console.error('Failed to analyze impact:', error);
-      // Fallback to mock data on error
-      setImpactResult({
-        service: selectedService,
-        changeType,
-        affectedServices: 12,
-        performanceDegradation: 15,
-        estimatedDowntime: 300,
-        userImpact: 'medium',
-        breakdown: {
-          directDependents: 5,
-          indirectDependents: 7,
-          criticalPath: true,
-          recommendedWindow: 'maintenance',
-        },
-      });
+      // Show error message instead of mock data
+      alert(`Failed to analyze impact: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setImpactResult(null);
     } finally {
       setAnalyzing(false);
     }
@@ -125,31 +141,41 @@ export default function ChangeImpact() {
       {/* Input Form */}
       <Paper sx={{ p: 3, mb: 4 }}>
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 5 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Autocomplete
-              options={services}
-              value={selectedService}
-              onChange={(_, value) => setSelectedService(value || '')}
+              options={resourceTypes}
+              value={selectedResourceType}
+              onChange={(_, value) => {
+                setSelectedResourceType(value || '');
+                setSelectedService(''); // Reset service when type changes
+              }}
               renderInput={(params) => (
-                <TextField {...params} label="Select Service" fullWidth />
+                <TextField {...params} label="Resource Type" fullWidth />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Box display="flex" justifyContent="space-between" width="100%">
+                    <Typography variant="body2">{option}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {topology?.nodes.filter((n) => n.resource_type === option).length}
+                    </Typography>
+                  </Box>
+                </li>
               )}
             />
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <FormControl fullWidth>
-              <InputLabel>Change Type</InputLabel>
-              <Select
-                value={changeType}
-                label="Change Type"
-                onChange={(e) => setChangeType(e.target.value)}
-              >
-                <MenuItem value="deployment">Deployment</MenuItem>
-                <MenuItem value="configuration">Configuration Change</MenuItem>
-                <MenuItem value="scaling">Scaling</MenuItem>
-                <MenuItem value="restart">Service Restart</MenuItem>
-                <MenuItem value="update">Version Update</MenuItem>
-              </Select>
-            </FormControl>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Autocomplete
+              options={services}
+              value={services.find((s) => s.value === selectedService) || null}
+              onChange={(_, value) => setSelectedService(value?.value || '')}
+              getOptionLabel={(option) => option.label}
+              isOptionEqualToValue={(option, value) => option.value === value.value}
+              renderInput={(params) => (
+                <TextField {...params} label="Select Service" fullWidth />
+              )}
+              disabled={!selectedResourceType}
+            />
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
             <Button
@@ -303,30 +329,58 @@ export default function ChangeImpact() {
               Services that will be impacted by this change
             </Typography>
             <Grid container spacing={1.5}>
-              {Array.from({ length: impactResult.affectedServices }, (_, i) => (
-                <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                  <Box
-                    sx={{
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <Typography variant="body2" fontWeight={600} noWrap>
-                      Service {i + 1}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Affected service
-                    </Typography>
-                  </Box>
-                </Grid>
-              ))}
+              {impactResult.affectedResourcesList && impactResult.affectedResourcesList.length > 0 ? (
+                impactResult.affectedResourcesList.map((resource: any, i: number) => (
+                  <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} noWrap title={resource.name}>
+                        {resource.name || `Resource ${i + 1}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {resource.resource_type || 'Unknown type'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))
+              ) : (
+                // Fallback to mock data if affectedResourcesList is not available
+                Array.from({ length: impactResult.affectedServices }, (_, i) => (
+                  <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} noWrap>
+                        Service {i + 1}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Affected service
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))
+              )}
             </Grid>
           </Paper>
         </>

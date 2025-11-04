@@ -322,65 +322,66 @@ async def discover_messaging_resources(
     Returns:
         List of DiscoveredResource objects with detailed properties
     """
+    # DIAGNOSTIC: Print to stdout to verify function is being called
+    print("=" * 80)
+    print("DIAGNOSTIC: discover_messaging_resources() CALLED")
+    print(f"DIAGNOSTIC: subscription_id={subscription_id}")
+    print(f"DIAGNOSTIC: resource_group={resource_group}")
+    print(f"DIAGNOSTIC: ServiceBusManagementClient={ServiceBusManagementClient}")
+    print("=" * 80)
+    
     resources = []
     mapper = AzureResourceMapper()
 
     if ServiceBusManagementClient is None:
         logger.warning("Azure Service Bus SDK not available, skipping messaging discovery")
+        print("DIAGNOSTIC: ServiceBusManagementClient is None, returning early")
         return resources
 
+    logger.info("Starting Service Bus discovery...")
+    print("DIAGNOSTIC: Starting Service Bus discovery...")
     try:
         servicebus_client = ServiceBusManagementClient(credential, subscription_id)
+        print("DIAGNOSTIC: ServiceBusManagementClient created successfully")
 
         # Discover Service Bus namespaces
         if resource_group:
             namespaces = servicebus_client.namespaces.list_by_resource_group(resource_group)
         else:
             namespaces = servicebus_client.namespaces.list()
-
+        
+        print("DIAGNOSTIC: Namespace list retrieved, iterating...")
+        namespace_count = 0
         for namespace in namespaces:
+            namespace_count += 1
+            print(f"DIAGNOSTIC: Processing namespace {namespace_count}: {namespace.name}")
             try:
                 # Map namespace resource
-                namespace_resource = mapper.map_azure_resource(
-                    resource_id=namespace.id,
-                    resource_name=namespace.name,
-                    resource_type=namespace.type,
-                    location=namespace.location,
-                    tags=namespace.tags,
-                    properties={
-                        "sku": namespace.sku.name if namespace.sku else None,
-                        "tier": namespace.sku.tier if namespace.sku else None,
-                        "endpoint": (
-                            namespace.service_bus_endpoint
-                            if hasattr(namespace, "service_bus_endpoint")
-                            else None
-                        ),
-                        "status": namespace.status if hasattr(namespace, "status") else None,
-                    },
-                    provisioning_state=(
-                        namespace.provisioning_state
-                        if hasattr(namespace, "provisioning_state")
-                        else None
-                    ),
-                )
-                resources.append(namespace_resource)
-
-                # Discover topics in this namespace
+                # Discover topics and queues in this namespace
                 namespace_rg = mapper.extract_resource_group(namespace.id)
+                print(f"DIAGNOSTIC: Namespace ID: {namespace.id}")
+                print(f"DIAGNOSTIC: Extracted RG: {namespace_rg}")
+                
+                topics_list = []
+                queues_list = []
+                
                 if namespace_rg:
-                    topics = servicebus_client.topics.list_by_namespace(
-                        namespace_rg, namespace.name
-                    )
-                    for topic in topics:
-                        try:
-                            topic_resource = mapper.map_azure_resource(
-                                resource_id=topic.id,
-                                resource_name=topic.name,
-                                resource_type=topic.type,
-                                location=namespace.location,
-                                tags={},
-                                properties={
-                                    "namespace": namespace.name,
+                    print(f"DIAGNOSTIC: RG is valid, proceeding with topic/queue discovery")
+                    logger.info(f"Discovering topics/queues for Service Bus namespace: {namespace.name} in RG: {namespace_rg}")
+                    
+                    # Discover topics
+                    try:
+                        logger.info(f"Attempting to list topics in namespace {namespace.name}...")
+                        topics = servicebus_client.topics.list_by_namespace(
+                            namespace_rg, namespace.name
+                        )
+                        topic_list = list(topics)
+                        logger.info(f"Successfully retrieved {len(topic_list)} topics")
+                        for topic in topic_list:
+                            try:
+                                topic_data = {
+                                    "name": topic.name,
+                                    "id": topic.id,
                                     "max_size_in_mb": (
                                         topic.max_size_in_megabytes
                                         if hasattr(topic, "max_size_in_megabytes")
@@ -397,26 +398,18 @@ async def discover_messaging_resources(
                                         else None
                                     ),
                                     "status": topic.status if hasattr(topic, "status") else None,
-                                },
-                                provisioning_state=None,
-                            )
-                            resources.append(topic_resource)
-
-                            # Discover subscriptions for this topic
-                            subscriptions = servicebus_client.subscriptions.list_by_topic(
-                                namespace_rg, namespace.name, topic.name
-                            )
-                            for subscription in subscriptions:
+                                    "subscriptions": []
+                                }
+                                
+                                # Discover subscriptions for this topic
                                 try:
-                                    sub_resource = mapper.map_azure_resource(
-                                        resource_id=subscription.id,
-                                        resource_name=subscription.name,
-                                        resource_type=subscription.type,
-                                        location=namespace.location,
-                                        tags={},
-                                        properties={
-                                            "namespace": namespace.name,
-                                            "topic": topic.name,
+                                    subscriptions = servicebus_client.subscriptions.list_by_topic(
+                                        namespace_rg, namespace.name, topic.name
+                                    )
+                                    for subscription in subscriptions:
+                                        topic_data["subscriptions"].append({
+                                            "name": subscription.name,
+                                            "id": subscription.id,
                                             "max_delivery_count": (
                                                 subscription.max_delivery_count
                                                 if hasattr(subscription, "max_delivery_count")
@@ -432,32 +425,32 @@ async def discover_messaging_resources(
                                                 if hasattr(subscription, "status")
                                                 else None
                                             ),
-                                        },
-                                        provisioning_state=None,
-                                    )
-                                    resources.append(sub_resource)
+                                        })
                                 except Exception as e:
-                                    logger.error(
-                                        f"Error discovering subscription {subscription.name}: {e}"
-                                    )
-
-                        except Exception as e:
-                            logger.error(f"Error discovering topic {topic.name}: {e}")
+                                    logger.error(f"Error discovering subscriptions for topic {topic.name}: {e}")
+                                
+                                topics_list.append(topic_data)
+                            except Exception as e:
+                                logger.error(f"Error discovering topic {topic.name}: {e}")
+                        
+                        logger.info(f"Discovered {len(topics_list)} topics in namespace {namespace.name}")
+                    except Exception as e:
+                        logger.error(f"Error listing topics for namespace {namespace.name}: {e}", exc_info=True)
+                        logger.error(f"This may be a permissions issue. Service principal needs 'Azure Service Bus Data Receiver' or 'Service Bus Data Owner' role.")
 
                     # Discover queues in this namespace
-                    queues = servicebus_client.queues.list_by_namespace(
-                        namespace_rg, namespace.name
-                    )
-                    for queue in queues:
-                        try:
-                            queue_resource = mapper.map_azure_resource(
-                                resource_id=queue.id,
-                                resource_name=queue.name,
-                                resource_type=queue.type,
-                                location=namespace.location,
-                                tags={},
-                                properties={
-                                    "namespace": namespace.name,
+                    try:
+                        logger.info(f"Attempting to list queues in namespace {namespace.name}...")
+                        queues = servicebus_client.queues.list_by_namespace(
+                            namespace_rg, namespace.name
+                        )
+                        queue_list = list(queues)
+                        logger.info(f"Successfully retrieved {len(queue_list)} queues")
+                        for queue in queue_list:
+                            try:
+                                queues_list.append({
+                                    "name": queue.name,
+                                    "id": queue.id,
                                     "max_size_in_mb": (
                                         queue.max_size_in_megabytes
                                         if hasattr(queue, "max_size_in_megabytes")
@@ -479,12 +472,43 @@ async def discover_messaging_resources(
                                         else None
                                     ),
                                     "status": queue.status if hasattr(queue, "status") else None,
-                                },
-                                provisioning_state=None,
-                            )
-                            resources.append(queue_resource)
-                        except Exception as e:
-                            logger.error(f"Error discovering queue {queue.name}: {e}")
+                                })
+                            except Exception as e:
+                                logger.error(f"Error discovering queue {queue.name}: {e}")
+                        
+                        logger.info(f"Discovered {len(queues_list)} queues in namespace {namespace.name}")
+                    except Exception as e:
+                        logger.error(f"Error listing queues for namespace {namespace.name}: {e}", exc_info=True)
+                        logger.error(f"This may be a permissions issue. Service principal needs 'Azure Service Bus Data Receiver' or 'Service Bus Data Owner' role.")
+                
+                # Create namespace resource with topics/queues as nested properties
+                namespace_resource = mapper.map_azure_resource(
+                    resource_id=namespace.id,
+                    resource_name=namespace.name,
+                    resource_type=namespace.type,
+                    location=namespace.location,
+                    tags=namespace.tags,
+                    properties={
+                        "sku": namespace.sku.name if namespace.sku else None,
+                        "tier": namespace.sku.tier if namespace.sku else None,
+                        "endpoint": (
+                            namespace.service_bus_endpoint
+                            if hasattr(namespace, "service_bus_endpoint")
+                            else None
+                        ),
+                        "status": namespace.status if hasattr(namespace, "status") else None,
+                        "topics": topics_list,
+                        "queues": queues_list,
+                        "topics_count": len(topics_list),
+                        "queues_count": len(queues_list),
+                    },
+                    provisioning_state=(
+                        namespace.provisioning_state
+                        if hasattr(namespace, "provisioning_state")
+                        else None
+                    ),
+                )
+                resources.append(namespace_resource)
 
             except Exception as e:
                 logger.error(f"Error discovering Service Bus namespace {namespace.name}: {e}")
@@ -492,7 +516,7 @@ async def discover_messaging_resources(
         logger.info(f"Discovered {len(resources)} messaging resources")
 
     except Exception as e:
-        logger.error(f"Error discovering messaging resources: {e}")
+        logger.error(f"Error discovering messaging resources: {e}", exc_info=True)
 
     return resources
 
@@ -668,6 +692,17 @@ async def get_aks_servicebus_connections(
                     namespaces = v1.list_namespace()
 
                     for ns in namespaces.items:
+                    INFO: 172.18.0.1:57686 - "POST /api/v1/discovery/scan-repositories?scan_all_projects=true HTTP/1.1" 500
+                    Internal Server Error
+                    2025-11-04 15:33:53 [info ] incoming_request client_host=127.0.0.1 method=GET path=/health
+                    query_params= request_id=eee78460-e6c7-4234-87dc-74633a71bda0
+                    2025-11-04 15:33:53 [info ] request_completed method=GET path=/health process_time_ms=1.46
+                    request_id=eee78460-e6c7-4234-87dc-74633a71bda0 status_code=200
+                    
+                    Let me check for any error logs that might show the actual exception. The 500 error is happening very quickly (0.63-1.43ms), which suggests it's failing early. Let me look at all the logs more carefully:
+                    
+                     Run pwsh command?
+                    
                         ns_name = ns.metadata.name
 
                         # Get ConfigMaps

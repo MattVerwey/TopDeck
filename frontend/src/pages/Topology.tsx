@@ -285,21 +285,44 @@ export default function Topology() {
 
             <Autocomplete
               size="small"
-              sx={{ minWidth: 150 }}
-              options={availableClusters}
-              value={filters.cluster || null}
-              onChange={(_e, newValue) => handleFilterChange('cluster', newValue || '')}
-              renderInput={(params) => <TextField {...params} label="Cluster" />}
+              sx={{ minWidth: 200 }}
+              options={availableTypes}
+              value={filters.resource_type || null}
+              onChange={(_e, newValue) => handleFilterChange('resource_type', newValue || '')}
+              renderInput={(params) => <TextField {...params} label="Resource Type" />}
+              renderOption={(props, option) => (
+                <li {...props} key={option}>
+                  <Stack direction="row" justifyContent="space-between" width="100%">
+                    <Typography variant="body2">{option}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {topology?.nodes.filter((n) => n.resource_type === option).length}
+                    </Typography>
+                  </Stack>
+                </li>
+              )}
             />
 
-            <Autocomplete
-              size="small"
-              sx={{ minWidth: 150 }}
-              options={availableNamespaces}
-              value={filters.namespace || null}
-              onChange={(_e, newValue) => handleFilterChange('namespace', newValue || '')}
-              renderInput={(params) => <TextField {...params} label="Namespace" />}
-            />
+            {availableClusters.length > 0 && (
+              <Autocomplete
+                size="small"
+                sx={{ minWidth: 150 }}
+                options={availableClusters}
+                value={filters.cluster || null}
+                onChange={(_e, newValue) => handleFilterChange('cluster', newValue || '')}
+                renderInput={(params) => <TextField {...params} label="Cluster" />}
+              />
+            )}
+
+            {availableNamespaces.length > 0 && (
+              <Autocomplete
+                size="small"
+                sx={{ minWidth: 150 }}
+                options={availableNamespaces}
+                value={filters.namespace || null}
+                onChange={(_e, newValue) => handleFilterChange('namespace', newValue || '')}
+                renderInput={(params) => <TextField {...params} label="Namespace (Service Bus/Event Hub)" />}
+              />
+            )}
 
             <FormControl sx={{ minWidth: 150 }} size="small">
               <InputLabel>Resource Type</InputLabel>

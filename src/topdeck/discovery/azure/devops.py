@@ -641,3 +641,141 @@ class AzureDevOpsDiscoverer:
         )
 
         return app
+
+    async def scan_repositories_for_dependencies(
+        self,
+        discovered_resources: dict[str, Any],
+        app_service_resources: list[Any] | None = None,
+    ) -> list[Any]:
+        """
+        Scan Azure DevOps repositories for Service Bus and other resource dependencies.
+
+        This method:
+        1. Gets all repositories from Azure DevOps
+        2. Scans configuration files (appsettings.json, .env, etc.)
+        3. Finds Service Bus connection strings and topic/queue references
+        4. Matches them to discovered Azure resources
+        5. Creates ResourceDependency objects
+
+        Args:
+            discovered_resources: Dict of discovered Azure resources (keyed by ID)
+            app_service_resources: Optional list of compute resources (App Service or AKS) to link repos to
+
+        Returns:
+            List of ResourceDependency objects
+        """
+        from .code_scanner import CodeRepositoryScanner
+
+        dependencies = []
+
+        try:
+            scanner = CodeRepositoryScanner(
+                organization=self.organization,
+                project=self.project,
+                personal_access_token=self.pat,
+            )
+
+            # Get all repositories
+            repositories = await self.discover_repositories()
+            logger.info(f"Scanning {len(repositories)} repositories for Service Bus dependencies")
+
+            for repo in repositories:
+                try:
+                    # Try scanning main branch first, then master
+                    for branch in ["main", "master", "develop"]:
+                        try:
+                            # Scan repository for Service Bus references
+                            scan_results = await scanner.scan_repository_for_servicebus(
+                                repository_id=repo.id,
+                                repository_name=repo.name,
+                                branch=branch,
+                                discovered_resources=discovered_resources,
+                            )
+
+                            if scan_results.get("namespaces") or scan_results.get("topics"):
+                                logger.info(
+                                    f"Repository {repo.name} ({branch}): Found "
+                                    f"{len(scan_results.get('namespaces', []))} Service Bus namespaces, "
+                                    f"{len(scan_results.get('topics', []))} topics"
+                                )
+
+                                # Try to link repository to a compute resource (App Service or AKS)
+                                compute_resource_id = self._find_compute_resource_for_repo(
+                                    repo, app_service_resources
+                                )
+
+                                if compute_resource_id:
+                                    # Create dependencies between compute resource and Service Bus resources
+                                    repo_deps = await scanner.create_dependencies_from_scan(
+                                        repository_id=repo.id,
+                                        app_resource_id=compute_resource_id,
+                                        scan_results=scan_results,
+                                        discovered_resources=discovered_resources,
+                                    )
+                                    dependencies.extend(repo_deps)
+                                else:
+                                    logger.info(
+                                        f"No matching compute resource (App Service or AKS) found for repository {repo.name}, "
+                                        f"but found Service Bus references"
+                                    )
+
+                                # Found a valid branch, stop trying others
+                                break
+
+                        except Exception as branch_error:
+                            logger.debug(
+                                f"Branch {branch} not found or error in {repo.name}: {branch_error}"
+                            )
+                            continue
+
+                except Exception as repo_error:
+                    logger.error(f"Error scanning repository {repo.name}: {repo_error}")
+
+            scanner.close()
+            logger.info(
+                f"Repository scanning complete: Created {len(dependencies)} dependencies"
+            )
+
+        except Exception as e:
+            logger.error(f"Error during repository scanning: {e}")
+
+        return dependencies
+
+    def _find_compute_resource_for_repo(
+        self,
+        repository: Repository,
+        app_service_resources: list[Any] | None = None,
+    ) -> str | None:
+        """
+        Find a compute resource (App Service or AKS cluster) that matches this repository.
+
+        Matching is done by:
+        1. Checking resource tags for repository URL
+        2. Matching repository name to compute resource name patterns
+
+        Args:
+            repository: Repository object
+            app_service_resources: List of compute resources (App Services and/or AKS clusters)
+
+        Returns:
+            Compute resource ID or None
+        """
+        if not app_service_resources:
+            return None
+
+        repo_name_lower = repository.name.lower()
+
+        for compute_resource in app_service_resources:
+            # Check if resource has repository tag matching this repo
+            if hasattr(compute_resource, "properties") and isinstance(compute_resource.properties, dict):
+                tags = compute_resource.properties.get("tags", {})
+                repo_url = tags.get("repository", tags.get("repo_url", ""))
+                if repo_url and repository.url in repo_url:
+                    return compute_resource.id
+
+            # Check name matching (e.g., repo "myapp" matches "prod-myapp-aks" or "prod-myapp-api")
+            resource_name_lower = compute_resource.name.lower()
+            if repo_name_lower in resource_name_lower or resource_name_lower in repo_name_lower:
+                return compute_resource.id
+
+        return None

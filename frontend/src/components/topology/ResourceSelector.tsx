@@ -48,6 +48,7 @@ export default function ResourceSelector({
   onSelectResources,
   selectedResourceIds = [],
 }: ResourceSelectorProps) {
+  const [selectedResourceType, setSelectedResourceType] = useState<string | null>(null);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
@@ -61,6 +62,16 @@ export default function ResourceSelector({
     apps: new Map(),
   });
 
+  // Get unique resource types for filtering
+  const availableResourceTypes = Array.from(
+    new Set(resources.map((r) => r.resource_type))
+  ).sort();
+
+  // Filter resources by selected resource type
+  const filteredResources = selectedResourceType
+    ? resources.filter((r) => r.resource_type === selectedResourceType)
+    : resources;
+
   // Build hierarchy from resources
   useEffect(() => {
     const subscriptions = new Set<string>();
@@ -68,7 +79,7 @@ export default function ResourceSelector({
     const namespaces = new Map<string, Set<string>>();
     const apps = new Map<string, Resource[]>();
 
-    resources.forEach((resource) => {
+    filteredResources.forEach((resource) => {
       // Extract subscription from resource ID (Azure pattern: /subscriptions/{sub}/...)
       const subMatch = resource.id.match(/\/subscriptions\/([^/]+)/);
       const subscription = subMatch ? subMatch[1] : resource.cloud_provider;
@@ -113,7 +124,7 @@ export default function ResourceSelector({
       ),
       apps,
     });
-  }, [resources]);
+  }, [filteredResources]);
 
   const availableClusters = selectedSubscription
     ? hierarchy.clusters.get(selectedSubscription) || []
@@ -139,6 +150,7 @@ export default function ResourceSelector({
   };
 
   const handleClear = () => {
+    setSelectedResourceType(null);
     setSelectedSubscription(null);
     setSelectedCluster(null);
     setSelectedNamespace(null);
@@ -174,9 +186,35 @@ export default function ResourceSelector({
         <Stack spacing={3}>
           {/* Info */}
           <Typography variant="body2" color="text.secondary">
-            Filter resources hierarchically through subscription → cluster → namespace → app.
-            This helps manage large topologies with thousands of resources.
+            Filter resources by type first to eliminate duplicates, then drill down hierarchically.
           </Typography>
+
+          {/* Resource Type Selection */}
+          <Autocomplete
+            value={selectedResourceType}
+            onChange={(_e, newValue) => {
+              setSelectedResourceType(newValue);
+              setSelectedSubscription(null);
+              setSelectedCluster(null);
+              setSelectedNamespace(null);
+              setSelectedApps([]);
+            }}
+            options={availableResourceTypes}
+            renderInput={(params) => (
+              <TextField {...params} label="Resource Type (Filter First)" size="small" />
+            )}
+            renderOption={(props, option) => (
+              <li {...props}>
+                <Stack direction="row" justifyContent="space-between" width="100%">
+                  <Typography variant="body2">{option}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {resources.filter((r) => r.resource_type === option).length} resources
+                  </Typography>
+                </Stack>
+              </li>
+            )}
+            fullWidth
+          />
 
           {/* Subscription Selection */}
           <Autocomplete

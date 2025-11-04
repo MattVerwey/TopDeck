@@ -595,21 +595,21 @@ class ApiClient {
   // Settings API
   async getSettings(): Promise<ApplicationSettings> {
     return this.requestWithRetry(async () => {
-      const { data } = await this.client.get('/api/v1/settings');
+      const { data } = await this.client.get<ApplicationSettings>('/api/v1/settings');
       return data;
     });
   }
 
   async getConnectionStatus(): Promise<ConnectionStatus> {
     return this.requestWithRetry(async () => {
-      const { data } = await this.client.get('/api/v1/settings/connections');
+      const { data } = await this.client.get<ConnectionStatus>('/api/v1/settings/connections');
       return data;
     });
   }
 
   async getFeatureFlags(): Promise<FeatureFlags> {
     return this.requestWithRetry(async () => {
-      const { data } = await this.client.get('/api/v1/settings/feature-flags');
+      const { data } = await this.client.get<FeatureFlags>('/api/v1/settings/feature-flags');
       return data;
     });
   }

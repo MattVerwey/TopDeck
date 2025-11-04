@@ -20,6 +20,7 @@ class AzureResourceMapper:
     RESOURCE_TYPE_MAP = {
         # Compute Resources
         "Microsoft.Compute/virtualMachines": "virtual_machine",
+        "Microsoft.Compute/virtualMachines/extensions": "vm_extension",
         "Microsoft.Compute/virtualMachineScaleSets": "vm_scale_set",
         "Microsoft.Compute/availabilitySets": "availability_set",
         "Microsoft.Compute/disks": "managed_disk",
@@ -177,6 +178,8 @@ class AzureResourceMapper:
         "Microsoft.Insights/scheduledQueryRules": "log_alert",
         "Microsoft.Monitor/accounts": "azure_monitor_workspace",
         "Microsoft.Automation/automationAccounts": "automation_account",
+        "microsoft.alertsmanagement/smartDetectorAlertRules": "smart_detector_alert",
+        "Microsoft.OperationsManagement/solutions": "operations_management_solution",
         
         # DevOps & Deployment
         "Microsoft.Resources/deployments": "arm_deployment",
@@ -224,7 +227,18 @@ class AzureResourceMapper:
         Returns:
             Normalized resource type (e.g., "virtual_machine")
         """
-        return AzureResourceMapper.RESOURCE_TYPE_MAP.get(azure_type, "unknown")
+        # Try exact match first
+        mapped = AzureResourceMapper.RESOURCE_TYPE_MAP.get(azure_type)
+        if mapped:
+            return mapped
+        
+        # Try case-insensitive match (Azure API returns inconsistent casing)
+        azure_type_lower = azure_type.lower()
+        for key, value in AzureResourceMapper.RESOURCE_TYPE_MAP.items():
+            if key.lower() == azure_type_lower:
+                return value
+        
+        return "unknown"
 
     @staticmethod
     def extract_resource_group(resource_id: str) -> str | None:
