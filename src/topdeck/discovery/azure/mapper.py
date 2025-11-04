@@ -171,12 +171,10 @@ class AzureResourceMapper:
         # Monitoring & Management
         "Microsoft.Insights/components": "application_insights",
         "Microsoft.OperationalInsights/workspaces": "log_analytics_workspace",
-        "Microsoft.Insights/actionGroups": "action_group",
-        "Microsoft.Insights/metricAlerts": "metric_alert",
-        "Microsoft.Insights/activityLogAlerts": "activity_log_alert",
-        "Microsoft.Insights/scheduledQueryRules": "log_alert",
         "Microsoft.Monitor/accounts": "azure_monitor_workspace",
         "Microsoft.Automation/automationAccounts": "automation_account",
+        # Note: Alert resources (metricAlerts, activityLogAlerts, scheduledQueryRules, actionGroups)
+        # are excluded as they are notification mechanisms, not infrastructure resources
         
         # DevOps & Deployment
         "Microsoft.Resources/deployments": "arm_deployment",

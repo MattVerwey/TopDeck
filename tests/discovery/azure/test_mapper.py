@@ -255,3 +255,23 @@ class TestAzureResourceMapper:
         assert result.tags == {}
         assert result.properties == {}
         assert result.status == ResourceStatus.UNKNOWN
+
+    def test_map_resource_type_metric_alert_excluded(self):
+        """Test that metric alerts are excluded (map to unknown)"""
+        result = AzureResourceMapper.map_resource_type("Microsoft.Insights/metricAlerts")
+        assert result == "unknown"
+
+    def test_map_resource_type_activity_log_alert_excluded(self):
+        """Test that activity log alerts are excluded (map to unknown)"""
+        result = AzureResourceMapper.map_resource_type("Microsoft.Insights/activityLogAlerts")
+        assert result == "unknown"
+
+    def test_map_resource_type_log_alert_excluded(self):
+        """Test that log alerts (scheduled query rules) are excluded (map to unknown)"""
+        result = AzureResourceMapper.map_resource_type("Microsoft.Insights/scheduledQueryRules")
+        assert result == "unknown"
+
+    def test_map_resource_type_action_group_excluded(self):
+        """Test that action groups are excluded (map to unknown)"""
+        result = AzureResourceMapper.map_resource_type("Microsoft.Insights/actionGroups")
+        assert result == "unknown"
