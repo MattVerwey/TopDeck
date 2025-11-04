@@ -109,12 +109,14 @@ class RiskScorer:
         failure_impact = deployment_failure_rate * 100
         failure_contribution = failure_impact * (self.weights["failure_rate"] / self.weights["criticality"])
 
-        # Factor 3: Time since last change (reduces risk over time)
+        # Factor 3: Time since last change (recent changes increase risk)
         time_contribution = 0.0
         if time_since_last_change_hours is not None:
-            # Normalize: 0 hours = full risk, 720+ hours (30 days) = minimal risk
-            time_factor = max(0, min(100, 100 - (time_since_last_change_hours / 720) * 100))
-            time_contribution = time_factor * (self.weights["time_since_change"] / self.weights["criticality"])
+            # Normalize: 0 hours = 100 (maximum risk from recency), 720+ hours (30 days) = 0 (no risk from recency)
+            # Recent changes add risk, old changes add minimal risk
+            recency_risk_factor = max(0, min(100, 100 - (time_since_last_change_hours / 720) * 100))
+            # Use absolute value of weight since we want this to ADD to risk for recent changes
+            time_contribution = recency_risk_factor * (abs(self.weights["time_since_change"]) / self.weights["criticality"])
 
         # Factor 4: Redundancy (reduces risk)
         # Instead of a negative contribution, treat lack of redundancy as a multiplier
