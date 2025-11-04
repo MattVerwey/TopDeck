@@ -18,34 +18,199 @@ class AzureResourceMapper:
 
     # Mapping from Azure resource types to TopDeck resource types
     RESOURCE_TYPE_MAP = {
-        # Compute
+        # Compute Resources
         "Microsoft.Compute/virtualMachines": "virtual_machine",
+        "Microsoft.Compute/virtualMachineScaleSets": "vm_scale_set",
+        "Microsoft.Compute/availabilitySets": "availability_set",
+        "Microsoft.Compute/disks": "managed_disk",
+        "Microsoft.Compute/snapshots": "disk_snapshot",
+        "Microsoft.Compute/images": "vm_image",
+        "Microsoft.Compute/galleries": "shared_image_gallery",
+        "Microsoft.Compute/cloudServices": "cloud_service",
+        
+        # Web & App Services
         "Microsoft.Web/sites": "app_service",
+        "Microsoft.Web/serverfarms": "app_service_plan",
+        "Microsoft.Web/sites/slots": "app_service_slot",
+        "Microsoft.Web/staticSites": "static_web_app",
+        "Microsoft.Web/certificates": "app_service_certificate",
+        "Microsoft.Web/hostingEnvironments": "app_service_environment",
+        
+        # Container Services
         "Microsoft.ContainerService/managedClusters": "aks",
-        # Databases
-        "Microsoft.Sql/servers/databases": "sql_database",
+        "Microsoft.ContainerInstance/containerGroups": "container_instance",
+        "Microsoft.ContainerRegistry/registries": "container_registry",
+        
+        # Database Services - SQL
         "Microsoft.Sql/servers": "sql_server",
+        "Microsoft.Sql/servers/databases": "sql_database",
+        "Microsoft.Sql/managedInstances": "sql_managed_instance",
+        "Microsoft.Sql/managedInstances/databases": "sql_managed_instance_database",
+        "Microsoft.Sql/servers/elasticPools": "sql_elastic_pool",
+        
+        # Database Services - PostgreSQL
         "Microsoft.DBforPostgreSQL/servers": "postgresql_server",
+        "Microsoft.DBforPostgreSQL/flexibleServers": "postgresql_flexible_server",
+        "Microsoft.DBforPostgreSQL/serverGroupsv2": "postgresql_hyperscale",
+        
+        # Database Services - MySQL
         "Microsoft.DBforMySQL/servers": "mysql_server",
+        "Microsoft.DBforMySQL/flexibleServers": "mysql_flexible_server",
+        
+        # Database Services - MariaDB
+        "Microsoft.DBforMariaDB/servers": "mariadb_server",
+        
+        # Database Services - NoSQL & Cache
         "Microsoft.DocumentDB/databaseAccounts": "cosmos_db",
-        # Storage
+        "Microsoft.Cache/redis": "redis_cache",
+        "Microsoft.Cache/redisEnterprise": "redis_enterprise",
+        
+        # Storage Services
         "Microsoft.Storage/storageAccounts": "storage_account",
-        # Networking
-        "Microsoft.Network/loadBalancers": "load_balancer",
-        "Microsoft.Network/applicationGateways": "application_gateway",
+        "Microsoft.Storage/storageAccounts/blobServices": "blob_service",
+        "Microsoft.Storage/storageAccounts/fileServices": "file_service",
+        "Microsoft.Storage/storageAccounts/queueServices": "queue_service",
+        "Microsoft.Storage/storageAccounts/tableServices": "table_service",
+        "Microsoft.DataLakeStore/accounts": "data_lake_store",
+        "Microsoft.DataLakeAnalytics/accounts": "data_lake_analytics",
+        
+        # Networking - Core
         "Microsoft.Network/virtualNetworks": "virtual_network",
+        "Microsoft.Network/virtualNetworks/subnets": "subnet",
+        "Microsoft.Network/networkInterfaces": "network_interface",
         "Microsoft.Network/networkSecurityGroups": "network_security_group",
         "Microsoft.Network/publicIPAddresses": "public_ip",
-        # Configuration & Secrets
-        "Microsoft.KeyVault/vaults": "key_vault",
-        "Microsoft.Cache/redis": "redis_cache",
-        # Identity & Access
+        "Microsoft.Network/publicIPPrefixes": "public_ip_prefix",
+        "Microsoft.Network/routeTables": "route_table",
+        "Microsoft.Network/natGateways": "nat_gateway",
+        
+        # Networking - Load Balancing & Application Delivery
+        "Microsoft.Network/loadBalancers": "load_balancer",
+        "Microsoft.Network/applicationGateways": "application_gateway",
+        "Microsoft.Network/frontDoors": "front_door",
+        "Microsoft.Network/trafficManagerProfiles": "traffic_manager",
+        
+        # Networking - Connectivity
+        "Microsoft.Network/virtualNetworkGateways": "vpn_gateway",
+        "Microsoft.Network/localNetworkGateways": "local_network_gateway",
+        "Microsoft.Network/connections": "vpn_connection",
+        "Microsoft.Network/expressRouteCircuits": "express_route_circuit",
+        "Microsoft.Network/expressRouteGateways": "express_route_gateway",
+        "Microsoft.Network/virtualWans": "virtual_wan",
+        "Microsoft.Network/vpnGateways": "vpn_gateway_v2",
+        "Microsoft.Network/vpnSites": "vpn_site",
+        
+        # Networking - DNS & Firewall
+        "Microsoft.Network/dnsZones": "dns_zone",
+        "Microsoft.Network/privateDnsZones": "private_dns_zone",
+        "Microsoft.Network/azureFirewalls": "azure_firewall",
+        "Microsoft.Network/firewallPolicies": "firewall_policy",
+        "Microsoft.Network/ddosProtectionPlans": "ddos_protection",
+        
+        # Networking - Private Connectivity
+        "Microsoft.Network/privateEndpoints": "private_endpoint",
+        "Microsoft.Network/privateLinkServices": "private_link_service",
+        "Microsoft.Network/serviceEndpointPolicies": "service_endpoint_policy",
+        
+        # Networking - Monitoring
+        "Microsoft.Network/networkWatchers": "network_watcher",
+        "Microsoft.Network/networkWatchers/connectionMonitors": "connection_monitor",
+        
+        # Identity & Access Management
         "Microsoft.ManagedIdentity/userAssignedIdentities": "managed_identity",
-        # Messaging
+        "Microsoft.Authorization/roleAssignments": "role_assignment",
+        "Microsoft.Authorization/roleDefinitions": "role_definition",
+        "Microsoft.Authorization/policyAssignments": "policy_assignment",
+        "Microsoft.Authorization/policyDefinitions": "policy_definition",
+        
+        # Key Management & Secrets
+        "Microsoft.KeyVault/vaults": "key_vault",
+        "Microsoft.KeyVault/managedHSMs": "managed_hsm",
+        
+        # Messaging & Event Services
         "Microsoft.ServiceBus/namespaces": "servicebus_namespace",
         "Microsoft.ServiceBus/namespaces/topics": "servicebus_topic",
         "Microsoft.ServiceBus/namespaces/queues": "servicebus_queue",
         "Microsoft.ServiceBus/namespaces/topics/subscriptions": "servicebus_subscription",
+        "Microsoft.EventHub/namespaces": "eventhub_namespace",
+        "Microsoft.EventHub/namespaces/eventhubs": "eventhub",
+        "Microsoft.EventGrid/topics": "eventgrid_topic",
+        "Microsoft.EventGrid/domains": "eventgrid_domain",
+        "Microsoft.EventGrid/systemTopics": "eventgrid_system_topic",
+        "Microsoft.NotificationHubs/namespaces": "notification_hub_namespace",
+        "Microsoft.NotificationHubs/namespaces/notificationHubs": "notification_hub",
+        
+        # Integration Services
+        "Microsoft.Logic/workflows": "logic_app",
+        "Microsoft.ApiManagement/service": "api_management",
+        "Microsoft.DataFactory/factories": "data_factory",
+        "Microsoft.DataFactory/factories/pipelines": "data_factory_pipeline",
+        "Microsoft.ServiceBus/namespaces/hybridConnections": "hybrid_connection",
+        "Microsoft.Relay/namespaces": "relay_namespace",
+        
+        # Analytics & Big Data
+        "Microsoft.Synapse/workspaces": "synapse_workspace",
+        "Microsoft.Databricks/workspaces": "databricks_workspace",
+        "Microsoft.HDInsight/clusters": "hdinsight_cluster",
+        "Microsoft.StreamAnalytics/streamingjobs": "stream_analytics",
+        "Microsoft.Kusto/clusters": "data_explorer_cluster",
+        "Microsoft.AnalysisServices/servers": "analysis_services",
+        "Microsoft.PowerBIDedicated/capacities": "power_bi_embedded",
+        
+        # AI & Machine Learning
+        "Microsoft.CognitiveServices/accounts": "cognitive_services",
+        "Microsoft.MachineLearningServices/workspaces": "ml_workspace",
+        "Microsoft.BotService/botServices": "bot_service",
+        
+        # IoT Services
+        "Microsoft.Devices/IotHubs": "iot_hub",
+        "Microsoft.Devices/provisioningServices": "iot_dps",
+        "Microsoft.IoTCentral/IoTApps": "iot_central",
+        "Microsoft.TimeSeriesInsights/environments": "time_series_insights",
+        
+        # Monitoring & Management
+        "Microsoft.Insights/components": "application_insights",
+        "Microsoft.OperationalInsights/workspaces": "log_analytics_workspace",
+        "Microsoft.Insights/actionGroups": "action_group",
+        "Microsoft.Insights/metricAlerts": "metric_alert",
+        "Microsoft.Insights/activityLogAlerts": "activity_log_alert",
+        "Microsoft.Insights/scheduledQueryRules": "log_alert",
+        "Microsoft.Monitor/accounts": "azure_monitor_workspace",
+        "Microsoft.Automation/automationAccounts": "automation_account",
+        
+        # DevOps & Deployment
+        "Microsoft.Resources/deployments": "arm_deployment",
+        "Microsoft.Resources/resourceGroups": "resource_group",
+        "Microsoft.ManagedServices/registrationDefinitions": "lighthouse_definition",
+        
+        # Media Services
+        "Microsoft.Media/mediaservices": "media_services",
+        
+        # Search & Cognitive
+        "Microsoft.Search/searchServices": "cognitive_search",
+        
+        # Backup & Recovery
+        "Microsoft.RecoveryServices/vaults": "recovery_services_vault",
+        "Microsoft.DataProtection/backupVaults": "backup_vault",
+        
+        # Migration Services
+        "Microsoft.Migrate/assessmentProjects": "migrate_project",
+        "Microsoft.Migrate/migrateProjects": "azure_migrate",
+        
+        # Batch & HPC
+        "Microsoft.Batch/batchAccounts": "batch_account",
+        
+        # Blockchain
+        "Microsoft.Blockchain/blockchainMembers": "blockchain_service",
+        
+        # Security
+        "Microsoft.Security/securityContacts": "security_contact",
+        "Microsoft.Security/assessments": "security_assessment",
+        
+        # Hybrid & Multi-Cloud
+        "Microsoft.HybridCompute/machines": "arc_server",
+        "Microsoft.Kubernetes/connectedClusters": "arc_kubernetes",
+        "Microsoft.AzureStackHCI/clusters": "azure_stack_hci",
     }
 
     @staticmethod

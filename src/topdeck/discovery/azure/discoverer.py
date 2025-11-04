@@ -308,6 +308,88 @@ class AzureDiscoverer:
              "Application Gateway may use Key Vault for SSL certificates"),
             ("application_gateway", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
              "Application Gateway may use Managed Identity to access Key Vault"),
+            
+            # VM Scale Set dependencies
+            ("vm_scale_set", "virtual_network", DependencyCategory.NETWORK, DependencyType.REQUIRED, 0.9,
+             "VM Scale Set requires Virtual Network"),
+            ("vm_scale_set", "load_balancer", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.8,
+             "VM Scale Set often uses Load Balancer"),
+            ("vm_scale_set", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "VM Scale Set may use Storage Account for boot diagnostics"),
+            ("vm_scale_set", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "VM Scale Set may use Managed Identity"),
+            
+            # Container Registry dependencies
+            ("container_registry", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Container Registry may use Key Vault for encryption"),
+            ("container_registry", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Container Registry may use Managed Identity"),
+            ("aks", "container_registry", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "AKS may pull images from Container Registry"),
+            
+            # API Management dependencies
+            ("api_management", "virtual_network", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.7,
+             "API Management may be deployed in Virtual Network"),
+            ("api_management", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "API Management may use Key Vault for secrets and certificates"),
+            ("api_management", "application_insights", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "API Management may log to Application Insights"),
+            
+            # Logic App dependencies
+            ("logic_app", "servicebus_namespace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Logic App may use Service Bus for messaging"),
+            ("logic_app", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.6,
+             "Logic App may use Storage Account"),
+            ("logic_app", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Logic App may use Key Vault for secrets"),
+            ("logic_app", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Logic App may use Managed Identity"),
+            
+            # Data Factory dependencies
+            ("data_factory", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "Data Factory may read/write to Storage Account"),
+            ("data_factory", "sql_database", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Data Factory may connect to SQL Database"),
+            ("data_factory", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Data Factory may use Key Vault for connection strings"),
+            ("data_factory", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "Data Factory may use Managed Identity for authentication"),
+            
+            # Synapse Analytics dependencies
+            ("synapse_workspace", "storage_account", DependencyCategory.DATA, DependencyType.REQUIRED, 0.9,
+             "Synapse requires Storage Account for default storage"),
+            ("synapse_workspace", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Synapse may use Key Vault for secrets"),
+            ("synapse_workspace", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.8,
+             "Synapse uses Managed Identity"),
+            
+            # Event Hub dependencies
+            ("eventhub_namespace", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "Event Hub may use Storage Account for capture"),
+            ("eventhub_namespace", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Event Hub may use Managed Identity"),
+            
+            # Application Insights dependencies
+            ("application_insights", "log_analytics_workspace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.8,
+             "Application Insights may send data to Log Analytics"),
+            
+            # Front Door dependencies
+            ("front_door", "key_vault", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.7,
+             "Front Door may use Key Vault for certificates"),
+            
+            # IoT Hub dependencies
+            ("iot_hub", "storage_account", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "IoT Hub may use Storage Account for file uploads and routing"),
+            ("iot_hub", "eventhub_namespace", DependencyCategory.DATA, DependencyType.OPTIONAL, 0.7,
+             "IoT Hub may route to Event Hub"),
+            ("iot_hub", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "IoT Hub may use Managed Identity"),
+            
+            # Cognitive Services dependencies
+            ("cognitive_services", "virtual_network", DependencyCategory.NETWORK, DependencyType.OPTIONAL, 0.5,
+             "Cognitive Services may use Virtual Network"),
+            ("cognitive_services", "managed_identity", DependencyCategory.CONFIGURATION, DependencyType.OPTIONAL, 0.6,
+             "Cognitive Services may use Managed Identity"),
         ]
 
     async def _discover_dependencies(
