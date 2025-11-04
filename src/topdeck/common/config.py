@@ -154,7 +154,15 @@ class Settings(BaseSettings):
     rate_limit_requests_per_minute: int = Field(
         default=60, description="Rate limit: requests per minute per client"
     )
+    rate_limit_burst_size: int = Field(
+        default=0,
+        description="Rate limit burst size (0 = 2x requests_per_minute). Allows handling traffic spikes.",
+    )
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
+    rate_limit_use_redis: bool = Field(
+        default=True,
+        description="Use Redis for distributed rate limiting (falls back to in-memory if Redis unavailable)",
+    )
 
     # Security Configuration
     secret_key: str = Field(
