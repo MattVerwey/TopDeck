@@ -114,11 +114,10 @@ export default function RiskAnalysis() {
       let currentTopology = topology;
       if (!currentTopology) {
         try {
-          console.log('Loading topology for risk analysis...');
           currentTopology = await apiClient.getTopology();
           useStore.getState().setTopology(currentTopology);
         } catch (err) {
-          console.warn('Failed to load topology, using empty state:', err);
+          console.error('Failed to load topology:', err);
           // If topology loading fails, use empty state
           currentTopology = {
             nodes: [],
@@ -134,20 +133,18 @@ export default function RiskAnalysis() {
       let allRisks: RiskAssessment[] = [];
       if (currentTopology?.nodes && currentTopology.nodes.length > 0) {
         try {
-          console.log(`Fetching risk assessments for ${currentTopology.nodes.length} resources...`);
           // Try to fetch all risks for each resource
           const riskPromises = currentTopology.nodes.map(node => 
             apiClient.getRiskAssessment(node.id).catch(err => {
-              console.warn('Failed to fetch risk for resource', node.id, err);
+              // Silently ignore individual resource failures to avoid console spam
               return null;
             })
           );
           const risks = await Promise.all(riskPromises);
           allRisks = risks.filter((r): r is RiskAssessment => r !== null);
-          console.log(`Successfully fetched ${allRisks.length} risk assessments`);
         } catch (err) {
           // Catch unexpected errors during Promise.all operation
-          console.warn('Unexpected error fetching risk assessments:', err);
+          console.error('Error fetching risk assessments:', err);
         }
       }
 
@@ -175,7 +172,6 @@ export default function RiskAnalysis() {
       // - Remainder: low-risk resources
       // Only use estimates if we actually have resources in topology
       if (allRisks.length === 0 && nodeCount > 0) {
-        console.log('No risk assessments available, using estimates based on topology');
         const CRITICAL_PERCENTAGE = 0.05;
         const HIGH_PERCENTAGE = 0.15;
         const MEDIUM_PERCENTAGE = 0.30;
@@ -305,7 +301,7 @@ export default function RiskAnalysis() {
   };
 
   // Memoize node count for performance
-  const nodeCount = useMemo(() => topology?.nodes.length || 5, [topology?.nodes.length]);
+  const nodeCount = useMemo(() => topology?.nodes.length || 0, [topology?.nodes.length]);
 
   return (
     <Box>
