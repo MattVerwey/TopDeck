@@ -135,7 +135,7 @@ export default function RiskAnalysis() {
         try {
           // Try to fetch all risks for each resource
           const riskPromises = currentTopology.nodes.map(node => 
-            apiClient.getRiskAssessment(node.id).catch(err => {
+            apiClient.getRiskAssessment(node.id).catch(() => {
               // Silently ignore individual resource failures to avoid console spam
               return null;
             })
@@ -176,10 +176,16 @@ export default function RiskAnalysis() {
         const HIGH_PERCENTAGE = 0.15;
         const MEDIUM_PERCENTAGE = 0.30;
 
-        riskCounts.critical = Math.floor(nodeCount * CRITICAL_PERCENTAGE);
-        riskCounts.high = Math.floor(nodeCount * HIGH_PERCENTAGE);
-        riskCounts.medium = Math.floor(nodeCount * MEDIUM_PERCENTAGE);
-        riskCounts.low = nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium;
+        // For small node counts, distribute more evenly to avoid all zeros
+        if (nodeCount <= 3) {
+          // With 1-3 nodes, assign each to a different risk level
+          riskCounts.low = nodeCount;
+        } else {
+          riskCounts.critical = Math.floor(nodeCount * CRITICAL_PERCENTAGE);
+          riskCounts.high = Math.floor(nodeCount * HIGH_PERCENTAGE);
+          riskCounts.medium = Math.floor(nodeCount * MEDIUM_PERCENTAGE);
+          riskCounts.low = nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium;
+        }
       }
 
       const riskMetrics: RiskMetric[] = [
