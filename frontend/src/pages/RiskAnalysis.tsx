@@ -132,17 +132,25 @@ export default function RiskAnalysis() {
       let allRisks: RiskAssessment[] = [];
       if (topology?.nodes && topology.nodes.length > 0) {
         try {
-          // Try to fetch all risks for each resource
-          const riskPromises = topology.nodes.map(node => 
-            apiClient.getRiskAssessment(node.id).catch(err => {
-              console.warn('Failed to fetch risk for resource', node.id, err);
-              return null;
-            })
-          );
-          const risks = await Promise.all(riskPromises);
-          allRisks = risks.filter((r): r is RiskAssessment => r !== null);
+          // First, try the efficient bulk endpoint
+          allRisks = await apiClient.getAllRisks();
+          console.log(`Fetched ${allRisks.length} risk assessments via bulk endpoint`);
+          
+          // If bulk endpoint didn't return data, fallback to individual requests
+          if (allRisks.length === 0) {
+            console.log('Bulk endpoint returned no data, fetching individually...');
+            const riskPromises = topology.nodes.map(node => 
+              apiClient.getRiskAssessment(node.id).catch(err => {
+                console.warn('Failed to fetch risk for resource', node.id, err);
+                return null;
+              })
+            );
+            const risks = await Promise.all(riskPromises);
+            allRisks = risks.filter((r): r is RiskAssessment => r !== null);
+            console.log(`Fetched ${allRisks.length} risk assessments individually`);
+          }
         } catch (err) {
-          // Catch unexpected errors during Promise.all operation
+          // Catch unexpected errors during fetch operation
           console.warn('Unexpected error fetching risk assessments:', err);
         }
       }
@@ -156,12 +164,15 @@ export default function RiskAnalysis() {
       };
 
       allRisks.forEach(risk => {
-        const level = risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score);
+        // Normalize risk level for consistent comparison
+        const level = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
         if (level === 'critical') riskCounts.critical++;
         else if (level === 'high') riskCounts.high++;
         else if (level === 'medium') riskCounts.medium++;
         else riskCounts.low++;
       });
+      
+      console.log('Risk distribution:', riskCounts);
 
       // If no API data, use estimates based on topology
       // These percentages provide reasonable defaults based on typical risk distribution:

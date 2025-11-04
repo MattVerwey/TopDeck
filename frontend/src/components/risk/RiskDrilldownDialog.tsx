@@ -68,8 +68,10 @@ export default function RiskDrilldownDialog({
         )
         .map(result => result.value)
         .filter(risk => {
-          const level = risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score);
-          return level === riskLevel;
+          // Normalize both values for comparison to handle case sensitivity and missing data
+          const riskLevel_normalized = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
+          const targetLevel_normalized = riskLevel.toLowerCase();
+          return riskLevel_normalized === targetLevel_normalized;
         });
 
       setRisks(allRisks);

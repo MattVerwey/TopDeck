@@ -129,19 +129,24 @@ export default function Topology() {
 
     // Filter by selected resources if any
     if (selectedResourceIds.length > 0) {
-      const selectedSet = new Set(selectedResourceIds);
-      // Include selected resources and their direct dependencies
+      // Include selected resources and ALL their transitive dependencies (not just direct)
       const relatedIds = new Set<string>(selectedResourceIds);
       
-      // Add upstream and downstream dependencies
-      topology.edges.forEach((edge) => {
-        if (selectedSet.has(edge.source_id)) {
-          relatedIds.add(edge.target_id);
-        }
-        if (selectedSet.has(edge.target_id)) {
-          relatedIds.add(edge.source_id);
-        }
-      });
+      // Iteratively add dependencies until no new ones are found (transitive closure)
+      let previousSize = 0;
+      while (relatedIds.size > previousSize) {
+        previousSize = relatedIds.size;
+        topology.edges.forEach((edge) => {
+          // If source is in our set, add target (downstream dependency)
+          if (relatedIds.has(edge.source_id)) {
+            relatedIds.add(edge.target_id);
+          }
+          // If target is in our set, add source (upstream dependency)
+          if (relatedIds.has(edge.target_id)) {
+            relatedIds.add(edge.source_id);
+          }
+        });
+      }
 
       filtered = applyNodeFilter(filtered, (n) => relatedIds.has(n.id));
     }
@@ -323,22 +328,6 @@ export default function Topology() {
                 renderInput={(params) => <TextField {...params} label="Namespace (Service Bus/Event Hub)" />}
               />
             )}
-
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel>Resource Type</InputLabel>
-              <Select
-                value={filters.resource_type || ''}
-                label="Resource Type"
-                onChange={(e) => handleFilterChange('resource_type', e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                {availableTypes.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
             {activeFilterCount > 0 && (
               <Chip
