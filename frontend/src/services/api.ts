@@ -43,6 +43,7 @@ export class ApiError extends Error {
   statusCode?: number;
   requestId?: string;
   code?: string;
+  axiosError?: AxiosError;
 
   constructor(
     message: string,
@@ -108,7 +109,7 @@ class ApiClient {
         );
         
         // Preserve the original axios error for accessing headers in retry logic
-        (apiError as any).axiosError = error;
+        apiError.axiosError = error;
         
         throw apiError;
       }
@@ -134,9 +135,8 @@ class ApiClient {
           // For 429 (rate limit), respect Retry-After header if present
           let delay = this.retryConfig.retryDelay * Math.pow(2, retries);
           
-          if (error.statusCode === 429 && (error as any).axiosError) {
-            const axiosError = (error as any).axiosError as AxiosError;
-            const retryAfterHeader = axiosError.response?.headers['retry-after'];
+          if (error.statusCode === 429 && error.axiosError) {
+            const retryAfterHeader = error.axiosError.response?.headers['retry-after'];
             if (retryAfterHeader) {
               const retryAfter = parseInt(retryAfterHeader, 10);
               if (!isNaN(retryAfter)) {

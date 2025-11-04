@@ -2,9 +2,8 @@
 Tests for rate limiting functionality.
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -85,13 +84,40 @@ def test_get_retry_after():
 
 
 @pytest.mark.asyncio
+async def test_redis_rate_limiter_check_rate_limit():
+    """Test that check_rate_limit returns all info in single call."""
+    redis_client = AsyncMock()
+    
+    # Mock eval to return [allowed, remaining, retry_after]
+    redis_client.eval = AsyncMock(return_value=[1, 95, 0])
+    
+    limiter = RedisRateLimiter(
+        redis_client=redis_client,
+        requests_per_minute=60,
+        burst_size=120,
+    )
+    
+    client_id = "test-client"
+    
+    # Should return all info
+    is_allowed, remaining, retry_after, reset_timestamp = await limiter.check_rate_limit(client_id)
+    assert is_allowed is True
+    assert remaining == 95
+    assert retry_after == 0
+    assert reset_timestamp > 0
+    
+    # Verify only one Redis eval call
+    assert redis_client.eval.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_redis_rate_limiter_allows_requests_within_burst():
     """Test that Redis rate limiter allows requests within burst size."""
     # Mock Redis client
     redis_client = AsyncMock()
     
-    # Mock eval to return 1 (allowed)
-    redis_client.eval = AsyncMock(return_value=1)
+    # Mock eval to return [allowed, remaining, retry_after]
+    redis_client.eval = AsyncMock(return_value=[1, 9, 0])
     
     limiter = RedisRateLimiter(
         redis_client=redis_client,
@@ -114,8 +140,8 @@ async def test_redis_rate_limiter_blocks_over_limit():
     """Test that Redis rate limiter blocks requests over limit."""
     redis_client = AsyncMock()
     
-    # Mock eval to return 0 (blocked)
-    redis_client.eval = AsyncMock(return_value=0)
+    # Mock eval to return [blocked, remaining, retry_after]
+    redis_client.eval = AsyncMock(return_value=[0, 0, 5])
     
     limiter = RedisRateLimiter(
         redis_client=redis_client,
@@ -151,13 +177,11 @@ async def test_redis_rate_limiter_scopes():
     assert redis_client.eval.call_count == 2
     calls = redis_client.eval.call_args_list
     
-    # Extract keys from call arguments (second positional argument in eval)
+    # Extract keys from call arguments (third positional argument in eval)
     # Call signature: eval(script, num_keys, key, ...)
-    first_call_args = calls[0].args if hasattr(calls[0], 'args') else calls[0][0]
-    second_call_args = calls[1].args if hasattr(calls[1], 'args') else calls[1][0]
-    
-    key1 = first_call_args[2] if len(first_call_args) > 2 else first_call_args[1]
-    key2 = second_call_args[2] if len(second_call_args) > 2 else second_call_args[1]
+    EVAL_KEY_INDEX = 2
+    key1 = calls[0].args[EVAL_KEY_INDEX]
+    key2 = calls[1].args[EVAL_KEY_INDEX]
     
     # Keys should be different for different scopes
     assert key1 != key2

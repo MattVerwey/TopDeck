@@ -112,6 +112,9 @@ class RedisRateLimiter:
     
     Provides better burst handling and works across multiple API instances.
     """
+    
+    # TTL for rate limit keys in Redis (seconds)
+    KEY_TTL = 120
 
     def __init__(
         self,
@@ -133,6 +136,7 @@ class RedisRateLimiter:
         self.requests_per_minute = requests_per_minute
         self.burst_size = burst_size or (requests_per_minute * 2)
         self.key_prefix = key_prefix
+        self.key_ttl = self.KEY_TTL
         self.refill_rate = requests_per_minute / 60.0  # tokens per second
         self._enabled = redis_client is not None and REDIS_AVAILABLE
 
@@ -146,26 +150,28 @@ class RedisRateLimiter:
         """Create Redis key for rate limit data."""
         return f"{self.key_prefix}{scope}:{client_id}"
 
-    async def is_allowed(self, client_id: str, scope: str = "global", cost: int = 1) -> bool:
+    async def check_rate_limit(
+        self, client_id: str, scope: str = "global", cost: int = 1
+    ) -> tuple[bool, int, int, int]:
         """
-        Check if a request from the client is allowed using token bucket algorithm.
-
+        Check rate limit and return all relevant info in a single Redis call.
+        
         Args:
-            client_id: Unique identifier for the client (e.g., IP address)
-            scope: Rate limit scope (e.g., "global", "topology", "risk")
-            cost: Number of tokens to consume (default: 1)
-
+            client_id: Unique identifier for the client
+            scope: Rate limit scope
+            cost: Number of tokens to consume
+            
         Returns:
-            True if the request is allowed, False otherwise
+            Tuple of (is_allowed, remaining_tokens, retry_after_seconds, reset_timestamp)
         """
         if not self._enabled:
-            return True
+            return (True, self.burst_size, 0, int(time.time() + 60))
 
         try:
             key = self._make_key(client_id, scope)
             current_time = time.time()
 
-            # Use Lua script for atomic token bucket operation
+            # Enhanced Lua script that returns state info
             lua_script = """
             local key = KEYS[1]
             local now = tonumber(ARGV[1])
@@ -185,16 +191,24 @@ class RedisRateLimiter:
             tokens = math.min(burst_size, tokens + tokens_to_add)
             
             -- Check if we have enough tokens
+            local allowed = 0
+            local retry_after = 0
+            
             if tokens >= cost then
                 tokens = tokens - cost
-                redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)
-                redis.call('EXPIRE', key, ttl)
-                return 1
+                allowed = 1
             else
-                redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)
-                redis.call('EXPIRE', key, ttl)
-                return 0
+                -- Calculate time needed to get 1 token
+                local tokens_needed = cost - tokens
+                retry_after = math.ceil(tokens_needed / refill_rate)
             end
+            
+            -- Update state
+            redis.call('HSET', key, 'tokens', tokens, 'last_refill', now)
+            redis.call('EXPIRE', key, ttl)
+            
+            -- Return: allowed (1/0), remaining_tokens, retry_after
+            return {allowed, math.floor(tokens), retry_after}
             """
 
             result = await self.redis_client.eval(
@@ -205,15 +219,35 @@ class RedisRateLimiter:
                 self.refill_rate,
                 self.burst_size,
                 cost,
-                120,  # TTL in seconds
+                self.key_ttl,
             )
 
-            return bool(result)
+            is_allowed = bool(result[0])
+            remaining = int(result[1])
+            retry_after = int(result[2])
+            reset_timestamp = int(current_time + retry_after) if retry_after > 0 else int(current_time + 60)
+            
+            return (is_allowed, remaining, retry_after, reset_timestamp)
 
         except Exception as e:
             logger.error("redis_rate_limit_error", error=str(e), client_id=client_id)
             # Fail open - allow request if Redis is unavailable
-            return True
+            return (True, self.burst_size, 0, int(time.time() + 60))
+
+    async def is_allowed(self, client_id: str, scope: str = "global", cost: int = 1) -> bool:
+        """
+        Check if a request from the client is allowed using token bucket algorithm.
+
+        Args:
+            client_id: Unique identifier for the client (e.g., IP address)
+            scope: Rate limit scope (e.g., "global", "topology", "risk")
+            cost: Number of tokens to consume (default: 1)
+
+        Returns:
+            True if the request is allowed, False otherwise
+        """
+        is_allowed, _, _, _ = await self.check_rate_limit(client_id, scope, cost)
+        return is_allowed
 
     async def get_retry_after(self, client_id: str, scope: str = "global") -> int:
         """
@@ -340,9 +374,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check rate limit based on limiter type
         if self.is_redis_limiter:
-            is_allowed = await self.rate_limiter.is_allowed(client_id, scope=scope)
-            retry_after = await self.rate_limiter.get_retry_after(client_id, scope=scope)
-            remaining = await self.rate_limiter.get_remaining(client_id, scope=scope)
+            # Use optimized single Redis call
+            is_allowed, remaining, retry_after, reset_timestamp = await self.rate_limiter.check_rate_limit(
+                client_id, scope=scope
+            )
             limit = self.rate_limiter.burst_size
         else:
             # In-memory limiter (synchronous)
@@ -350,6 +385,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             retry_after = self.rate_limiter.get_retry_after(client_id)
             remaining = self.rate_limiter.get_remaining(client_id)
             limit = self.rate_limiter.requests_per_minute
+            # Calculate reset time for in-memory limiter
+            reset_timestamp = int(time.time() + retry_after) if retry_after > 0 else int(time.time() + 60)
 
         if not is_allowed:
             logger.warning(
@@ -366,16 +403,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "Retry-After": str(retry_after),
                     "X-RateLimit-Limit": str(limit),
                     "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(int(time.time() + retry_after)),
+                    "X-RateLimit-Reset": str(reset_timestamp),
                 },
             )
 
-        # Process request and add rate limit headers to response
+        # Process request and add rate limit headers to successful responses
         response = await call_next(request)
         
-        # Add rate limit headers to successful responses
+        # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(limit)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
-        response.headers["X-RateLimit-Reset"] = str(int(time.time() + 60))
+        response.headers["X-RateLimit-Reset"] = str(reset_timestamp)
         
         return response

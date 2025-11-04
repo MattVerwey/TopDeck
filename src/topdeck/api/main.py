@@ -37,6 +37,7 @@ from topdeck.common.health import (
 from topdeck.common.metrics import get_metrics_handler
 from topdeck.common.middleware import RequestIDMiddleware, RequestLoggingMiddleware
 from topdeck.common.rate_limiter import RateLimiter, RedisRateLimiter, RateLimitMiddleware
+import asyncio
 from topdeck.common.scheduler import start_scheduler, stop_scheduler
 
 
@@ -147,22 +148,26 @@ if settings.rate_limit_enabled:
             )
             self._redis_limiter = None
             self._initialized = False
+            self._init_lock = asyncio.Lock()
         
         async def dispatch(self, request, call_next):
-            # Initialize Redis limiter on first request if available
+            # Initialize Redis limiter on first request if available (thread-safe)
             if not self._initialized and hasattr(request.app.state, "redis_client"):
-                redis_client = request.app.state.redis_client
-                if redis_client and settings.rate_limit_use_redis:
-                    # burst_size defaults to None, which RedisRateLimiter will auto-set to 2x requests_per_minute
-                    burst_size = settings.rate_limit_burst_size if settings.rate_limit_burst_size > 0 else None
-                    self._redis_limiter = RedisRateLimiter(
-                        redis_client=redis_client,
-                        requests_per_minute=settings.rate_limit_requests_per_minute,
-                        burst_size=burst_size,
-                    )
-                    self.rate_limiter = self._redis_limiter
-                    self.is_redis_limiter = True
-                self._initialized = True
+                async with self._init_lock:
+                    # Double-check after acquiring lock
+                    if not self._initialized:
+                        redis_client = request.app.state.redis_client
+                        if redis_client and settings.rate_limit_use_redis:
+                            # Set burst_size to None so RedisRateLimiter will auto-set to 2x requests_per_minute
+                            burst_size = settings.rate_limit_burst_size if settings.rate_limit_burst_size > 0 else None
+                            self._redis_limiter = RedisRateLimiter(
+                                redis_client=redis_client,
+                                requests_per_minute=settings.rate_limit_requests_per_minute,
+                                burst_size=burst_size,
+                            )
+                            self.rate_limiter = self._redis_limiter
+                            self.is_redis_limiter = True
+                        self._initialized = True
             
             return await super().dispatch(request, call_next)
     
