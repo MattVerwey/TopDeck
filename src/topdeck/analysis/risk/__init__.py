@@ -6,6 +6,7 @@ for infrastructure resources.
 """
 
 from .analyzer import RiskAnalyzer
+from .cost_impact import CostImpact, CostImpactAnalyzer
 from .dependency import DependencyAnalyzer
 from .dependency_scanner import DependencyScanner
 from .impact import ImpactAnalyzer
@@ -25,6 +26,8 @@ from .models import (
 from .partial_failure import PartialFailureAnalyzer
 from .scoring import RiskScorer
 from .simulation import FailureSimulator
+from .time_aware_scoring import TimeAwareRiskScorer, adjust_risk_score_for_timing
+from .trend_analysis import RiskSnapshot, RiskTrend, RiskTrendAnalyzer
 
 __all__ = [
     "RiskAnalyzer",
@@ -45,4 +48,11 @@ __all__ = [
     "FailureSimulator",
     "PartialFailureAnalyzer",
     "DependencyScanner",
+    "CostImpact",
+    "CostImpactAnalyzer",
+    "TimeAwareRiskScorer",
+    "adjust_risk_score_for_timing",
+    "RiskSnapshot",
+    "RiskTrend",
+    "RiskTrendAnalyzer",
 ]
