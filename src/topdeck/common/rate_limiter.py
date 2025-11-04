@@ -84,6 +84,27 @@ class RateLimiter:
 
         return int(oldest_timestamp + self.window_seconds - time.time()) + 1
 
+    def get_remaining(self, client_id: str) -> int:
+        """
+        Get the number of remaining requests for the client.
+
+        Args:
+            client_id: Unique identifier for the client
+
+        Returns:
+            Number of remaining requests
+        """
+        current_time = time.time()
+        window_start = current_time - self.window_seconds
+        
+        # Count active requests in the window
+        active_requests = len([
+            ts for ts in self.requests.get(client_id, [])
+            if ts > window_start
+        ])
+        
+        return max(0, self.requests_per_minute - active_requests)
+
 
 class RedisRateLimiter:
     """
@@ -155,7 +176,7 @@ class RedisRateLimiter:
             
             -- Get current bucket state
             local bucket = redis.call('HMGET', key, 'tokens', 'last_refill')
-            local tokens = tonumber(bucket[1]) or burst_size
+            local tokens = tonumber(bucket[1]) or tonumber(ARGV[3])
             local last_refill = tonumber(bucket[2]) or now
             
             -- Calculate tokens to add based on time elapsed
@@ -214,8 +235,8 @@ class RedisRateLimiter:
 
             # Get current bucket state
             bucket = await self.redis_client.hmget(key, "tokens", "last_refill")
-            tokens = float(bucket[0]) if bucket[0] else self.burst_size
-            last_refill = float(bucket[1]) if bucket[1] else current_time
+            tokens = float(bucket[0]) if bucket and bucket[0] else self.burst_size
+            last_refill = float(bucket[1]) if bucket and bucket[1] else current_time
 
             # Calculate tokens after refill
             time_elapsed = current_time - last_refill
@@ -254,8 +275,8 @@ class RedisRateLimiter:
             current_time = time.time()
 
             bucket = await self.redis_client.hmget(key, "tokens", "last_refill")
-            tokens = float(bucket[0]) if bucket[0] else self.burst_size
-            last_refill = float(bucket[1]) if bucket[1] else current_time
+            tokens = float(bucket[0]) if bucket and bucket[0] else self.burst_size
+            last_refill = float(bucket[1]) if bucket and bucket[1] else current_time
 
             # Calculate current tokens after refill
             time_elapsed = current_time - last_refill
@@ -327,10 +348,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # In-memory limiter (synchronous)
             is_allowed = self.rate_limiter.is_allowed(client_id)
             retry_after = self.rate_limiter.get_retry_after(client_id)
-            remaining = self.rate_limiter.requests_per_minute - len(
-                [ts for ts in self.rate_limiter.requests.get(client_id, []) 
-                 if ts > time.time() - self.rate_limiter.window_seconds]
-            )
+            remaining = self.rate_limiter.get_remaining(client_id)
             limit = self.rate_limiter.requests_per_minute
 
         if not is_allowed:

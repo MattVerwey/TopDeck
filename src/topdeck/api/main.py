@@ -153,7 +153,8 @@ if settings.rate_limit_enabled:
             if not self._initialized and hasattr(request.app.state, "redis_client"):
                 redis_client = request.app.state.redis_client
                 if redis_client and settings.rate_limit_use_redis:
-                    burst_size = settings.rate_limit_burst_size or (settings.rate_limit_requests_per_minute * 2)
+                    # burst_size defaults to None, which RedisRateLimiter will auto-set to 2x requests_per_minute
+                    burst_size = settings.rate_limit_burst_size if settings.rate_limit_burst_size > 0 else None
                     self._redis_limiter = RedisRateLimiter(
                         redis_client=redis_client,
                         requests_per_minute=settings.rate_limit_requests_per_minute,

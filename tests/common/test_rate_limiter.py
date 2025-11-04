@@ -151,9 +151,15 @@ async def test_redis_rate_limiter_scopes():
     assert redis_client.eval.call_count == 2
     calls = redis_client.eval.call_args_list
     
+    # Extract keys from call arguments (second positional argument in eval)
+    # Call signature: eval(script, num_keys, key, ...)
+    first_call_args = calls[0].args if hasattr(calls[0], 'args') else calls[0][0]
+    second_call_args = calls[1].args if hasattr(calls[1], 'args') else calls[1][0]
+    
+    key1 = first_call_args[2] if len(first_call_args) > 2 else first_call_args[1]
+    key2 = second_call_args[2] if len(second_call_args) > 2 else second_call_args[1]
+    
     # Keys should be different for different scopes
-    key1 = calls[0][0][1]  # First positional arg after script
-    key2 = calls[1][0][1]
     assert key1 != key2
     assert "topology" in key1
     assert "risk" in key2
