@@ -26,6 +26,7 @@ import {
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
+import type { TopologyGraph } from '../types';
 import apiClient from '../services/api';
 import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
@@ -99,17 +100,17 @@ export default function Dashboard() {
     }
   };
 
-  const calculateMetrics = (topology: any) => {
+  const calculateMetrics = (topology: TopologyGraph) => {
     const totalResources = topology.nodes.length;
     
     // Calculate degraded/unhealthy resources
     const degradedCount = topology.nodes.filter(
-      (node: any) => node.properties?.health_status === 'degraded' || node.properties?.health_status === 'unhealthy'
+      (node) => node.properties?.health_status === 'degraded' || node.properties?.health_status === 'unhealthy'
     ).length;
     
     // Calculate SPOFs (resources with high importance and many connections)
     const spofCount = topology.nodes.filter(
-      (node: any) => (node.metadata?.importance || 0) >= 3
+      (node) => (node.metadata?.importance as number || 0) >= 3
     ).length;
     
     // Calculate healthy percentage

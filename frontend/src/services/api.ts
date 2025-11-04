@@ -19,6 +19,9 @@ import type {
   SLOCalculation,
   ErrorBudgetStatus,
   ResourceAvailability,
+  ApplicationSettings,
+  ConnectionStatus,
+  FeatureFlags,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -573,21 +576,21 @@ class ApiClient {
   }
 
   // Settings API
-  async getSettings() {
+  async getSettings(): Promise<ApplicationSettings> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get('/api/v1/settings');
       return data;
     });
   }
 
-  async getConnectionStatus() {
+  async getConnectionStatus(): Promise<ConnectionStatus> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get('/api/v1/settings/connections');
       return data;
     });
   }
 
-  async getFeatureFlags() {
+  async getFeatureFlags(): Promise<FeatureFlags> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.get('/api/v1/settings/feature-flags');
       return data;
