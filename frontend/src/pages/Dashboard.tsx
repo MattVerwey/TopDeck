@@ -174,9 +174,9 @@ export default function Dashboard() {
         .slice(0, 5)
         .map(risk => ({
           id: risk.resource_id,
-          resource: risk.resource_name,
+          resource: risk.resource_name || risk.resource_id,
           riskScore: risk.risk_score,
-          reason: risk.spof ? 'Single Point of Failure' : `${risk.dependent_services_count} dependencies`,
+          reason: risk.single_point_of_failure ? 'Single Point of Failure' : `${risk.dependencies_count} dependencies`,
         }));
       setTopRisks(topRisks);
     } catch {

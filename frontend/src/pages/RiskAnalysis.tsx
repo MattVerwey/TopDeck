@@ -24,6 +24,9 @@ import {
 } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStore } from '../store/useStore';
+import type { RiskAssessment } from '../types';
+import apiClient from '../services/api';
+import { getRiskLevelFromScore } from '../utils/riskUtils';
 import RiskBreakdown from '../components/risk/RiskBreakdown';
 import RiskDrilldownDialog from '../components/risk/RiskDrilldownDialog';
 import ResourceTester from '../components/risk/ResourceTester';
