@@ -44,21 +44,23 @@ print(f"Found {result.dependency_count} dependencies")
 
 Maps Azure resources to TopDeck's normalized model.
 
-**Supported Resource Types**:
-- ✅ Virtual Machines (`Microsoft.Compute/virtualMachines`)
-- ✅ App Services (`Microsoft.Web/sites`)
-- ✅ AKS Clusters (`Microsoft.ContainerService/managedClusters`)
-- ✅ SQL Databases (`Microsoft.Sql/servers/databases`)
-- ✅ Storage Accounts (`Microsoft.Storage/storageAccounts`)
-- ✅ Load Balancers (`Microsoft.Network/loadBalancers`)
-- ✅ Application Gateways (`Microsoft.Network/applicationGateways`)
-- ✅ Virtual Networks (`Microsoft.Network/virtualNetworks`)
-- ✅ Network Security Groups (`Microsoft.Network/networkSecurityGroups`)
-- ✅ Key Vaults (`Microsoft.KeyVault/vaults`)
-- ✅ Redis Cache (`Microsoft.Cache/redis`)
-- ✅ PostgreSQL (`Microsoft.DBforPostgreSQL/servers`)
-- ✅ MySQL (`Microsoft.DBforMySQL/servers`)
-- ✅ Cosmos DB (`Microsoft.DocumentDB/databaseAccounts`)
+**Supported Resource Types** (130 mappings covering 56 resource providers):
+
+*For a complete list, see [Azure Resource Mapping Documentation](../../../../docs/AZURE_RESOURCE_MAPPING.md)*
+
+**Key Resource Categories**:
+- ✅ **Compute** (8 types): VMs, VM Scale Sets, Container Instances, AKS, Disks, etc.
+- ✅ **Web & App Services** (6 types): App Services, App Service Plans, Static Web Apps, etc.
+- ✅ **Databases** (14 types): SQL, PostgreSQL, MySQL, MariaDB, Cosmos DB, Redis, etc.
+- ✅ **Networking** (30 types): VNets, Load Balancers, Application Gateway, Front Door, Firewall, VPN, etc.
+- ✅ **Storage** (7 types): Storage Accounts, Blob/File/Queue/Table Services, Data Lake, etc.
+- ✅ **Messaging** (10 types): Service Bus, Event Hub, Event Grid, Notification Hubs, etc.
+- ✅ **Integration** (6 types): Logic Apps, API Management, Data Factory, etc.
+- ✅ **Analytics** (7 types): Synapse, Databricks, Stream Analytics, HDInsight, etc.
+- ✅ **AI/ML** (3 types): Cognitive Services, Machine Learning, Bot Service
+- ✅ **IoT** (4 types): IoT Hub, IoT Central, Device Provisioning Service, etc.
+- ✅ **Monitoring** (9 types): Application Insights, Log Analytics, Automation, etc.
+- ✅ And many more categories including Identity, Security, DevOps, etc.
 
 **Mapping Features**:
 - Resource ID parsing (subscription, resource group extraction)
@@ -199,6 +201,24 @@ for dependency in result.dependencies:
 client.close()
 ```
 
+## Analyzing Unmapped Resources
+
+To identify which resource types in your Azure subscription are not yet mapped:
+
+```bash
+python scripts/analyze_unmapped_resources.py \
+    --subscription-id "your-subscription-id" \
+    --tenant-id "your-tenant-id" \
+    --client-id "your-client-id" \
+    --client-secret "your-client-secret"
+```
+
+This will:
+- Discover all resources in your subscription
+- Report which resource types are unmapped (showing as "unknown")
+- Show mapping coverage percentage
+- Provide recommendations for adding missing mappings
+
 ## Testing
 
 Tests are located in `tests/discovery/azure/`.
@@ -216,11 +236,12 @@ pytest tests/discovery/azure/test_mapper.py -v
 ```
 
 **Test Coverage**:
-- ✅ Resource type mapping
+- ✅ Resource type mapping (130+ resource types)
 - ✅ Resource ID parsing
 - ✅ Status mapping
 - ✅ Environment extraction
 - ✅ Complete resource mapping
+- ✅ New resource types (VM Scale Sets, Container Registry, Event Hub, etc.)
 
 ## Future Enhancements
 
