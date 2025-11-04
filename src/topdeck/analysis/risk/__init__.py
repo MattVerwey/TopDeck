@@ -10,6 +10,7 @@ from .cost_impact import CostImpact, CostImpactAnalyzer
 from .dependency import DependencyAnalyzer
 from .dependency_scanner import DependencyScanner
 from .impact import ImpactAnalyzer
+from .misconfiguration import MisconfigurationDetector, MisconfigurationIssue, MisconfigurationReport
 from .models import (
     BlastRadius,
     DependencyVulnerability,
@@ -55,4 +56,7 @@ __all__ = [
     "RiskSnapshot",
     "RiskTrend",
     "RiskTrendAnalyzer",
+    "MisconfigurationDetector",
+    "MisconfigurationIssue",
+    "MisconfigurationReport",
 ]

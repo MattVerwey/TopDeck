@@ -37,6 +37,8 @@ class RiskAssessmentResponse(BaseModel):
     time_since_last_change: float | None
     recommendations: list[str]
     factors: dict
+    misconfigurations: list[dict]
+    misconfiguration_count: int
     assessed_at: str
 
 
@@ -180,6 +182,8 @@ async def get_all_risk_assessments() -> list[RiskAssessmentResponse]:
                         time_since_last_change=assessment.time_since_last_change,
                         recommendations=assessment.recommendations,
                         factors=assessment.factors,
+                        misconfigurations=assessment.misconfigurations,
+                        misconfiguration_count=assessment.misconfiguration_count,
                         assessed_at=assessment.assessed_at.isoformat(),
                     ))
                 except Exception as e:
@@ -219,6 +223,8 @@ async def get_risk_assessment(resource_id: str) -> RiskAssessmentResponse:
             time_since_last_change=assessment.time_since_last_change,
             recommendations=assessment.recommendations,
             factors=assessment.factors,
+            misconfigurations=assessment.misconfigurations,
+            misconfiguration_count=assessment.misconfiguration_count,
             assessed_at=assessment.assessed_at.isoformat(),
         )
     except ValueError as e:
