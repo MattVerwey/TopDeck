@@ -247,7 +247,7 @@ export default function Dashboard() {
     navigate(`/impact?change=${changeId}`);
   };
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = (severity: 'low' | 'medium' | 'high'): 'error' | 'warning' | 'success' => {
     switch (severity) {
       case 'high':
         return 'error';
