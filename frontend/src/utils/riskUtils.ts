@@ -8,11 +8,13 @@
  * Get risk level from a numeric risk score
  * @param score Risk score (0-100)
  * @returns Risk level string
+ * 
+ * Note: These thresholds match the backend RiskScorer thresholds in scoring.py
  */
 export function getRiskLevelFromScore(score: number): string {
-  if (score >= 80) return 'critical';
-  if (score >= 60) return 'high';
-  if (score >= 40) return 'medium';
+  if (score >= 75) return 'critical';
+  if (score >= 50) return 'high';
+  if (score >= 25) return 'medium';
   return 'low';
 }
 

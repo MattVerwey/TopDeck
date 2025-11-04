@@ -29,7 +29,11 @@ import ResourceTester from '../components/risk/ResourceTester';
 import ResourceQuery from '../components/risk/ResourceQuery';
 import RemediationSuggestions from '../components/risk/RemediationSuggestions';
 import PredictionAnalysis from '../components/risk/PredictionAnalysis';
+import RiskDrilldownDialog from '../components/risk/RiskDrilldownDialog';
 import DocLink from '../components/common/DocLink';
+import apiClient from '../services/api';
+import type { RiskAssessment } from '../types';
+import { getRiskLevelFromScore } from '../utils/riskUtils';
 
 interface RiskMetric {
   name: string;
