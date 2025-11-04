@@ -74,7 +74,7 @@ TopDeck's Azure discovery system maps native Azure resource types (e.g., `Micros
 
 ### Networking (30 types)
 
-#### Core Networking (7 types)
+#### Core Networking (8 types)
 - `Microsoft.Network/virtualNetworks` → `virtual_network`
 - `Microsoft.Network/virtualNetworks/subnets` → `subnet`
 - `Microsoft.Network/networkInterfaces` → `network_interface`
