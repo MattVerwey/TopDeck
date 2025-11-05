@@ -67,6 +67,8 @@ class RiskAssessment:
         time_since_last_change: Hours since last change
         recommendations: List of recommended actions
         factors: Detailed breakdown of risk factors
+        misconfigurations: List of misconfiguration issues found
+        misconfiguration_count: Number of misconfigurations
         assessed_at: When this assessment was performed
     """
 
@@ -84,6 +86,8 @@ class RiskAssessment:
     time_since_last_change: float | None = None
     recommendations: list[str] = field(default_factory=list)
     factors: dict[str, Any] = field(default_factory=dict)
+    misconfigurations: list[dict[str, Any]] = field(default_factory=list)
+    misconfiguration_count: int = 0
     assessed_at: datetime = field(default_factory=datetime.utcnow)
 
 

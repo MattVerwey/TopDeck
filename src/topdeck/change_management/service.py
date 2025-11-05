@@ -99,9 +99,9 @@ class ChangeManagementService:
         for res_id in target_resources:
             try:
                 # Get risk assessment for this resource
-                risk_assessment = self.risk_analyzer.assess_resource_risk(res_id)
+                risk_assessment = self.risk_analyzer.analyze_resource(res_id)
 
-                # Add to directly affected
+                # Add to directly affected with misconfiguration details
                 directly_affected.append(
                     {
                         "resource_id": res_id,
@@ -109,6 +109,8 @@ class ChangeManagementService:
                         "type": risk_assessment.resource_type,
                         "risk_score": risk_assessment.risk_score,
                         "blast_radius": risk_assessment.blast_radius,
+                        "misconfigurations": risk_assessment.misconfigurations,
+                        "misconfiguration_count": risk_assessment.misconfiguration_count,
                     }
                 )
 

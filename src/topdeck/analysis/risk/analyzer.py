@@ -9,6 +9,7 @@ from topdeck.storage.neo4j_client import Neo4jClient
 from .dependency import DependencyAnalyzer
 from .dependency_scanner import DependencyScanner
 from .impact import ImpactAnalyzer
+from .misconfiguration import MisconfigurationDetector
 from .models import (
     BlastRadius,
     DependencyVulnerability,
@@ -46,6 +47,7 @@ class RiskAnalyzer:
         self.failure_simulator = FailureSimulator(self.impact_analyzer)
         self.partial_failure_analyzer = PartialFailureAnalyzer()
         self.dependency_scanner = DependencyScanner()
+        self.misconfiguration_detector = MisconfigurationDetector()
 
     def analyze_resource(self, resource_id: str) -> RiskAssessment:
         """
@@ -83,8 +85,16 @@ class RiskAnalyzer:
         deployment_failure_rate = 0.0  # Would be calculated from actual deployments
         time_since_last_change = None  # Would be from deployment tracking
 
-        # Calculate risk score
-        risk_score = self.risk_scorer.calculate_risk_score(
+        # Detect misconfigurations
+        misconfiguration_report = self.misconfiguration_detector.detect_misconfigurations(
+            resource_id=resource_id,
+            resource_name=resource.get("name", "Unknown"),
+            resource_type=resource.get("resource_type", "unknown"),
+            properties=resource,
+        )
+
+        # Calculate risk score (including misconfiguration impact)
+        base_risk_score = self.risk_scorer.calculate_risk_score(
             dependency_count=dependencies_count,
             dependents_count=dependents_count,
             resource_type=resource["resource_type"],
@@ -94,6 +104,9 @@ class RiskAnalyzer:
             has_redundancy=has_redundancy,
         )
 
+        # Add misconfiguration impact to risk score
+        risk_score = min(100.0, base_risk_score + misconfiguration_report.risk_score_impact)
+
         # Get risk level
         risk_level = self.risk_scorer.get_risk_level(risk_score)
 
@@ -102,7 +115,7 @@ class RiskAnalyzer:
             resource["resource_type"], is_spof, dependents_count
         )
 
-        # Generate recommendations
+        # Generate recommendations (including misconfiguration fixes)
         recommendations = self.risk_scorer.generate_recommendations(
             risk_score=risk_score,
             is_spof=is_spof,
@@ -110,6 +123,10 @@ class RiskAnalyzer:
             dependents_count=dependents_count,
             deployment_failure_rate=deployment_failure_rate,
         )
+
+        # Add misconfiguration recommendations
+        for issue in misconfiguration_report.issues[:3]:  # Top 3 most important
+            recommendations.append(f"🔧 {issue.title}: {issue.recommendation}")
 
         # Build factor breakdown
         factors = {
@@ -120,7 +137,21 @@ class RiskAnalyzer:
             "blast_radius_size": blast_radius.total_affected,
             "user_impact": blast_radius.user_impact.value,
             "deployment_failure_rate": deployment_failure_rate,
+            "misconfiguration_impact": misconfiguration_report.risk_score_impact,
         }
+
+        # Convert misconfiguration issues to dict format
+        misconfigurations = [
+            {
+                "type": issue.issue_type,
+                "severity": issue.severity,
+                "title": issue.title,
+                "description": issue.description,
+                "recommendation": issue.recommendation,
+                "affected_property": issue.affected_property,
+            }
+            for issue in misconfiguration_report.issues
+        ]
 
         return RiskAssessment(
             resource_id=resource_id,
@@ -137,6 +168,8 @@ class RiskAnalyzer:
             time_since_last_change=time_since_last_change,
             recommendations=recommendations,
             factors=factors,
+            misconfigurations=misconfigurations,
+            misconfiguration_count=len(misconfigurations),
         )
 
     def calculate_blast_radius(self, resource_id: str) -> BlastRadius:
@@ -273,7 +306,7 @@ class RiskAnalyzer:
 
     def _get_resource_details(self, resource_id: str) -> dict | None:
         """
-        Get basic resource details from Neo4j.
+        Get basic resource details from Neo4j including all properties.
 
         Args:
             resource_id: Resource ID
@@ -283,32 +316,30 @@ class RiskAnalyzer:
         """
         query = """
         MATCH (r {id: $id})
-        RETURN r.id as id,
-               r.name as name,
-               COALESCE(r.resource_type, labels(r)[0]) as resource_type,
-               r.cloud_provider as cloud_provider,
-               r.region as region
+        RETURN r
         """
 
         with self.neo4j_client.session() as session:
             result = session.run(query, id=resource_id)
             record = result.single()
             if record:
-                return {
-                    "id": record["id"],
-                    "name": record["name"],
-                    "resource_type": record["resource_type"] or "unknown",
-                    "cloud_provider": (
-                        record["cloud_provider"]
-                        if "cloud_provider" in record and record["cloud_provider"] is not None
-                        else "azure"
-                    ),
-                    "region": (
-                        record["region"]
-                        if "region" in record and record["region"] is not None
-                        else "unknown"
-                    ),
-                }
+                node = record["r"]
+                # Convert node to dictionary with all properties
+                resource_dict = dict(node)
+                
+                # Ensure required fields are present
+                if "resource_type" not in resource_dict or not resource_dict["resource_type"]:
+                    # Try to get from labels
+                    labels = list(node.labels)
+                    resource_dict["resource_type"] = labels[0] if labels else "unknown"
+                
+                if "cloud_provider" not in resource_dict or not resource_dict["cloud_provider"]:
+                    resource_dict["cloud_provider"] = "azure"
+                
+                if "region" not in resource_dict or not resource_dict["region"]:
+                    resource_dict["region"] = "unknown"
+                
+                return resource_dict
 
         return None
 
@@ -759,3 +790,27 @@ class RiskAnalyzer:
         )
 
         return recommendations
+
+    def get_resource_misconfigurations(self, resource_id: str) -> Any:
+        """
+        Get misconfiguration report for a resource.
+
+        Args:
+            resource_id: Resource to analyze
+
+        Returns:
+            MisconfigurationReport with detected issues
+
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        return self.misconfiguration_detector.detect_misconfigurations(
+            resource_id=resource_id,
+            resource_name=resource.get("name", "Unknown"),
+            resource_type=resource.get("resource_type", "unknown"),
+            properties=resource,
+        )

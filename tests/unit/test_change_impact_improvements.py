@@ -14,7 +14,7 @@ import pytest
 
 from topdeck.change_management.models import ChangeRequest, ChangeStatus, ChangeType
 from topdeck.change_management.service import ChangeManagementService
-from topdeck.analysis.risk.models import RiskAssessment
+from topdeck.analysis.risk.models import RiskAssessment, RiskLevel
 
 
 @pytest.fixture
@@ -226,11 +226,15 @@ def test_impact_assessment_uses_resource_characteristics(
     ]
 
     # Create a mock risk assessment for a database
-    mock_risk_analyzer.assess_resource_risk.return_value = RiskAssessment(
+    mock_risk_analyzer.analyze_resource.return_value = RiskAssessment(
         resource_id="db-1",
         resource_name="Production Database",
         resource_type="database",
         risk_score=75.0,
+        risk_level=RiskLevel.HIGH,
+        criticality_score=80.0,
+        dependencies_count=5,
+        dependents_count=10,
         blast_radius=10,
         single_point_of_failure=True,
         recommendations=["High risk resource"],
@@ -270,11 +274,15 @@ def test_different_resources_same_change_different_impact(
     session_mock.run.return_value = []  # No dependents for simplicity
 
     # Test with database
-    mock_risk_analyzer.assess_resource_risk.return_value = RiskAssessment(
+    mock_risk_analyzer.analyze_resource.return_value = RiskAssessment(
         resource_id="db-1",
         resource_name="Database",
         resource_type="database",
         risk_score=60.0,
+        risk_level=RiskLevel.MEDIUM,
+        criticality_score=60.0,
+        dependencies_count=3,
+        dependents_count=5,
         blast_radius=5,
         single_point_of_failure=False,
         recommendations=[],
@@ -291,11 +299,15 @@ def test_different_resources_same_change_different_impact(
     db_assessment = change_service.assess_change_impact(db_change)
 
     # Test with function app
-    mock_risk_analyzer.assess_resource_risk.return_value = RiskAssessment(
+    mock_risk_analyzer.analyze_resource.return_value = RiskAssessment(
         resource_id="func-1",
         resource_name="Function App",
         resource_type="function_app",
         risk_score=60.0,
+        risk_level=RiskLevel.MEDIUM,
+        criticality_score=60.0,
+        dependencies_count=3,
+        dependents_count=5,
         blast_radius=5,
         single_point_of_failure=False,
         recommendations=[],
