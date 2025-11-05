@@ -2,6 +2,7 @@
 Main risk analysis orchestrator.
 """
 
+import logging
 from typing import Any
 
 from topdeck.storage.neo4j_client import Neo4jClient
@@ -20,6 +21,8 @@ from .models import (
 from .partial_failure import PartialFailureAnalyzer
 from .scoring import RiskScorer
 from .simulation import FailureSimulator
+
+logger = logging.getLogger(__name__)
 
 
 class RiskAnalyzer:
@@ -98,8 +101,6 @@ class RiskAnalyzer:
         risk_level = self.risk_scorer.get_risk_level(risk_score)
         
         # Log risk calculation details for debugging
-        import logging
-        logger = logging.getLogger(__name__)
         logger.debug(
             f"Risk calculated for {resource_id} ({resource['name']}): "
             f"score={risk_score:.2f}, level={risk_level.value}, "

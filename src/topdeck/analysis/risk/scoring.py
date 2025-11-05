@@ -2,9 +2,12 @@
 Risk scoring algorithms.
 """
 
+import logging
 from typing import Any
 
 from .models import RiskLevel
+
+logger = logging.getLogger(__name__)
 
 
 class RiskScorer:
@@ -120,11 +123,10 @@ class RiskScorer:
 
         # Factor 4: Redundancy (reduces risk)
         # Instead of a negative contribution, treat lack of redundancy as a multiplier
-        redundancy_multiplier = 1.0
         if not has_redundancy:
             # No redundancy increases risk by 20%
             redundancy_multiplier = 1.2
-        elif has_redundancy:
+        else:
             # Having redundancy reduces risk by 15%
             redundancy_multiplier = 0.85
         
@@ -133,11 +135,9 @@ class RiskScorer:
         
         # Store individual contributions for debugging
         criticality_contribution = base_score
-        redundancy_contribution = (redundancy_multiplier - 1.0) * base_score
+        redundancy_contribution = (redundancy_multiplier - 1.0) * (base_score + dependency_contribution + failure_contribution + time_contribution)
 
         # Log score calculation breakdown for debugging
-        import logging
-        logger = logging.getLogger(__name__)
         logger.debug(
             f"Risk score breakdown for {resource_type}: "
             f"total={score:.2f}, dep_contrib={dependency_contribution:.2f}, "
