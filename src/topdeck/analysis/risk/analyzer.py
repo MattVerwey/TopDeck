@@ -2,6 +2,7 @@
 Main risk analysis orchestrator.
 """
 
+import logging
 from typing import Any
 
 from topdeck.storage.neo4j_client import Neo4jClient
@@ -21,6 +22,8 @@ from .models import (
 from .partial_failure import PartialFailureAnalyzer
 from .scoring import RiskScorer
 from .simulation import FailureSimulator
+
+logger = logging.getLogger(__name__)
 
 
 class RiskAnalyzer:
@@ -109,6 +112,14 @@ class RiskAnalyzer:
 
         # Get risk level
         risk_level = self.risk_scorer.get_risk_level(risk_score)
+        
+        # Log risk calculation details for debugging
+        logger.debug(
+            f"Risk calculated for {resource_id} ({resource['name']}): "
+            f"score={risk_score:.2f}, level={risk_level.value}, "
+            f"deps={dependencies_count}, dependents={dependents_count}, "
+            f"type={resource['resource_type']}, spof={is_spof}, redundancy={has_redundancy}"
+        )
 
         # Calculate criticality
         criticality_score = self.risk_scorer._calculate_criticality(
