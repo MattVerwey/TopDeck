@@ -51,17 +51,11 @@ class MisconfigurationReport:
     resource_name: str
     resource_type: str
     issues: list[MisconfigurationIssue] = field(default_factory=list)
-    severity_counts: dict[str, int] = field(default_factory=dict)
+    severity_counts: dict[str, int] = field(default_factory=lambda: {"critical": 0, "high": 0, "medium": 0, "low": 0})
     risk_score_impact: float = 0.0
     
     def __post_init__(self):
         """Calculate severity counts and risk score impact."""
-        self.severity_counts = {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0,
-        }
         
         severity_weights = {
             "critical": 25.0,

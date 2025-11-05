@@ -263,7 +263,7 @@ See `examples/misconfiguration_demo.py` for a comprehensive demonstration showin
 
 Run the demo:
 ```bash
-cd /home/runner/work/TopDeck/TopDeck
+cd <project_root>
 PYTHONPATH=./src python3 examples/misconfiguration_demo.py
 ```
 
