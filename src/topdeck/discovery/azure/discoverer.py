@@ -529,6 +529,13 @@ class AzureDiscoverer:
         )
         dependencies.extend(servicebus_deps)
 
+        # Detect comprehensive AKS resource dependencies from ConfigMaps, Secrets, and env vars
+        from .resources import detect_aks_resource_dependencies
+        aks_deps = await detect_aks_resource_dependencies(
+            resources, self.subscription_id, self.credential
+        )
+        dependencies.extend(aks_deps)
+
         return dependencies
 
     async def _infer_applications(
