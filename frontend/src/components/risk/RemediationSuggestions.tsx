@@ -108,46 +108,10 @@ export default function RemediationSuggestions() {
       });
     } catch (err) {
       console.error('Failed to fetch remediation data:', err);
-      setError('Failed to fetch remediation suggestions. Using fallback data.');
+      setError('Failed to fetch remediation suggestions. The backend may be unavailable or the resource may not have risk analysis data yet.');
       
-      // Fallback mock data
-      setRemediationData({
-        resource_id: selectedResource,
-        resource_name: resources.find((r) => r.id === selectedResource)?.name || 'Unknown',
-        risk_level: 'high',
-        recommendations: [
-          '⚠️ CRITICAL RISK: Deploy only during maintenance windows',
-          '🔴 Single Point of Failure: Add redundancy or failover capability',
-          'Consider deploying redundant instances across availability zones',
-          'Implement comprehensive monitoring and alerting',
-          'Prepare detailed rollback procedures',
-        ],
-        mitigation_strategies: [
-          'Implement retry logic with exponential backoff',
-          'Add circuit breakers to prevent cascade failures',
-          'Configure health checks to remove failed instances',
-          'Set up auto-scaling to compensate for lost capacity',
-          'Implement graceful degradation when capacity is reduced',
-        ],
-        monitoring_recommendations: [
-          'Set up alerting on error rate thresholds (>1%, >5%, >10%)',
-          'Track P95 and P99 latency metrics',
-          'Monitor per-zone health and traffic distribution',
-          'Set up alerts for zone-level failures',
-          'Implement distributed tracing to identify error sources',
-        ],
-        dependency_vulnerabilities: [
-          {
-            package_name: 'example-package',
-            current_version: '1.2.3',
-            vulnerability_id: 'CVE-2024-1234',
-            severity: 'high',
-            description: 'Remote code execution vulnerability',
-            fixed_version: '1.2.4',
-            exploit_available: false,
-          },
-        ],
-      });
+      // Set empty state instead of mock data
+      setRemediationData(null);
     } finally {
       setLoading(false);
     }

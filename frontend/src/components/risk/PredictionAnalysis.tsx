@@ -60,6 +60,15 @@ export default function PredictionAnalysis() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [minConfidence, setMinConfidence] = useState<number | ''>('');
+  const [minRiskScore, setMinRiskScore] = useState<number | ''>('');
+
+  // Confidence level to percentage mapping
+  const CONFIDENCE_PERCENTAGES = {
+    high: 100,
+    medium: 66,
+    low: 33,
+  } as const;
 
   useEffect(() => {
     loadPredictions();
@@ -174,7 +183,18 @@ export default function PredictionAnalysis() {
       searchTerm === '' ||
       p.resource_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.resource_type.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesRiskLevel && matchesType && matchesSearch;
+    
+    // Map confidence to percentage for filtering
+    const confidencePercentage = CONFIDENCE_PERCENTAGES[p.confidence];
+    const matchesMinConfidence = minConfidence === '' || confidencePercentage >= minConfidence;
+    
+    // Get risk score from details if available (with type safety)
+    const riskScore = typeof p.details.failure_probability === 'number'
+      ? p.details.failure_probability * 100
+      : 0;
+    const matchesMinRiskScore = minRiskScore === '' || riskScore >= minRiskScore;
+    
+    return matchesRiskLevel && matchesType && matchesSearch && matchesMinConfidence && matchesMinRiskScore;
   });
 
   const summaryStats = {
@@ -303,7 +323,7 @@ export default function PredictionAnalysis() {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
               size="small"
@@ -315,7 +335,7 @@ export default function PredictionAnalysis() {
               }}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <TextField
               fullWidth
               select
@@ -331,7 +351,7 @@ export default function PredictionAnalysis() {
               <MenuItem value="low">Low</MenuItem>
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <TextField
               fullWidth
               select
@@ -346,7 +366,29 @@ export default function PredictionAnalysis() {
               <MenuItem value="anomaly">Anomaly Detection</MenuItem>
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, md: 2 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              label="Min Confidence %"
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(e.target.value === '' ? '' : Number(e.target.value))}
+              inputProps={{ min: 0, max: 100, step: 10 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 6, md: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              label="Min Risk Score"
+              value={minRiskScore}
+              onChange={(e) => setMinRiskScore(e.target.value === '' ? '' : Number(e.target.value))}
+              inputProps={{ min: 0, max: 100, step: 5 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 1 }}>
             <Button
               fullWidth
               variant="outlined"

@@ -18,6 +18,8 @@ import {
   Box,
   Divider,
   Grid,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   FilterList,
@@ -54,6 +56,8 @@ export default function ResourceSelector({
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedApps, setSelectedApps] = useState<string[]>(selectedResourceIds);
   const [searchTerm, setSearchTerm] = useState('');
+  const [minRiskScore, setMinRiskScore] = useState<number | ''>('');
+  const [maxRiskScore, setMaxRiskScore] = useState<number | ''>('');
 
   const [hierarchy, setHierarchy] = useState<HierarchyLevel>({
     subscriptions: [],
@@ -138,11 +142,18 @@ export default function ResourceSelector({
     ? hierarchy.apps.get(`${selectedSubscription}/${selectedCluster}/${selectedNamespace}`) || []
     : [];
 
-  // Filter apps by search term
-  const filteredApps = availableApps.filter((app) =>
-    app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    app.resource_type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter apps by search term and risk score
+  const filteredApps = availableApps.filter((app) => {
+    const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.resource_type.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Get risk score from metadata if available
+    const riskScore = (app.metadata?.risk_score as number) || 0;
+    const matchesMinRisk = minRiskScore === '' || riskScore >= minRiskScore;
+    const matchesMaxRisk = maxRiskScore === '' || riskScore <= maxRiskScore;
+    
+    return matchesSearch && matchesMinRisk && matchesMaxRisk;
+  });
 
   const handleApply = () => {
     onSelectResources(selectedApps);
@@ -156,6 +167,8 @@ export default function ResourceSelector({
     setSelectedNamespace(null);
     setSelectedApps([]);
     setSearchTerm('');
+    setMinRiskScore('');
+    setMaxRiskScore('');
   };
 
   const handleSelectAll = () => {
@@ -267,16 +280,36 @@ export default function ResourceSelector({
           {selectedNamespace && (
             <>
               <Divider />
-              <TextField
-                label="Search Resources"
-                size="small"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-                fullWidth
-              />
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Search Resources"
+                  size="small"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+                  }}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Min Risk Score"
+                  size="small"
+                  type="number"
+                  value={minRiskScore}
+                  onChange={(e) => setMinRiskScore(e.target.value === '' ? '' : Number(e.target.value))}
+                  inputProps={{ min: 0, max: 100 }}
+                  sx={{ width: 140 }}
+                />
+                <TextField
+                  label="Max Risk Score"
+                  size="small"
+                  type="number"
+                  value={maxRiskScore}
+                  onChange={(e) => setMaxRiskScore(e.target.value === '' ? '' : Number(e.target.value))}
+                  inputProps={{ min: 0, max: 100 }}
+                  sx={{ width: 140 }}
+                />
+              </Stack>
 
               <Box>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -305,48 +338,70 @@ export default function ResourceSelector({
                   }}
                 >
                   <Grid container spacing={2}>
-                    {filteredApps.map((app) => (
-                      <Grid key={app.id} size={{ xs: 12, md: 6 }}>
-                        <Box
-                          onClick={() => toggleAppSelection(app.id)}
-                          sx={{
-                            cursor: 'pointer',
-                            border: '2px solid',
-                            borderColor: selectedApps.includes(app.id) ? 'primary.main' : 'divider',
-                            borderRadius: 1,
-                            p: 1.5,
-                            transition: 'all 0.2s',
-                            bgcolor: selectedApps.includes(app.id) 
-                              ? 'action.selected' 
-                              : 'transparent',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              bgcolor: 'action.hover',
-                            },
-                          }}
-                        >
-                          <Stack spacing={1}>
-                            <Typography variant="subtitle2" fontWeight={600} noWrap>
-                              {app.name}
-                            </Typography>
-                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                              <Chip
-                                label={app.resource_type}
-                                size="small"
-                                variant="outlined"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                              <Chip
-                                label={app.cloud_provider.toUpperCase()}
-                                size="small"
-                                color="primary"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                            </Stack>
-                          </Stack>
-                        </Box>
-                      </Grid>
-                    ))}
+                    {filteredApps.map((app) => {
+                      const riskScore = (app.metadata?.risk_score as number) || 0;
+                      const isSelected = selectedApps.includes(app.id);
+                      
+                      return (
+                        <Grid key={app.id} size={{ xs: 12, md: 6 }}>
+                          <Box
+                            sx={{
+                              border: '2px solid',
+                              borderColor: isSelected ? 'primary.main' : 'divider',
+                              borderRadius: 1,
+                              p: 1.5,
+                              transition: 'all 0.2s',
+                              bgcolor: isSelected 
+                                ? 'action.selected' 
+                                : 'transparent',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: 'action.hover',
+                              },
+                            }}
+                          >
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={isSelected}
+                                  onChange={() => toggleAppSelection(app.id)}
+                                />
+                              }
+                              label={
+                                <Stack spacing={1} sx={{ ml: 1 }}>
+                                  <Typography variant="subtitle2" fontWeight={600} noWrap>
+                                    {app.name}
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                    <Chip
+                                      label={app.resource_type}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
+                                    <Chip
+                                      label={app.cloud_provider.toUpperCase()}
+                                      size="small"
+                                      color="primary"
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
+                                    {riskScore > 0 && (
+                                      <Chip
+                                        label={`Risk: ${riskScore.toFixed(0)}`}
+                                        size="small"
+                                        color={riskScore > 70 ? 'error' : riskScore > 40 ? 'warning' : 'success'}
+                                        sx={{ fontSize: '0.7rem' }}
+                                      />
+                                    )}
+                                  </Stack>
+                                </Stack>
+                              }
+                              sx={{ width: '100%', m: 0 }}
+                            />
+                          </Box>
+                        </Grid>
+                      );
+                    })}
                     {filteredApps.length === 0 && (
                       <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
