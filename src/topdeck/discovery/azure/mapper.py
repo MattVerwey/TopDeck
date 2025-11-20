@@ -39,6 +39,7 @@ class AzureResourceMapper:
         
         # Container Services
         "Microsoft.ContainerService/managedClusters": "aks",
+        "Microsoft.ContainerService/pod": "pod",
         "Microsoft.ContainerInstance/containerGroups": "container_instance",
         "Microsoft.ContainerRegistry/registries": "container_registry",
         

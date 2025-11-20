@@ -535,6 +535,20 @@ class AzureDiscoverer:
             resources, self.subscription_id, self.credential
         )
         dependencies.extend(aks_deps)
+        
+        # Discover Kubernetes pods and their storage dependencies
+        from .resources import discover_aks_pods_and_storage
+        aks_resources = [r for r in resources if r.resource_type == "aks"]
+        if aks_resources:
+            logger.info(f"Discovering pods and storage dependencies for {len(aks_resources)} AKS clusters...")
+            pod_resources, pod_storage_deps = await discover_aks_pods_and_storage(
+                self.subscription_id, self.credential, aks_resources
+            )
+            # Add discovered pods to the resources list
+            resources.extend(pod_resources)
+            # Add storage dependencies
+            dependencies.extend(pod_storage_deps)
+            logger.info(f"Added {len(pod_resources)} pods and {len(pod_storage_deps)} storage dependencies")
 
         return dependencies
 
