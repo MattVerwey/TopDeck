@@ -1060,13 +1060,10 @@ async def discover_aks_pods_and_storage(
                                                         dependency_type=DependencyType.REQUIRED,
                                                         strength=0.9,
                                                         discovered_method="kubernetes_pvc_csi",
-                                                        description=f"Pod {pod.metadata.name} uses {provisioner} via PVC {pvc_name}",
-                                                        properties={
-                                                            "pvc_name": pvc_name,
-                                                            "storage_class": storage_class_name,
-                                                            "provisioner": provisioner,
-                                                            "volume_name": volume_name,
-                                                        },
+                                                        description=(
+                                                            f"Pod {pod.metadata.name} uses {provisioner} via PVC {pvc_name} "
+                                                            f"(StorageClass: {storage_class_name}, Volume: {volume_name})"
+                                                        ),
                                                     )
                                                     dependencies.append(dep)
                                                     
