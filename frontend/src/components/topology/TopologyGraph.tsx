@@ -23,6 +23,7 @@ const colorMap: Record<string, string> = {
   service: '#2196f3',
   database: '#9c27b0',
   storage: '#ff9800',
+  storage_account: '#ff9800',
   load_balancer: '#f44336',
   gateway: '#00bcd4',
 };

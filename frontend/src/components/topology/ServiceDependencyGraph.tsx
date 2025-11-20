@@ -614,7 +614,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
               { label: 'Services', color: serviceColors.service },
               { label: 'Deployments', color: serviceColors.deployment },
               { label: 'Databases', color: serviceColors.database },
-              { label: 'Storage Accounts', color: serviceColors.storage },
+              { label: 'Storage Accounts', color: serviceColors.storage_account },
               { label: 'Cache/Redis', color: serviceColors.cache },
               { label: 'Load Balancers', color: serviceColors.load_balancer },
               { label: 'App Gateways', color: serviceColors.application_gateway },

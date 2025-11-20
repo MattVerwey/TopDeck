@@ -896,6 +896,11 @@ async def discover_aks_pods_and_storage(
     - Azure Disk CSI and Azure Blob CSI storage providers
     - Pod -> Storage Account dependencies via CSI drivers
     
+    LIMITATIONS:
+    - Storage account dependencies use placeholder IDs based on CSI provisioner and StorageClass
+    - Actual storage account resource ID resolution requires additional PV inspection or SC parameters
+    - Dependencies must be matched with discovered storage accounts in post-processing
+    
     Args:
         subscription_id: Azure subscription ID
         credential: Azure credential object
@@ -904,7 +909,7 @@ async def discover_aks_pods_and_storage(
     Returns:
         Tuple of (discovered pods as DiscoveredResource, storage dependencies)
     """
-    from ..models import DependencyCategory, DependencyType, Pod
+    from ..models import DependencyCategory, DependencyType
     
     pods = []
     dependencies = []
