@@ -6,8 +6,8 @@ to dependency creation and topology representation works correctly.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from topdeck.discovery.models import DiscoveredResource, ResourceDependency
+from unittest.mock import MagicMock, patch
+from topdeck.discovery.models import DiscoveredResource
 from topdeck.discovery.azure.discoverer import AzureDiscoverer
 
 

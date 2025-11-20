@@ -4,6 +4,7 @@ Azure Resource Discovery Functions.
 Specialized resource discovery for detailed property extraction.
 """
 
+import base64
 import logging
 
 try:
@@ -727,16 +728,14 @@ async def get_aks_resource_connections(
                                     for key, value_bytes in secret.data.items():
                                         if value_bytes:
                                             try:
-                                                import base64
-
                                                 value = base64.b64decode(value_bytes).decode(
                                                     "utf-8"
                                                 )
                                                 _process_connection_string(
                                                     value, key, aks_resource_connections, parser, "secret"
                                                 )
-                                            except Exception:
-                                                pass
+                                            except Exception as e:
+                                                logger.debug(f"Error processing secret key '{key}' in {ns_name}: {e}")
                         except Exception as e:
                             logger.debug(f"Error reading Secrets in {ns_name}: {e}")
 
@@ -1107,6 +1106,30 @@ async def detect_aks_resource_dependencies(
             subscription_id, credential, aks_clusters
         )
 
+        def _create_sql_dependency(aks, aks_id, conn_info, sql_servers, db_type):
+            """Helper to create SQL-type dependencies."""
+            host = conn_info.get("host", "")
+            server_name = host.split(".")[0] if host else None
+            if not server_name:
+                return None
+            
+            for sql_name, sql_server in sql_servers.items():
+                if AzureResourceMapper.names_match(sql_name, server_name):
+                    return ResourceDependency(
+                        source_id=aks_id,
+                        target_id=sql_server.id,
+                        category=DependencyCategory.DATA,
+                        dependency_type=DependencyType.REQUIRED,
+                        strength=0.9,
+                        discovered_method=f"kubernetes_{conn_info['source']}",
+                        description=(
+                            f"AKS cluster {aks.name} connects to {db_type} {server_name} "
+                            f"(database: {conn_info.get('database', 'N/A')}, "
+                            f"from {conn_info['source']}: {conn_info['key']})"
+                        ),
+                    )
+            return None
+
         for aks_id, resource_connections in aks_connections.items():
             aks = next((r for r in aks_clusters if r.id == aks_id), None)
             if not aks:
@@ -1137,78 +1160,23 @@ async def detect_aks_resource_dependencies(
             # Process SQL connections
             if "sql" in resource_connections:
                 for conn_info in resource_connections["sql"]:
-                    host = conn_info.get("host", "")
-                    # Extract server name from host (e.g., myserver.database.windows.net -> myserver)
-                    server_name = host.split(".")[0] if host else None
-                    if server_name:
-                        # Find matching SQL server
-                        for sql_name, sql_server in sql_servers.items():
-                            if AzureResourceMapper.names_match(sql_name, server_name):
-                                dep = ResourceDependency(
-                                    source_id=aks_id,
-                                    target_id=sql_server.id,
-                                    category=DependencyCategory.DATA,
-                                    dependency_type=DependencyType.REQUIRED,
-                                    strength=0.9,
-                                    discovered_method=f"kubernetes_{conn_info['source']}",
-                                    description=(
-                                        f"AKS cluster {aks.name} connects to SQL Server {server_name} "
-                                        f"(database: {conn_info.get('database', 'N/A')}, "
-                                        f"from {conn_info['source']}: {conn_info['key']})"
-                                    ),
-                                )
-                                dependencies.append(dep)
-                                break
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "SQL Server")
+                    if dep:
+                        dependencies.append(dep)
 
             # Process PostgreSQL connections
             if "postgresql" in resource_connections:
                 for conn_info in resource_connections["postgresql"]:
-                    host = conn_info.get("host", "")
-                    server_name = host.split(".")[0] if host else None
-                    if server_name:
-                        # Find matching PostgreSQL server
-                        for sql_name, sql_server in sql_servers.items():
-                            if AzureResourceMapper.names_match(sql_name, server_name):
-                                dep = ResourceDependency(
-                                    source_id=aks_id,
-                                    target_id=sql_server.id,
-                                    category=DependencyCategory.DATA,
-                                    dependency_type=DependencyType.REQUIRED,
-                                    strength=0.9,
-                                    discovered_method=f"kubernetes_{conn_info['source']}",
-                                    description=(
-                                        f"AKS cluster {aks.name} connects to PostgreSQL {server_name} "
-                                        f"(database: {conn_info.get('database', 'N/A')}, "
-                                        f"from {conn_info['source']}: {conn_info['key']})"
-                                    ),
-                                )
-                                dependencies.append(dep)
-                                break
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "PostgreSQL")
+                    if dep:
+                        dependencies.append(dep)
 
             # Process MySQL connections
             if "mysql" in resource_connections:
                 for conn_info in resource_connections["mysql"]:
-                    host = conn_info.get("host", "")
-                    server_name = host.split(".")[0] if host else None
-                    if server_name:
-                        # Find matching MySQL server
-                        for sql_name, sql_server in sql_servers.items():
-                            if AzureResourceMapper.names_match(sql_name, server_name):
-                                dep = ResourceDependency(
-                                    source_id=aks_id,
-                                    target_id=sql_server.id,
-                                    category=DependencyCategory.DATA,
-                                    dependency_type=DependencyType.REQUIRED,
-                                    strength=0.9,
-                                    discovered_method=f"kubernetes_{conn_info['source']}",
-                                    description=(
-                                        f"AKS cluster {aks.name} connects to MySQL {server_name} "
-                                        f"(database: {conn_info.get('database', 'N/A')}, "
-                                        f"from {conn_info['source']}: {conn_info['key']})"
-                                    ),
-                                )
-                                dependencies.append(dep)
-                                break
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "MySQL")
+                    if dep:
+                        dependencies.append(dep)
 
             # Process Redis connections
             if "redis" in resource_connections:

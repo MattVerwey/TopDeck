@@ -7,10 +7,9 @@ Secrets, and environment variables.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 from topdeck.discovery.azure.resources import (
     _process_connection_string,
-    get_aks_resource_connections,
     detect_aks_resource_dependencies,
 )
 from topdeck.discovery.connection_parser import ConnectionStringParser
