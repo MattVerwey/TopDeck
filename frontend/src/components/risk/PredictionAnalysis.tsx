@@ -63,6 +63,13 @@ export default function PredictionAnalysis() {
   const [minConfidence, setMinConfidence] = useState<number | ''>('');
   const [minRiskScore, setMinRiskScore] = useState<number | ''>('');
 
+  // Confidence level to percentage mapping
+  const CONFIDENCE_PERCENTAGES = {
+    high: 100,
+    medium: 66,
+    low: 33,
+  } as const;
+
   useEffect(() => {
     loadPredictions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +185,7 @@ export default function PredictionAnalysis() {
       p.resource_type.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Map confidence to percentage for filtering
-    const confidencePercentage = p.confidence === 'high' ? 100 : p.confidence === 'medium' ? 66 : 33;
+    const confidencePercentage = CONFIDENCE_PERCENTAGES[p.confidence];
     const matchesMinConfidence = minConfidence === '' || confidencePercentage >= minConfidence;
     
     // Get risk score from details if available (with type safety)

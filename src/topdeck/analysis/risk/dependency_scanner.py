@@ -26,6 +26,9 @@ class DependencyScanner:
     # Vulnerabilities with CVSS >= 7.0 are typically publicly exploited
     EXPLOIT_LIKELIHOOD_THRESHOLD = 7.0
 
+    # Severity ordering for comparison
+    SEVERITY_ORDER = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
     # Enhanced vulnerability database with more entries and metadata
     # In production, this would integrate with:
     # - GitHub Advisory Database API
@@ -595,8 +598,7 @@ class DependencyScanner:
                     "medium": "🟡",
                     "low": "🟢"
                 }
-                severity_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
-                max_severity = max(vulns, key=lambda v: severity_order.get(v.severity, 0)).severity
+                max_severity = max(vulns, key=lambda v: self.SEVERITY_ORDER.get(v.severity, 0)).severity
                 icon = severity_icons.get(max_severity, "•")
                 
                 recommendations.append(
