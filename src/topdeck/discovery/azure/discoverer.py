@@ -18,6 +18,7 @@ from ..models import Application, DiscoveredResource, DiscoveryResult, ResourceD
 from .devops import AzureDevOpsDiscoverer
 from .mapper import AzureResourceMapper
 from .resources import (
+    detect_aks_resource_dependencies,
     discover_compute_resources,
     discover_config_resources,
     discover_data_resources,
@@ -528,6 +529,12 @@ class AzureDiscoverer:
             resources, self.subscription_id, self.credential
         )
         dependencies.extend(servicebus_deps)
+
+        # Detect comprehensive AKS resource dependencies from ConfigMaps, Secrets, and env vars
+        aks_deps = await detect_aks_resource_dependencies(
+            resources, self.subscription_id, self.credential
+        )
+        dependencies.extend(aks_deps)
 
         return dependencies
 

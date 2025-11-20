@@ -4,6 +4,7 @@ Azure Resource Discovery Functions.
 Specialized resource discovery for detailed property extraction.
 """
 
+import base64
 import logging
 
 try:
@@ -632,13 +633,20 @@ async def get_app_service_servicebus_connections(
     return connections
 
 
-async def get_aks_servicebus_connections(
+async def get_aks_resource_connections(
     subscription_id: str,
     credential,
     aks_resources: list[DiscoveredResource],
-) -> dict[str, list[str]]:
+) -> dict[str, dict[str, list[dict]]]:
     """
-    Get Service Bus connections from AKS cluster ConfigMaps and Secrets.
+    Get all resource connections from AKS cluster ConfigMaps, Secrets, and environment variables.
+
+    Discovers connections to:
+    - Service Bus (namespaces, topics, queues)
+    - SQL Databases (Azure SQL, PostgreSQL, MySQL)
+    - Redis Cache
+    - Storage Accounts
+    - Any other services via connection strings
 
     Args:
         subscription_id: Azure subscription ID
@@ -646,8 +654,11 @@ async def get_aks_servicebus_connections(
         aks_resources: List of AKS cluster resources
 
     Returns:
-        Dictionary mapping AKS resource ID to list of Service Bus namespace names
+        Dictionary mapping AKS resource ID to dict of resource types and their connection details
+        Format: {aks_id: {resource_type: [connection_info_dict, ...]}}
     """
+    from ..connection_parser import ConnectionStringParser
+
     connections = {}
 
     if ContainerServiceClient is None or k8s_client is None:
@@ -658,9 +669,10 @@ async def get_aks_servicebus_connections(
 
     try:
         container_client = ContainerServiceClient(credential, subscription_id)
+        parser = ConnectionStringParser()
 
         for aks in aks_resources:
-            aks_connections = set()
+            aks_resource_connections = {}
 
             try:
                 resource_group = aks.resource_group
@@ -687,22 +699,12 @@ async def get_aks_servicebus_connections(
 
                     # Create Kubernetes API clients
                     v1 = k8s_client.CoreV1Api(api_client=api_client)
+                    apps_v1 = k8s_client.AppsV1Api(api_client=api_client)
 
                     # Get all namespaces
                     namespaces = v1.list_namespace()
 
                     for ns in namespaces.items:
-                    INFO: 172.18.0.1:57686 - "POST /api/v1/discovery/scan-repositories?scan_all_projects=true HTTP/1.1" 500
-                    Internal Server Error
-                    2025-11-04 15:33:53 [info ] incoming_request client_host=127.0.0.1 method=GET path=/health
-                    query_params= request_id=eee78460-e6c7-4234-87dc-74633a71bda0
-                    2025-11-04 15:33:53 [info ] request_completed method=GET path=/health process_time_ms=1.46
-                    request_id=eee78460-e6c7-4234-87dc-74633a71bda0 status_code=200
-                    
-                    Let me check for any error logs that might show the actual exception. The 500 error is happening very quickly (0.63-1.43ms), which suggests it's failing early. Let me look at all the logs more carefully:
-                    
-                     Run pwsh command?
-                    
                         ns_name = ns.metadata.name
 
                         # Get ConfigMaps
@@ -710,11 +712,11 @@ async def get_aks_servicebus_connections(
                             configmaps = v1.list_namespaced_config_map(ns_name)
                             for cm in configmaps.items:
                                 if cm.data:
-                                    for _key, value in cm.data.items():
+                                    for key, value in cm.data.items():
                                         if value and isinstance(value, str):
-                                            sb_info = parse_servicebus_connection_string(value)
-                                            if sb_info:
-                                                aks_connections.add(sb_info["namespace"])
+                                            _process_connection_string(
+                                                value, key, aks_resource_connections, parser, "configmap"
+                                            )
                         except Exception as e:
                             logger.debug(f"Error reading ConfigMaps in {ns_name}: {e}")
 
@@ -723,26 +725,66 @@ async def get_aks_servicebus_connections(
                             secrets = v1.list_namespaced_secret(ns_name)
                             for secret in secrets.items:
                                 if secret.data:
-                                    for _key, value_bytes in secret.data.items():
+                                    for key, value_bytes in secret.data.items():
                                         if value_bytes:
                                             try:
-                                                import base64
-
                                                 value = base64.b64decode(value_bytes).decode(
                                                     "utf-8"
                                                 )
-                                                sb_info = parse_servicebus_connection_string(value)
-                                                if sb_info:
-                                                    aks_connections.add(sb_info["namespace"])
-                                            except Exception:
-                                                pass
+                                                _process_connection_string(
+                                                    value, key, aks_resource_connections, parser, "secret"
+                                                )
+                                            except Exception as e:
+                                                logger.debug(f"Error processing secret key '{key}' in {ns_name}: {e}")
                         except Exception as e:
                             logger.debug(f"Error reading Secrets in {ns_name}: {e}")
 
-                    if aks_connections:
-                        connections[aks.id] = list(aks_connections)
+                        # Get Deployments and their environment variables
+                        try:
+                            deployments = apps_v1.list_namespaced_deployment(ns_name)
+                            for deployment in deployments.items:
+                                if deployment.spec and deployment.spec.template.spec:
+                                    for container in deployment.spec.template.spec.containers:
+                                        if container.env:
+                                            for env_var in container.env:
+                                                if env_var.value:
+                                                    _process_connection_string(
+                                                        env_var.value,
+                                                        env_var.name,
+                                                        aks_resource_connections,
+                                                        parser,
+                                                        "env_var"
+                                                    )
+                        except Exception as e:
+                            logger.debug(f"Error reading Deployments in {ns_name}: {e}")
+
+                        # Get StatefulSets and their environment variables
+                        try:
+                            statefulsets = apps_v1.list_namespaced_stateful_set(ns_name)
+                            for sts in statefulsets.items:
+                                if sts.spec and sts.spec.template.spec:
+                                    for container in sts.spec.template.spec.containers:
+                                        if container.env:
+                                            for env_var in container.env:
+                                                if env_var.value:
+                                                    _process_connection_string(
+                                                        env_var.value,
+                                                        env_var.name,
+                                                        aks_resource_connections,
+                                                        parser,
+                                                        "env_var"
+                                                    )
+                        except Exception as e:
+                            logger.debug(f"Error reading StatefulSets in {ns_name}: {e}")
+
+                    if aks_resource_connections:
+                        connections[aks.id] = aks_resource_connections
+                        total_connections = sum(
+                            len(conns) for conns in aks_resource_connections.values()
+                        )
                         logger.info(
-                            f"Found {len(aks_connections)} Service Bus connections for AKS {aks.name}"
+                            f"Found {total_connections} resource connections for AKS {aks.name} "
+                            f"across {len(aks_resource_connections)} resource types"
                         )
 
                 except Exception as e:
@@ -752,9 +794,91 @@ async def get_aks_servicebus_connections(
                 logger.error(f"Error processing AKS cluster {aks.name}: {e}")
 
     except Exception as e:
-        logger.error(f"Error getting AKS Service Bus connections: {e}")
+        logger.error(f"Error getting AKS resource connections: {e}")
 
     return connections
+
+
+def _process_connection_string(
+    value: str,
+    key: str,
+    connections_dict: dict,
+    parser: "ConnectionStringParser",
+    source: str
+) -> None:
+    """
+    Process a potential connection string and add to connections dict.
+
+    Args:
+        value: String value to parse
+        key: Key/name of the configuration item
+        connections_dict: Dictionary to add connections to
+        parser: ConnectionStringParser instance
+        source: Source of the connection string (configmap, secret, env_var)
+    """
+    # First try Service Bus (existing logic)
+    sb_info = parse_servicebus_connection_string(value)
+    if sb_info:
+        if "servicebus" not in connections_dict:
+            connections_dict["servicebus"] = []
+        connections_dict["servicebus"].append({
+            "namespace": sb_info["namespace"],
+            "key": key,
+            "source": source,
+            "endpoint": sb_info.get("endpoint")
+        })
+        return
+
+    # Try generic connection string parsing
+    conn_info = parser.parse_connection_string(value)
+    if conn_info:
+        resource_type = conn_info.service_type
+        if resource_type:
+            if resource_type not in connections_dict:
+                connections_dict[resource_type] = []
+            connections_dict[resource_type].append({
+                "host": conn_info.host,
+                "port": conn_info.port,
+                "database": conn_info.database,
+                "key": key,
+                "source": source,
+                "protocol": conn_info.protocol,
+                "service_type": conn_info.service_type,
+                "full_endpoint": conn_info.full_endpoint
+            })
+
+
+async def get_aks_servicebus_connections(
+    subscription_id: str,
+    credential,
+    aks_resources: list[DiscoveredResource],
+) -> dict[str, list[str]]:
+    """
+    Get Service Bus connections from AKS cluster ConfigMaps and Secrets.
+
+    DEPRECATED: Use get_aks_resource_connections for comprehensive connection discovery.
+    This function is kept for backward compatibility.
+
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        aks_resources: List of AKS cluster resources
+
+    Returns:
+        Dictionary mapping AKS resource ID to list of Service Bus namespace names
+    """
+    all_connections = await get_aks_resource_connections(
+        subscription_id, credential, aks_resources
+    )
+
+    # Extract just Service Bus namespaces for backward compatibility
+    servicebus_connections = {}
+    for aks_id, resource_connections in all_connections.items():
+        if "servicebus" in resource_connections:
+            namespaces = [conn["namespace"] for conn in resource_connections["servicebus"]]
+            servicebus_connections[aks_id] = namespaces
+
+    return servicebus_connections
 
 
 async def detect_servicebus_dependencies(
@@ -931,6 +1055,184 @@ async def detect_servicebus_dependencies(
                 dependencies.append(dep)
 
     logger.info(f"Detected {len(dependencies)} Service Bus dependencies")
+    return dependencies
+
+
+async def detect_aks_resource_dependencies(
+    resources: list[DiscoveredResource],
+    subscription_id: str | None = None,
+    credential=None,
+) -> list[ResourceDependency]:
+    """
+    Detect comprehensive resource dependencies from AKS clusters.
+
+    Discovers connections from AKS ConfigMaps, Secrets, and environment variables to:
+    - Service Bus (namespaces, topics, queues)
+    - SQL Databases (Azure SQL, PostgreSQL, MySQL)
+    - Redis Cache
+    - Storage Accounts
+    - Any other services via connection strings
+
+    Args:
+        resources: List of discovered resources
+        subscription_id: Azure subscription ID (optional, required for actual parsing)
+        credential: Azure credential (optional, required for actual parsing)
+
+    Returns:
+        List of ResourceDependency objects representing AKS to resource connections
+    """
+    from ..models import DependencyCategory, DependencyType
+
+    dependencies = []
+    
+    if not subscription_id or not credential:
+        logger.info("Skipping AKS resource dependency detection (no credentials provided)")
+        return dependencies
+
+    # Get all AKS clusters
+    aks_clusters = [r for r in resources if r.resource_type == "aks"]
+    if not aks_clusters:
+        return dependencies
+
+    # Get all potential target resources indexed by type and name
+    sql_servers = {r.name: r for r in resources if r.resource_type == "sql_server"}
+    redis_caches = {r.name: r for r in resources if r.resource_type == "redis"}
+    storage_accounts = {r.name: r for r in resources if r.resource_type == "storage_account"}
+    servicebus_namespaces = {r.name: r for r in resources if r.resource_type == "servicebus_namespace"}
+
+    # Get comprehensive AKS connections
+    try:
+        aks_connections = await get_aks_resource_connections(
+            subscription_id, credential, aks_clusters
+        )
+
+        def _create_sql_dependency(aks, aks_id, conn_info, sql_servers, db_type):
+            """Helper to create SQL-type dependencies."""
+            host = conn_info.get("host", "")
+            server_name = host.split(".")[0] if host else None
+            if not server_name:
+                return None
+            
+            for sql_name, sql_server in sql_servers.items():
+                if AzureResourceMapper.names_match(sql_name, server_name):
+                    return ResourceDependency(
+                        source_id=aks_id,
+                        target_id=sql_server.id,
+                        category=DependencyCategory.DATA,
+                        dependency_type=DependencyType.REQUIRED,
+                        strength=0.9,
+                        discovered_method=f"kubernetes_{conn_info['source']}",
+                        description=(
+                            f"AKS cluster {aks.name} connects to {db_type} {server_name} "
+                            f"(database: {conn_info.get('database', 'N/A')}, "
+                            f"from {conn_info['source']}: {conn_info['key']})"
+                        ),
+                    )
+            return None
+
+        for aks_id, resource_connections in aks_connections.items():
+            aks = next((r for r in aks_clusters if r.id == aks_id), None)
+            if not aks:
+                continue
+
+            # Process Service Bus connections
+            if "servicebus" in resource_connections:
+                for conn_info in resource_connections["servicebus"]:
+                    namespace_name = conn_info["namespace"]
+                    # Find matching Service Bus namespace
+                    for ns_name, namespace in servicebus_namespaces.items():
+                        if AzureResourceMapper.names_match(ns_name, namespace_name):
+                            dep = ResourceDependency(
+                                source_id=aks_id,
+                                target_id=namespace.id,
+                                category=DependencyCategory.DATA,
+                                dependency_type=DependencyType.REQUIRED,
+                                strength=0.9,
+                                discovered_method=f"kubernetes_{conn_info['source']}",
+                                description=(
+                                    f"AKS cluster {aks.name} uses Service Bus {namespace_name} "
+                                    f"(from {conn_info['source']}: {conn_info['key']})"
+                                ),
+                            )
+                            dependencies.append(dep)
+                            break
+
+            # Process SQL connections
+            if "sql" in resource_connections:
+                for conn_info in resource_connections["sql"]:
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "SQL Server")
+                    if dep:
+                        dependencies.append(dep)
+
+            # Process PostgreSQL connections
+            if "postgresql" in resource_connections:
+                for conn_info in resource_connections["postgresql"]:
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "PostgreSQL")
+                    if dep:
+                        dependencies.append(dep)
+
+            # Process MySQL connections
+            if "mysql" in resource_connections:
+                for conn_info in resource_connections["mysql"]:
+                    dep = _create_sql_dependency(aks, aks_id, conn_info, sql_servers, "MySQL")
+                    if dep:
+                        dependencies.append(dep)
+
+            # Process Redis connections
+            if "redis" in resource_connections:
+                for conn_info in resource_connections["redis"]:
+                    host = conn_info.get("host", "")
+                    # Extract cache name from host (e.g., mycache.redis.cache.windows.net -> mycache)
+                    cache_name = host.split(".")[0] if host else None
+                    if cache_name:
+                        # Find matching Redis cache
+                        for redis_name, redis_cache in redis_caches.items():
+                            if AzureResourceMapper.names_match(redis_name, cache_name):
+                                dep = ResourceDependency(
+                                    source_id=aks_id,
+                                    target_id=redis_cache.id,
+                                    category=DependencyCategory.DATA,
+                                    dependency_type=DependencyType.REQUIRED,
+                                    strength=0.9,
+                                    discovered_method=f"kubernetes_{conn_info['source']}",
+                                    description=(
+                                        f"AKS cluster {aks.name} connects to Redis Cache {cache_name} "
+                                        f"(from {conn_info['source']}: {conn_info['key']})"
+                                    ),
+                                )
+                                dependencies.append(dep)
+                                break
+
+            # Process Storage connections
+            if "storage" in resource_connections:
+                for conn_info in resource_connections["storage"]:
+                    host = conn_info.get("host", "")
+                    # Extract account name from host (e.g., myaccount.blob.core.windows.net -> myaccount)
+                    account_name = host.split(".")[0] if host else None
+                    if account_name:
+                        # Find matching Storage account
+                        for storage_name, storage_account in storage_accounts.items():
+                            if AzureResourceMapper.names_match(storage_name, account_name):
+                                dep = ResourceDependency(
+                                    source_id=aks_id,
+                                    target_id=storage_account.id,
+                                    category=DependencyCategory.DATA,
+                                    dependency_type=DependencyType.REQUIRED,
+                                    strength=0.9,
+                                    discovered_method=f"kubernetes_{conn_info['source']}",
+                                    description=(
+                                        f"AKS cluster {aks.name} connects to Storage Account {account_name} "
+                                        f"(from {conn_info['source']}: {conn_info['key']})"
+                                    ),
+                                )
+                                dependencies.append(dep)
+                                break
+
+        logger.info(f"Detected {len(dependencies)} AKS resource dependencies")
+
+    except Exception as e:
+        logger.error(f"Error detecting AKS resource dependencies: {e}")
+
     return dependencies
 
 
