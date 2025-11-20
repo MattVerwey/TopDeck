@@ -22,6 +22,10 @@ class DependencyScanner:
     - .NET (nuget, *.csproj)
     """
 
+    # CVSS threshold for likely exploit availability (High severity)
+    # Vulnerabilities with CVSS >= 7.0 are typically publicly exploited
+    EXPLOIT_LIKELIHOOD_THRESHOLD = 7.0
+
     # Enhanced vulnerability database with more entries and metadata
     # In production, this would integrate with:
     # - GitHub Advisory Database API
@@ -124,7 +128,7 @@ class DependencyScanner:
             },
             {
                 "package": "axios",
-                "vulnerable_versions": ["<0.28.0"],
+                "vulnerable_versions": [">=0.8.1,<1.6.0"],
                 "cve": "CVE-2023-45857",
                 "severity": "medium",
                 "description": "Server-Side Request Forgery (SSRF) vulnerability",
@@ -314,7 +318,7 @@ class DependencyScanner:
                     if self._is_vulnerable_version(version, vuln["vulnerable_versions"]):
                         # Determine if exploit is likely available based on CVSS score
                         cvss_score = vuln.get("cvss_score", 0.0)
-                        exploit_available = cvss_score >= 7.0  # High CVSS usually has exploits
+                        exploit_available = cvss_score >= self.EXPLOIT_LIKELIHOOD_THRESHOLD
                         
                         # Enhance severity based on actual impact
                         severity = self._adjust_severity_by_impact(
@@ -350,7 +354,7 @@ class DependencyScanner:
                     if self._is_vulnerable_version(version, vuln["vulnerable_versions"]):
                         # Determine if exploit is likely available based on CVSS score
                         cvss_score = vuln.get("cvss_score", 0.0)
-                        exploit_available = cvss_score >= 7.0
+                        exploit_available = cvss_score >= self.EXPLOIT_LIKELIHOOD_THRESHOLD
                         
                         # Enhance severity based on actual impact
                         severity = self._adjust_severity_by_impact(
@@ -501,9 +505,12 @@ class DependencyScanner:
         # Additional scoring factors:
         
         # 1. Multiple vulnerabilities in same package (compounding risk)
-        packages = set(v.package_name for v in vulnerabilities)
-        if len(packages) < len(vulnerabilities):
-            total_score += 10  # Multiple vulns in same package
+        package_counts = {}
+        for v in vulnerabilities:
+            package_counts[v.package_name] = package_counts.get(v.package_name, 0) + 1
+        for pkg, count in package_counts.items():
+            if count > 1:
+                total_score += (count - 1) * 5  # 5 points per additional vuln in same package
         
         # 2. Critical packages (web frameworks, auth libraries) get higher weight
         critical_packages = {"flask", "django", "express", "jsonwebtoken", "passport"}
@@ -545,7 +552,7 @@ class DependencyScanner:
             # Add specific critical vulnerability details
             for vuln in critical[:3]:  # Show top 3
                 recommendations.append(
-                    f"   → {vuln.package_name}: {vuln.vulnerability_id} - {vuln.description.split('-')[0].strip()}"
+                    f"   → {vuln.package_name}: {vuln.vulnerability_id} - {vuln.description.split('-', 1)[0].strip()}"
                 )
 
         if high:
@@ -577,9 +584,9 @@ class DependencyScanner:
             by_package[vuln.package_name].append(vuln)
         
         # Provide package-specific recommendations
-        for package, vulns in sorted(by_package.items(), 
-                                     key=lambda x: len(x[1]), 
-                                     reverse=True)[:5]:  # Top 5 packages
+        sorted_packages = sorted(by_package.items(), 
+                                 key=lambda x: (-len(x[1]), x[0]))[:5]  # Top 5 packages, count desc, name asc
+        for package, vulns in sorted_packages:
             if vulns[0].fixed_version:
                 vuln_count = len(vulns)
                 severity_icons = {
@@ -588,7 +595,8 @@ class DependencyScanner:
                     "medium": "🟡",
                     "low": "🟢"
                 }
-                max_severity = max(v.severity for v in vulns)
+                severity_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+                max_severity = max(vulns, key=lambda v: severity_order.get(v.severity, 0)).severity
                 icon = severity_icons.get(max_severity, "•")
                 
                 recommendations.append(

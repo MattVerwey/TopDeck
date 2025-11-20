@@ -177,12 +177,14 @@ export default function PredictionAnalysis() {
       p.resource_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.resource_type.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Convert confidence to numeric for filtering
-    const confidenceValue = p.confidence === 'high' ? 3 : p.confidence === 'medium' ? 2 : 1;
-    const matchesMinConfidence = minConfidence === '' || confidenceValue >= (minConfidence / 33.33);
+    // Map confidence to percentage for filtering
+    const confidencePercentage = p.confidence === 'high' ? 100 : p.confidence === 'medium' ? 66 : 33;
+    const matchesMinConfidence = minConfidence === '' || confidencePercentage >= minConfidence;
     
-    // Get risk score from details if available
-    const riskScore = (p.details.failure_probability as number) * 100 || 0;
+    // Get risk score from details if available (with type safety)
+    const riskScore = typeof p.details.failure_probability === 'number'
+      ? p.details.failure_probability * 100
+      : 0;
     const matchesMinRiskScore = minRiskScore === '' || riskScore >= minRiskScore;
     
     return matchesRiskLevel && matchesType && matchesSearch && matchesMinConfidence && matchesMinRiskScore;
