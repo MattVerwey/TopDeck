@@ -127,31 +127,8 @@ export default function Topology() {
 
     let filtered = { ...topology };
 
-    // Filter by selected resources if any
-    if (selectedResourceIds.length > 0) {
-      // Include selected resources and ALL their transitive dependencies (not just direct)
-      const relatedIds = new Set<string>(selectedResourceIds);
-      
-      // Iteratively add dependencies until no new ones are found (transitive closure)
-      let previousSize = 0;
-      while (relatedIds.size > previousSize) {
-        previousSize = relatedIds.size;
-        topology.edges.forEach((edge) => {
-          // If source is in our set, add target (downstream dependency)
-          if (relatedIds.has(edge.source_id)) {
-            relatedIds.add(edge.target_id);
-          }
-          // If target is in our set, add source (upstream dependency)
-          if (relatedIds.has(edge.target_id)) {
-            relatedIds.add(edge.source_id);
-          }
-        });
-      }
-
-      filtered = applyNodeFilter(filtered, (n) => relatedIds.has(n.id));
-    }
-
-    // Apply other filters using the helper function
+    // Apply other filters FIRST (before resource selection)
+    // This ensures filters apply to the source data before expanding dependencies
     if (filters.cloud_provider) {
       filtered = applyNodeFilter(filtered, (n) => n.cloud_provider === filters.cloud_provider);
     }
@@ -172,6 +149,33 @@ export default function Topology() {
         (n.properties?.namespace as string) === filters.namespace ||
         (n.metadata?.namespace as string) === filters.namespace
       );
+    }
+
+    // Filter by selected resources if any - this overrides other filters
+    // and shows ALL dependencies of the selected resources from the ORIGINAL topology
+    if (selectedResourceIds.length > 0) {
+      // Include selected resources and ALL their transitive dependencies from the full topology
+      // This ensures we see all dependencies even if they don't match other filters
+      const relatedIds = new Set<string>(selectedResourceIds);
+      
+      // Iteratively add dependencies from the FULL topology until no new ones are found
+      let previousSize = 0;
+      while (relatedIds.size > previousSize) {
+        previousSize = relatedIds.size;
+        topology.edges.forEach((edge) => {
+          // If source is in our set, add target (downstream dependency)
+          if (relatedIds.has(edge.source_id)) {
+            relatedIds.add(edge.target_id);
+          }
+          // If target is in our set, add source (upstream dependency)
+          if (relatedIds.has(edge.target_id)) {
+            relatedIds.add(edge.source_id);
+          }
+        });
+      }
+
+      // Use the full topology to get all related nodes and edges
+      filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
     }
 
     filtered.metadata = {
