@@ -9,15 +9,19 @@ from topdeck.storage.neo4j_client import Neo4jClient
 
 from .dependency import DependencyAnalyzer
 from .dependency_scanner import DependencyScanner
+from .enhanced_impact import EnhancedImpactAnalyzer
 from .impact import ImpactAnalyzer
 from .misconfiguration import MisconfigurationDetector
 from .models import (
     BlastRadius,
     DependencyVulnerability,
+    DownstreamImpactAnalysis,
     FailureSimulation,
     PartialFailureScenario,
     RiskAssessment,
     SinglePointOfFailure,
+    UpstreamDependencyHealth,
+    WhatIfAnalysis,
 )
 from .partial_failure import PartialFailureAnalyzer
 from .scoring import RiskScorer
@@ -51,6 +55,9 @@ class RiskAnalyzer:
         self.partial_failure_analyzer = PartialFailureAnalyzer()
         self.dependency_scanner = DependencyScanner()
         self.misconfiguration_detector = MisconfigurationDetector()
+        self.enhanced_impact_analyzer = EnhancedImpactAnalyzer(
+            neo4j_client, self.dependency_analyzer
+        )
 
     def analyze_resource(self, resource_id: str) -> RiskAssessment:
         """
@@ -824,4 +831,76 @@ class RiskAnalyzer:
             resource_name=resource.get("name", "Unknown"),
             resource_type=resource.get("resource_type", "unknown"),
             properties=resource,
+        )
+
+    def analyze_downstream_impact(self, resource_id: str) -> DownstreamImpactAnalysis:
+        """
+        Analyze what services and clients will be affected if this resource fails.
+
+        This answers: "What will be brought down if this fails?"
+
+        Args:
+            resource_id: Resource to analyze
+
+        Returns:
+            DownstreamImpactAnalysis with comprehensive impact breakdown
+
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        return self.enhanced_impact_analyzer.analyze_downstream_impact(
+            resource_id, resource.get("name", "Unknown")
+        )
+
+    def analyze_upstream_dependencies(self, resource_id: str) -> UpstreamDependencyHealth:
+        """
+        Analyze what this resource depends on and the health of those dependencies.
+
+        This answers: "What does this app depend on and what are the risks?"
+
+        Args:
+            resource_id: Resource to analyze
+
+        Returns:
+            UpstreamDependencyHealth with dependency analysis
+
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        return self.enhanced_impact_analyzer.analyze_upstream_dependencies(
+            resource_id, resource.get("name", "Unknown")
+        )
+
+    def analyze_what_if_scenario(
+        self, resource_id: str, scenario_type: str = "failure"
+    ) -> WhatIfAnalysis:
+        """
+        Comprehensive "what if" analysis for a resource.
+
+        This answers: "What will happen if this resource fails or is changed?"
+
+        Args:
+            resource_id: Resource to analyze
+            scenario_type: Type of scenario (failure, maintenance, update, etc.)
+
+        Returns:
+            WhatIfAnalysis with complete scenario breakdown
+
+        Raises:
+            ValueError: If resource not found
+        """
+        resource = self._get_resource_details(resource_id)
+        if not resource:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        return self.enhanced_impact_analyzer.analyze_what_if_scenario(
+            resource_id, resource.get("name", "Unknown"), scenario_type
         )
