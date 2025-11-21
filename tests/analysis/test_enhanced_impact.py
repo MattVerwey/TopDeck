@@ -30,6 +30,13 @@ def enhanced_impact_analyzer(mock_neo4j_client, mock_dependency_analyzer):
     return EnhancedImpactAnalyzer(mock_neo4j_client, mock_dependency_analyzer)
 
 
+@pytest.fixture
+def mock_neo4j_session():
+    """Create a reusable mock Neo4j session with context manager support."""
+    mock_session = MagicMock()
+    return MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None), mock_session
+
+
 def test_analyze_downstream_impact_no_dependencies(
     enhanced_impact_analyzer, mock_dependency_analyzer
 ):
@@ -88,15 +95,15 @@ def test_analyze_downstream_impact_with_data_stores(
 
 
 def test_analyze_upstream_dependencies_no_dependencies(
-    enhanced_impact_analyzer, mock_neo4j_client
+    enhanced_impact_analyzer, mock_neo4j_client, mock_neo4j_session
 ):
     """Test upstream dependencies with no dependencies."""
     # Mock empty dependencies
-    mock_session = MagicMock()
+    mock_context, mock_session = mock_neo4j_session
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter([])
     mock_session.run.return_value = mock_result
-    mock_neo4j_client.session.return_value = MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None)
+    mock_neo4j_client.session.return_value = mock_context
 
     result = enhanced_impact_analyzer.analyze_upstream_dependencies("resource-1", "Test Resource")
 
@@ -107,11 +114,11 @@ def test_analyze_upstream_dependencies_no_dependencies(
 
 
 def test_analyze_upstream_dependencies_with_healthy_deps(
-    enhanced_impact_analyzer, mock_neo4j_client, mock_dependency_analyzer
+    enhanced_impact_analyzer, mock_neo4j_client, mock_dependency_analyzer, mock_neo4j_session
 ):
     """Test upstream dependencies with healthy dependencies."""
     # Mock dependencies
-    mock_session = MagicMock()
+    mock_context, mock_session = mock_neo4j_session
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter(
         [
@@ -134,7 +141,7 @@ def test_analyze_upstream_dependencies_with_healthy_deps(
         ]
     )
     mock_session.run.return_value = mock_result
-    mock_neo4j_client.session.return_value = MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None)
+    mock_neo4j_client.session.return_value = mock_context
     mock_dependency_analyzer.is_single_point_of_failure.return_value = False
 
     result = enhanced_impact_analyzer.analyze_upstream_dependencies("resource-1", "Test Resource")
@@ -146,11 +153,11 @@ def test_analyze_upstream_dependencies_with_healthy_deps(
 
 
 def test_analyze_upstream_dependencies_with_spof(
-    enhanced_impact_analyzer, mock_neo4j_client, mock_dependency_analyzer
+    enhanced_impact_analyzer, mock_neo4j_client, mock_dependency_analyzer, mock_neo4j_session
 ):
     """Test upstream dependencies with SPOF."""
     # Mock dependencies
-    mock_session = MagicMock()
+    mock_context, mock_session = mock_neo4j_session
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter(
         [
@@ -165,7 +172,7 @@ def test_analyze_upstream_dependencies_with_spof(
         ]
     )
     mock_session.run.return_value = mock_result
-    mock_neo4j_client.session.return_value = MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None)
+    mock_neo4j_client.session.return_value = mock_context
     mock_dependency_analyzer.is_single_point_of_failure.return_value = True
 
     result = enhanced_impact_analyzer.analyze_upstream_dependencies("resource-1", "Test Resource")
@@ -214,7 +221,7 @@ def test_categorize_resource_backend_service(enhanced_impact_analyzer):
 
 
 def test_analyze_what_if_scenario_failure(
-    enhanced_impact_analyzer, mock_dependency_analyzer, mock_neo4j_client
+    enhanced_impact_analyzer, mock_dependency_analyzer, mock_neo4j_client, mock_neo4j_session
 ):
     """Test what-if analysis for failure scenario."""
     # Mock affected resources (downstream)
@@ -224,11 +231,11 @@ def test_analyze_what_if_scenario_failure(
     )
 
     # Mock dependencies (upstream)
-    mock_session = MagicMock()
+    mock_context, mock_session = mock_neo4j_session
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter([])
     mock_session.run.return_value = mock_result
-    mock_neo4j_client.session.return_value = MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None)
+    mock_neo4j_client.session.return_value = mock_context
 
     result = enhanced_impact_analyzer.analyze_what_if_scenario(
         "resource-1", "Test Resource", "failure"
@@ -242,18 +249,18 @@ def test_analyze_what_if_scenario_failure(
 
 
 def test_analyze_what_if_scenario_update(
-    enhanced_impact_analyzer, mock_dependency_analyzer, mock_neo4j_client
+    enhanced_impact_analyzer, mock_dependency_analyzer, mock_neo4j_client, mock_neo4j_session
 ):
     """Test what-if analysis for update scenario."""
     # Mock affected resources (downstream)
     mock_dependency_analyzer.get_affected_resources.return_value = ([], [])
 
     # Mock dependencies (upstream)
-    mock_session = MagicMock()
+    mock_context, mock_session = mock_neo4j_session
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter([])
     mock_session.run.return_value = mock_result
-    mock_neo4j_client.session.return_value = MagicMock(__enter__=lambda self: mock_session, __exit__=lambda self, *args: None)
+    mock_neo4j_client.session.return_value = mock_context
 
     result = enhanced_impact_analyzer.analyze_what_if_scenario(
         "resource-1", "Test Resource", "update"

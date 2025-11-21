@@ -203,6 +203,32 @@ def get_risk_analyzer() -> RiskAnalyzer:
     return RiskAnalyzer(neo4j_client)
 
 
+def convert_categorized_resources(resources: list) -> list[CategorizedResourceResponse]:
+    """
+    Convert CategorizedResource objects to API response format.
+
+    Helper function to avoid code duplication across endpoints.
+
+    Args:
+        resources: List of CategorizedResource objects
+
+    Returns:
+        List of CategorizedResourceResponse objects
+    """
+    return [
+        CategorizedResourceResponse(
+            resource_id=r.resource_id,
+            resource_name=r.resource_name,
+            resource_type=r.resource_type,
+            category=r.category.value,
+            relationship_type=r.relationship_type,
+            impact_severity=r.impact_severity.value,
+            is_critical=r.is_critical,
+        )
+        for r in resources
+    ]
+
+
 @router.get("/all", response_model=list[RiskAssessmentResponse])
 async def get_all_risk_assessments() -> list[RiskAssessmentResponse]:
     """
@@ -1117,21 +1143,6 @@ async def get_downstream_impact(resource_id: str) -> DownstreamImpactResponse:
         analyzer = get_risk_analyzer()
         impact = analyzer.analyze_downstream_impact(resource_id)
 
-        # Convert categorized resources to response format
-        def convert_categorized_resources(resources: list) -> list[CategorizedResourceResponse]:
-            return [
-                CategorizedResourceResponse(
-                    resource_id=r.resource_id,
-                    resource_name=r.resource_name,
-                    resource_type=r.resource_type,
-                    category=r.category.value,
-                    relationship_type=r.relationship_type,
-                    impact_severity=r.impact_severity.value,
-                    is_critical=r.is_critical,
-                )
-                for r in resources
-            ]
-
         # Convert affected_by_category dict
         affected_by_category_response = {}
         for category, resources in impact.affected_by_category.items():
@@ -1180,21 +1191,6 @@ async def get_upstream_dependencies(resource_id: str) -> UpstreamDependencyHealt
     try:
         analyzer = get_risk_analyzer()
         health = analyzer.analyze_upstream_dependencies(resource_id)
-
-        # Convert categorized resources to response format
-        def convert_categorized_resources(resources: list) -> list[CategorizedResourceResponse]:
-            return [
-                CategorizedResourceResponse(
-                    resource_id=r.resource_id,
-                    resource_name=r.resource_name,
-                    resource_type=r.resource_type,
-                    category=r.category.value,
-                    relationship_type=r.relationship_type,
-                    impact_severity=r.impact_severity.value,
-                    is_critical=r.is_critical,
-                )
-                for r in resources
-            ]
 
         # Convert dependencies_by_category dict
         dependencies_by_category_response = {}
@@ -1252,21 +1248,6 @@ async def get_what_if_analysis(
     try:
         analyzer = get_risk_analyzer()
         analysis = analyzer.analyze_what_if_scenario(resource_id, scenario_type)
-
-        # Convert categorized resources helper
-        def convert_categorized_resources(resources: list) -> list[CategorizedResourceResponse]:
-            return [
-                CategorizedResourceResponse(
-                    resource_id=r.resource_id,
-                    resource_name=r.resource_name,
-                    resource_type=r.resource_type,
-                    category=r.category.value,
-                    relationship_type=r.relationship_type,
-                    impact_severity=r.impact_severity.value,
-                    is_critical=r.is_critical,
-                )
-                for r in resources
-            ]
 
         # Convert downstream impact
         downstream = analysis.downstream_impact
