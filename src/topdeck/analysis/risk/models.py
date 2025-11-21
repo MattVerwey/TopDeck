@@ -239,3 +239,140 @@ class DependencyVulnerability:
     fixed_version: str | None = None
     exploit_available: bool = False
     affected_resources: list[str] = field(default_factory=list)
+
+
+class ResourceCategory(str, Enum):
+    """Category of affected resource."""
+
+    USER_FACING = "user_facing"  # Web apps, APIs, gateways that users interact with
+    BACKEND_SERVICE = "backend_service"  # Internal services, microservices
+    DATA_STORE = "data_store"  # Databases, caches, storage
+    INFRASTRUCTURE = "infrastructure"  # Load balancers, networks, clusters
+    INTEGRATION = "integration"  # External integrations, webhooks
+    CLIENT_APP = "client_app"  # Client applications consuming services
+
+
+@dataclass
+class CategorizedResource:
+    """
+    Resource with impact categorization.
+
+    Attributes:
+        resource_id: Unique identifier
+        resource_name: Human-readable name
+        resource_type: Type of resource
+        category: Impact category
+        relationship_type: How this resource relates to the failing resource
+        impact_severity: Severity of impact on this resource
+        is_critical: Whether this is a critical resource
+    """
+
+    resource_id: str
+    resource_name: str
+    resource_type: str
+    category: ResourceCategory
+    relationship_type: str = "DEPENDS_ON"
+    impact_severity: ImpactLevel = ImpactLevel.MEDIUM
+    is_critical: bool = False
+
+
+@dataclass
+class DownstreamImpactAnalysis:
+    """
+    Comprehensive analysis of downstream impact when a resource fails or changes.
+
+    This answers: "What services and clients will be brought down?"
+
+    Attributes:
+        resource_id: ID of the resource being analyzed
+        resource_name: Name of the resource
+        total_affected: Total number of affected resources
+        affected_by_category: Resources grouped by category
+        critical_services_affected: List of critical services that will fail
+        client_apps_affected: List of client applications that will be impacted
+        user_facing_impact: Summary of user-facing impact
+        backend_impact: Summary of backend service impact
+        data_impact: Summary of data access impact
+        estimated_users_affected: Estimated number of users impacted
+        business_impact_summary: High-level business impact description
+    """
+
+    resource_id: str
+    resource_name: str
+    total_affected: int
+    affected_by_category: dict[ResourceCategory, list[CategorizedResource]] = field(
+        default_factory=dict
+    )
+    critical_services_affected: list[CategorizedResource] = field(default_factory=list)
+    client_apps_affected: list[CategorizedResource] = field(default_factory=list)
+    user_facing_impact: str = "No direct user impact"
+    backend_impact: str = "No backend service impact"
+    data_impact: str = "No data access impact"
+    estimated_users_affected: int = 0
+    business_impact_summary: str = ""
+
+
+@dataclass
+class UpstreamDependencyHealth:
+    """
+    Health status of upstream dependencies.
+
+    This answers: "What does this app depend on and what are the risks?"
+
+    Attributes:
+        resource_id: ID of the resource being analyzed
+        resource_name: Name of the resource
+        total_dependencies: Total number of dependencies
+        dependencies_by_category: Dependencies grouped by category
+        unhealthy_dependencies: Dependencies with issues
+        single_points_of_failure: Dependencies that are SPOFs
+        high_risk_dependencies: Dependencies with high risk scores
+        dependency_health_score: Overall health score (0-100)
+        recommendations: Recommendations to improve dependency health
+    """
+
+    resource_id: str
+    resource_name: str
+    total_dependencies: int
+    dependencies_by_category: dict[ResourceCategory, list[CategorizedResource]] = field(
+        default_factory=dict
+    )
+    unhealthy_dependencies: list[CategorizedResource] = field(default_factory=list)
+    single_points_of_failure: list[CategorizedResource] = field(default_factory=list)
+    high_risk_dependencies: list[CategorizedResource] = field(default_factory=list)
+    dependency_health_score: float = 100.0
+    recommendations: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WhatIfAnalysis:
+    """
+    Comprehensive "what if" scenario analysis.
+
+    This answers: "What will happen if this resource fails or is changed?"
+
+    Attributes:
+        resource_id: ID of the resource
+        resource_name: Name of the resource
+        scenario_type: Type of scenario (failure, maintenance, update)
+        downstream_impact: Analysis of downstream impacts
+        upstream_dependencies: Analysis of upstream dependencies
+        timeline_minutes: Estimated timeline for impact
+        severity: Overall severity of the scenario
+        mitigation_available: Whether mitigation is available
+        mitigation_steps: Steps to mitigate the impact
+        rollback_possible: Whether changes can be rolled back
+        rollback_steps: Steps to rollback if needed
+    """
+
+    resource_id: str
+    resource_name: str
+    scenario_type: str
+    downstream_impact: DownstreamImpactAnalysis
+    upstream_dependencies: UpstreamDependencyHealth
+    timeline_minutes: int = 0
+    severity: ImpactLevel = ImpactLevel.MEDIUM
+    mitigation_available: bool = False
+    mitigation_steps: list[str] = field(default_factory=list)
+    rollback_possible: bool = False
+    rollback_steps: list[str] = field(default_factory=list)

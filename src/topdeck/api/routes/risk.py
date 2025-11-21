@@ -130,6 +130,64 @@ class ComprehensiveRiskAnalysisResponse(BaseModel):
     all_recommendations: list[str]
 
 
+class CategorizedResourceResponse(BaseModel):
+    """Response model for categorized resource."""
+
+    resource_id: str
+    resource_name: str
+    resource_type: str
+    category: str
+    relationship_type: str
+    impact_severity: str
+    is_critical: bool
+
+
+class DownstreamImpactResponse(BaseModel):
+    """Response model for downstream impact analysis."""
+
+    resource_id: str
+    resource_name: str
+    total_affected: int
+    affected_by_category: dict[str, list[CategorizedResourceResponse]]
+    critical_services_affected: list[CategorizedResourceResponse]
+    client_apps_affected: list[CategorizedResourceResponse]
+    user_facing_impact: str
+    backend_impact: str
+    data_impact: str
+    estimated_users_affected: int
+    business_impact_summary: str
+
+
+class UpstreamDependencyHealthResponse(BaseModel):
+    """Response model for upstream dependency health."""
+
+    resource_id: str
+    resource_name: str
+    total_dependencies: int
+    dependencies_by_category: dict[str, list[CategorizedResourceResponse]]
+    unhealthy_dependencies: list[CategorizedResourceResponse]
+    single_points_of_failure: list[CategorizedResourceResponse]
+    high_risk_dependencies: list[CategorizedResourceResponse]
+    dependency_health_score: float
+    recommendations: list[str]
+
+
+class WhatIfAnalysisResponse(BaseModel):
+    """Response model for what-if analysis."""
+
+    resource_id: str
+    resource_name: str
+    scenario_type: str
+    downstream_impact: DownstreamImpactResponse
+    upstream_dependencies: UpstreamDependencyHealthResponse
+    timeline_minutes: int
+    severity: str
+    mitigation_available: bool
+    mitigation_steps: list[str]
+    rollback_possible: bool
+    rollback_steps: list[str]
+
+
 # Create router
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 
@@ -143,6 +201,32 @@ def get_risk_analyzer() -> RiskAnalyzer:
     )
     neo4j_client.connect()
     return RiskAnalyzer(neo4j_client)
+
+
+def convert_categorized_resources(resources: list) -> list[CategorizedResourceResponse]:
+    """
+    Convert CategorizedResource objects to API response format.
+
+    Helper function to avoid code duplication across endpoints.
+
+    Args:
+        resources: List of CategorizedResource objects
+
+    Returns:
+        List of CategorizedResourceResponse objects
+    """
+    return [
+        CategorizedResourceResponse(
+            resource_id=r.resource_id,
+            resource_name=r.resource_name,
+            resource_type=r.resource_type,
+            category=r.category.value,
+            relationship_type=r.relationship_type,
+            impact_severity=r.impact_severity.value,
+            is_critical=r.is_critical,
+        )
+        for r in resources
+    ]
 
 
 @router.get("/all", response_model=list[RiskAssessmentResponse])
@@ -1038,4 +1122,193 @@ async def analyze_risk_trend(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to analyze trend: {str(e)}"
+        ) from e
+
+
+@router.get("/resources/{resource_id}/downstream-impact", response_model=DownstreamImpactResponse)
+async def get_downstream_impact(resource_id: str) -> DownstreamImpactResponse:
+    """
+    Analyze what services and clients will be affected if this resource fails.
+
+    This endpoint answers: "What will be brought down if this fails?"
+
+    Returns:
+        - Breakdown of affected resources by category (user-facing, backend, data, etc.)
+        - Critical services that will fail
+        - Client applications that will be impacted
+        - User-facing impact summary
+        - Business impact summary
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        impact = analyzer.analyze_downstream_impact(resource_id)
+
+        # Convert affected_by_category dict
+        affected_by_category_response = {}
+        for category, resources in impact.affected_by_category.items():
+            affected_by_category_response[category.value] = convert_categorized_resources(resources)
+
+        return DownstreamImpactResponse(
+            resource_id=impact.resource_id,
+            resource_name=impact.resource_name,
+            total_affected=impact.total_affected,
+            affected_by_category=affected_by_category_response,
+            critical_services_affected=convert_categorized_resources(
+                impact.critical_services_affected
+            ),
+            client_apps_affected=convert_categorized_resources(impact.client_apps_affected),
+            user_facing_impact=impact.user_facing_impact,
+            backend_impact=impact.backend_impact,
+            data_impact=impact.data_impact,
+            estimated_users_affected=impact.estimated_users_affected,
+            business_impact_summary=impact.business_impact_summary,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze downstream impact: {str(e)}"
+        ) from e
+
+
+@router.get(
+    "/resources/{resource_id}/upstream-dependencies", response_model=UpstreamDependencyHealthResponse
+)
+async def get_upstream_dependencies(resource_id: str) -> UpstreamDependencyHealthResponse:
+    """
+    Analyze what this resource depends on and the health of those dependencies.
+
+    This endpoint answers: "What does this app depend on and what are the risks?"
+
+    Returns:
+        - Breakdown of dependencies by category
+        - Unhealthy dependencies
+        - Single points of failure in dependencies
+        - High-risk dependencies
+        - Overall dependency health score
+        - Recommendations for improving dependency health
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        health = analyzer.analyze_upstream_dependencies(resource_id)
+
+        # Convert dependencies_by_category dict
+        dependencies_by_category_response = {}
+        for category, resources in health.dependencies_by_category.items():
+            dependencies_by_category_response[category.value] = convert_categorized_resources(
+                resources
+            )
+
+        return UpstreamDependencyHealthResponse(
+            resource_id=health.resource_id,
+            resource_name=health.resource_name,
+            total_dependencies=health.total_dependencies,
+            dependencies_by_category=dependencies_by_category_response,
+            unhealthy_dependencies=convert_categorized_resources(health.unhealthy_dependencies),
+            single_points_of_failure=convert_categorized_resources(
+                health.single_points_of_failure
+            ),
+            high_risk_dependencies=convert_categorized_resources(health.high_risk_dependencies),
+            dependency_health_score=health.dependency_health_score,
+            recommendations=health.recommendations,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze upstream dependencies: {str(e)}"
+        ) from e
+
+
+@router.get("/resources/{resource_id}/what-if", response_model=WhatIfAnalysisResponse)
+async def get_what_if_analysis(
+    resource_id: str,
+    scenario_type: str = Query(
+        default="failure",
+        description="Type of scenario to analyze (failure, maintenance, update, etc.)",
+    ),
+) -> WhatIfAnalysisResponse:
+    """
+    Comprehensive "what if" analysis for a resource.
+
+    This endpoint answers: "What will happen if this resource fails or is changed?"
+
+    Args:
+        resource_id: ID of the resource to analyze
+        scenario_type: Type of scenario (failure, maintenance, update, etc.)
+
+    Returns:
+        - Complete downstream impact analysis
+        - Upstream dependency health analysis
+        - Timeline for impact
+        - Overall severity
+        - Mitigation steps if available
+        - Rollback steps if applicable
+    """
+    try:
+        analyzer = get_risk_analyzer()
+        analysis = analyzer.analyze_what_if_scenario(resource_id, scenario_type)
+
+        # Convert downstream impact
+        downstream = analysis.downstream_impact
+        affected_by_category_response = {}
+        for category, resources in downstream.affected_by_category.items():
+            affected_by_category_response[category.value] = convert_categorized_resources(resources)
+
+        downstream_response = DownstreamImpactResponse(
+            resource_id=downstream.resource_id,
+            resource_name=downstream.resource_name,
+            total_affected=downstream.total_affected,
+            affected_by_category=affected_by_category_response,
+            critical_services_affected=convert_categorized_resources(
+                downstream.critical_services_affected
+            ),
+            client_apps_affected=convert_categorized_resources(downstream.client_apps_affected),
+            user_facing_impact=downstream.user_facing_impact,
+            backend_impact=downstream.backend_impact,
+            data_impact=downstream.data_impact,
+            estimated_users_affected=downstream.estimated_users_affected,
+            business_impact_summary=downstream.business_impact_summary,
+        )
+
+        # Convert upstream dependencies
+        upstream = analysis.upstream_dependencies
+        dependencies_by_category_response = {}
+        for category, resources in upstream.dependencies_by_category.items():
+            dependencies_by_category_response[category.value] = convert_categorized_resources(
+                resources
+            )
+
+        upstream_response = UpstreamDependencyHealthResponse(
+            resource_id=upstream.resource_id,
+            resource_name=upstream.resource_name,
+            total_dependencies=upstream.total_dependencies,
+            dependencies_by_category=dependencies_by_category_response,
+            unhealthy_dependencies=convert_categorized_resources(upstream.unhealthy_dependencies),
+            single_points_of_failure=convert_categorized_resources(
+                upstream.single_points_of_failure
+            ),
+            high_risk_dependencies=convert_categorized_resources(upstream.high_risk_dependencies),
+            dependency_health_score=upstream.dependency_health_score,
+            recommendations=upstream.recommendations,
+        )
+
+        return WhatIfAnalysisResponse(
+            resource_id=analysis.resource_id,
+            resource_name=analysis.resource_name,
+            scenario_type=analysis.scenario_type,
+            downstream_impact=downstream_response,
+            upstream_dependencies=upstream_response,
+            timeline_minutes=analysis.timeline_minutes,
+            severity=analysis.severity.value,
+            mitigation_available=analysis.mitigation_available,
+            mitigation_steps=analysis.mitigation_steps,
+            rollback_possible=analysis.rollback_possible,
+            rollback_steps=analysis.rollback_steps,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze what-if scenario: {str(e)}"
         ) from e
