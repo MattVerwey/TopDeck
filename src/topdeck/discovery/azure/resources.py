@@ -25,9 +25,11 @@ except ImportError:
 try:
     from kubernetes import client as k8s_client
     from kubernetes import config as k8s_config
+    import yaml
 except ImportError:
     k8s_client = None
     k8s_config = None
+    yaml = None
 
 from ..models import DiscoveredResource, ResourceDependency
 from .mapper import AzureResourceMapper
@@ -915,8 +917,8 @@ async def discover_aks_pods_and_storage(
     dependencies = []
     mapper = AzureResourceMapper()
     
-    if ContainerServiceClient is None or k8s_client is None:
-        logger.warning("Kubernetes client not available, skipping pod discovery")
+    if ContainerServiceClient is None or k8s_client is None or yaml is None:
+        logger.warning("Kubernetes client or yaml not available, skipping pod discovery")
         return pods, dependencies
         
     try:
@@ -940,7 +942,6 @@ async def discover_aks_pods_and_storage(
                     # Load kubeconfig
                     kubeconfig = creds.kubeconfigs[0].value.decode("utf-8")
                     
-                    import yaml
                     kubeconfig_dict = yaml.safe_load(kubeconfig)
                     api_client = k8s_config.new_client_from_config(config_dict=kubeconfig_dict)
                     
@@ -966,7 +967,7 @@ async def discover_aks_pods_and_storage(
                     for ns in namespaces.items:
                         ns_name = ns.metadata.name
                         
-                        # Skip system namespaces unless they have app workloads
+                        # Skip system namespaces
                         if ns_name in ("kube-system", "kube-public", "kube-node-lease"):
                             continue
                         
@@ -1029,7 +1030,12 @@ async def discover_aks_pods_and_storage(
                                             "containers": containers,
                                             "volumes": volumes,
                                         },
-                                        provisioning_state="Succeeded" if pod.status and pod.status.phase == "Running" else "Failed",
+                                        provisioning_state=(
+                                            "Succeeded" if pod.status and pod.status.phase in ("Running", "Succeeded", "Completed")
+                                            else "InProgress" if pod.status and pod.status.phase in ("Pending", "ContainerCreating")
+                                            else "Failed" if pod.status and pod.status.phase in ("Failed", "CrashLoopBackOff", "Error")
+                                            else "Unknown"
+                                        ),
                                     )
                                     pods.append(pod_resource)
                                     
@@ -1055,7 +1061,7 @@ async def discover_aks_pods_and_storage(
                                                     # during the dependency resolution phase
                                                     dep = ResourceDependency(
                                                         source_id=pod_id,
-                                                        target_id=f"storage_csi_{provisioner}_{storage_class_name}",
+                                                        target_id=f"placeholder://storage/{storage_class_name}",
                                                         category=DependencyCategory.DATA,
                                                         dependency_type=DependencyType.REQUIRED,
                                                         strength=0.9,

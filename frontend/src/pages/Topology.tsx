@@ -127,8 +127,7 @@ export default function Topology() {
 
     let filtered = { ...topology };
 
-    // Apply other filters FIRST (before resource selection)
-    // This ensures filters apply to the source data before expanding dependencies
+    // Apply other filters to the data (these will be ignored if resources are selected)
     if (filters.cloud_provider) {
       filtered = applyNodeFilter(filtered, (n) => n.cloud_provider === filters.cloud_provider);
     }
@@ -158,17 +157,20 @@ export default function Topology() {
       // This ensures we see all dependencies even if they don't match other filters
       const relatedIds = new Set<string>(selectedResourceIds);
       
+      // Build a set of valid node IDs to prevent dangling references
+      const validNodeIds = new Set(topology.nodes.map(n => n.id));
+      
       // Iteratively add dependencies from the FULL topology until no new ones are found
       let previousSize = 0;
       while (relatedIds.size > previousSize) {
         previousSize = relatedIds.size;
         topology.edges.forEach((edge) => {
-          // If source is in our set, add target (downstream dependency)
-          if (relatedIds.has(edge.source_id)) {
+          // If source is in our set, add target (downstream dependency) if it exists
+          if (relatedIds.has(edge.source_id) && validNodeIds.has(edge.target_id)) {
             relatedIds.add(edge.target_id);
           }
-          // If target is in our set, add source (upstream dependency)
-          if (relatedIds.has(edge.target_id)) {
+          // If target is in our set, add source (upstream dependency) if it exists
+          if (relatedIds.has(edge.target_id) && validNodeIds.has(edge.source_id)) {
             relatedIds.add(edge.source_id);
           }
         });
