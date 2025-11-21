@@ -142,18 +142,17 @@ class EnhancedImpactAnalyzer:
                 dependencies_by_category[categorized.category] = []
             dependencies_by_category[categorized.category].append(categorized)
 
-            # Check if dependency is unhealthy
-            if self._is_unhealthy_dependency(dep):
+            # Check if dependency is unhealthy or high risk (exclusive categories)
+            risk_score = dep.get("risk_score", 0)
+            if 70 < risk_score <= 85:
                 unhealthy_deps.append(categorized)
+            elif risk_score > 85:
+                categorized.impact_severity = ImpactLevel.HIGH
+                high_risk_deps.append(categorized)
 
             # Check if dependency is SPOF
             if self._is_dependency_spof(dep.get("id", "")):
                 spof_deps.append(categorized)
-
-            # Check if high risk
-            if dep.get("risk_score", 0) > 70:
-                categorized.impact_severity = ImpactLevel.HIGH
-                high_risk_deps.append(categorized)
 
         # Calculate overall dependency health score
         health_score = self._calculate_dependency_health_score(
@@ -254,7 +253,7 @@ class EnhancedImpactAnalyzer:
             category = ResourceCategory.INFRASTRUCTURE
         elif resource_type in ["webhook", "api_connection", "external_service"]:
             category = ResourceCategory.INTEGRATION
-        elif "client" in resource_type or "app" in resource_type:
+        elif resource_type in ["client_app", "mobile_app", "desktop_app", "client"]:
             category = ResourceCategory.CLIENT_APP
 
         # Determine if critical
