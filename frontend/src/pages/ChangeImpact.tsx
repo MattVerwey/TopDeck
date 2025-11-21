@@ -81,7 +81,14 @@ export default function ChangeImpact() {
         .map(edge => topology?.nodes.find(n => n.id === edge.source_id))
         .filter(n => n != null);
 
-      const allAffectedResources = [...directResources, ...indirectResources];
+      // Deduplicate resources by id to prevent duplicates from bidirectional edges
+      const allResourcesMap = new Map();
+      [...directResources, ...indirectResources].forEach(resource => {
+        if (resource && resource.id) {
+          allResourcesMap.set(resource.id, resource);
+        }
+      });
+      const allAffectedResources = Array.from(allResourcesMap.values());
       const totalAffected = allAffectedResources.length;
 
       // Calculate impact metrics based on dependencies
@@ -330,8 +337,8 @@ export default function ChangeImpact() {
             </Typography>
             <Grid container spacing={1.5}>
               {impactResult.affectedResourcesList && impactResult.affectedResourcesList.length > 0 ? (
-                impactResult.affectedResourcesList.map((resource: any, i: number) => (
-                  <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                impactResult.affectedResourcesList.map((resource: any) => (
+                  <Grid key={resource.id || resource.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
                     <Box
                       sx={{
                         p: 2,
@@ -346,7 +353,7 @@ export default function ChangeImpact() {
                       }}
                     >
                       <Typography variant="body2" fontWeight={600} noWrap title={resource.name}>
-                        {resource.name || `Resource ${i + 1}`}
+                        {resource.name || resource.id || 'Unknown'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap>
                         {resource.resource_type || 'Unknown type'}

@@ -30,12 +30,14 @@ interface RiskDrilldownDialogProps {
   open: boolean;
   onClose: () => void;
   riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  cachedRisks?: RiskAssessment[]; // Accept cached risk data from parent
 }
 
 export default function RiskDrilldownDialog({
   open,
   onClose,
   riskLevel,
+  cachedRisks,
 }: RiskDrilldownDialogProps) {
   const { topology } = useStore();
   const [loading, setLoading] = useState(false);
@@ -43,38 +45,47 @@ export default function RiskDrilldownDialog({
   const [risks, setRisks] = useState<RiskAssessment[]>([]);
 
   useEffect(() => {
-    if (open && topology?.nodes) {
+    if (open) {
       loadRisks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, riskLevel, topology?.nodes]);
+  }, [open, riskLevel, cachedRisks]);
 
   const loadRisks = async () => {
-    if (!topology?.nodes) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch risk assessments for all resources
-      const assessments = await Promise.allSettled(
-        topology.nodes.map(node => apiClient.getRiskAssessment(node.id))
-      );
+      let allRisks: RiskAssessment[] = [];
 
-      // Filter successful results and match risk level
-      const allRisks = assessments
-        .filter((result): result is PromiseFulfilledResult<RiskAssessment> => 
-          result.status === 'fulfilled'
-        )
-        .map(result => result.value)
-        .filter(risk => {
-          // Normalize both values for comparison to handle case sensitivity and missing data
-          const riskLevel_normalized = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
-          const targetLevel_normalized = riskLevel.toLowerCase();
-          return riskLevel_normalized === targetLevel_normalized;
-        });
+      // Use cached data if available
+      if (cachedRisks && cachedRisks.length > 0) {
+        console.log(`Using ${cachedRisks.length} cached risk assessments`);
+        allRisks = cachedRisks;
+      } else if (topology?.nodes) {
+        // Fallback: Fetch risk assessments for all resources
+        console.log('No cached data, fetching risk assessments...');
+        const assessments = await Promise.allSettled(
+          topology.nodes.map(node => apiClient.getRiskAssessment(node.id))
+        );
 
-      setRisks(allRisks);
+        allRisks = assessments
+          .filter((result): result is PromiseFulfilledResult<RiskAssessment> => 
+            result.status === 'fulfilled'
+          )
+          .map(result => result.value);
+      }
+
+      // Filter by risk level
+      const filteredRisks = allRisks.filter(risk => {
+        // Normalize both values for comparison to handle case sensitivity and missing data
+        const riskLevel_normalized = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
+        const targetLevel_normalized = riskLevel.toLowerCase();
+        return riskLevel_normalized === targetLevel_normalized;
+      });
+
+      console.log(`Found ${filteredRisks.length} resources with ${riskLevel} risk level`);
+      setRisks(filteredRisks);
     } catch (err) {
       console.error('Failed to load risks:', err);
       setError('Failed to load risk details');
