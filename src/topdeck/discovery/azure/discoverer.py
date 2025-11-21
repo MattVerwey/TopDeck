@@ -158,20 +158,10 @@ class AzureDiscoverer:
 
             # Discover Kubernetes pods before dependency analysis
             # This ensures pods are available for dependency pattern matching
-            from .resources import discover_aks_pods_and_storage
-            aks_resources = [r for r in result.resources if r.resource_type == "aks"]
-            if aks_resources:
-                logger.info(f"Discovering pods for {len(aks_resources)} AKS clusters...")
-                pod_resources, pod_storage_deps = await discover_aks_pods_and_storage(
-                    self.subscription_id, self.credential, aks_resources
-                )
-                # Add discovered pods to the resources list BEFORE dependency analysis
-                for pod in pod_resources:
-                    result.add_resource(pod)
-                # Store pod storage dependencies to add later
-                logger.info(f"Discovered {len(pod_resources)} pods with {len(pod_storage_deps)} storage dependencies")
-            else:
-                pod_storage_deps = []
+            pod_resources, pod_storage_deps = await self._discover_aks_pods(result.resources)
+            # Add discovered pods to the resources list BEFORE dependency analysis
+            for pod in pod_resources:
+                result.add_resource(pod)
 
             # Discover dependencies
             logger.info("Analyzing dependencies...")
@@ -205,6 +195,36 @@ class AzureDiscoverer:
         logger.info(result.summary())
 
         return result
+
+    async def _discover_aks_pods(
+        self,
+        resources: list[DiscoveredResource],
+    ) -> tuple[list[DiscoveredResource], list[ResourceDependency]]:
+        """
+        Discover Kubernetes pods and their storage dependencies from AKS clusters.
+        
+        Helper method to discover pods before dependency analysis, ensuring they're
+        available for dependency pattern matching.
+        
+        Args:
+            resources: List of discovered resources (must include AKS clusters)
+            
+        Returns:
+            Tuple of (pod resources, pod storage dependencies)
+        """
+        from .resources import discover_aks_pods_and_storage
+        
+        aks_resources = [r for r in resources if r.resource_type == "aks"]
+        if not aks_resources:
+            return [], []
+            
+        logger.info(f"Discovering pods for {len(aks_resources)} AKS clusters...")
+        pod_resources, pod_storage_deps = await discover_aks_pods_and_storage(
+            self.subscription_id, self.credential, aks_resources
+        )
+        logger.info(f"Discovered {len(pod_resources)} pods with {len(pod_storage_deps)} storage dependencies")
+        
+        return pod_resources, pod_storage_deps
 
     def _get_dependency_patterns(self):
         """
@@ -753,20 +773,10 @@ class AzureDiscoverer:
 
             # Discover Kubernetes pods before dependency analysis
             # This ensures pods are available for dependency pattern matching
-            from .resources import discover_aks_pods_and_storage
-            aks_resources = [r for r in result.resources if r.resource_type == "aks"]
-            if aks_resources:
-                logger.info(f"Discovering pods for {len(aks_resources)} AKS clusters...")
-                pod_resources, pod_storage_deps = await discover_aks_pods_and_storage(
-                    self.subscription_id, self.credential, aks_resources
-                )
-                # Add discovered pods to the resources list BEFORE dependency analysis
-                for pod in pod_resources:
-                    result.add_resource(pod)
-                # Store pod storage dependencies to add later
-                logger.info(f"Discovered {len(pod_resources)} pods with {len(pod_storage_deps)} storage dependencies")
-            else:
-                pod_storage_deps = []
+            pod_resources, pod_storage_deps = await self._discover_aks_pods(result.resources)
+            # Add discovered pods to the resources list BEFORE dependency analysis
+            for pod in pod_resources:
+                result.add_resource(pod)
 
             # Discover dependencies
             logger.info("Analyzing dependencies...")

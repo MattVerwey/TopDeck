@@ -1032,8 +1032,8 @@ async def discover_aks_pods_and_storage(
                                         },
                                         provisioning_state=(
                                             "Succeeded" if pod.status and pod.status.phase in ("Running", "Succeeded", "Completed")
-                                            else "InProgress" if pod.status and pod.status.phase in ("Pending", "ContainerCreating")
-                                            else "Failed" if pod.status and pod.status.phase in ("Failed", "CrashLoopBackOff", "Error")
+                                            else "InProgress" if pod.status and pod.status.phase == "Pending"
+                                            else "Failed" if pod.status and pod.status.phase in ("Failed", "Error")
                                             else "Unknown"
                                         ),
                                     )
