@@ -140,15 +140,33 @@ export const mockTopologyData: TopologyGraph = {
     },
     {
       id: 'storage-1',
-      resource_type: 'storage',
+      resource_type: 'storage_account',
       name: 'BlobStorage-Assets',
       cloud_provider: 'azure',
       region: 'eastus',
       properties: {
         health_status: 'healthy',
+        kind: 'StorageV2',
+        sku: 'Standard_LRS',
       },
       metadata: {
         importance: 1,
+      },
+    },
+    {
+      id: 'storage-2',
+      resource_type: 'storage_account',
+      name: 'DiskStorage-AKS',
+      cloud_provider: 'azure',
+      region: 'eastus',
+      properties: {
+        health_status: 'healthy',
+        kind: 'StorageV2',
+        sku: 'Premium_LRS',
+        csi_driver: 'disk.csi.azure.com',
+      },
+      metadata: {
+        importance: 2,
       },
     },
     {
@@ -352,13 +370,37 @@ export const mockTopologyData: TopologyGraph = {
       properties: {},
     },
 
-    // Worker Pod -> Storage
+    // Worker Pod -> Storage (Blob uploads)
     {
       source_id: 'pod-worker-1',
       target_id: 'storage-1',
       relationship_type: 'stores_in',
       flow_type: 'storage',
-      properties: {},
+      properties: {
+        connection_type: 'blob_upload',
+      },
+    },
+
+    // API Pods -> Storage (Azure Disk CSI)
+    {
+      source_id: 'pod-api-1',
+      target_id: 'storage-2',
+      relationship_type: 'uses',
+      flow_type: 'storage',
+      properties: {
+        connection_type: 'azure_disk_csi',
+        volume_type: 'PersistentVolumeClaim',
+      },
+    },
+    {
+      source_id: 'pod-api-2',
+      target_id: 'storage-2',
+      relationship_type: 'uses',
+      flow_type: 'storage',
+      properties: {
+        connection_type: 'azure_disk_csi',
+        volume_type: 'PersistentVolumeClaim',
+      },
     },
 
     // Worker Pod -> SQL Database
@@ -378,6 +420,17 @@ export const mockTopologyData: TopologyGraph = {
       flow_type: 'database',
       properties: {
         cross_cloud: true,
+      },
+    },
+
+    // App Service -> Storage Account (SFTP/Blob)
+    {
+      source_id: 'app-service-1',
+      target_id: 'storage-1',
+      relationship_type: 'stores_in',
+      flow_type: 'storage',
+      properties: {
+        connection_type: 'sftp_blob',
       },
     },
 

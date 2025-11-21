@@ -61,6 +61,7 @@ const serviceColors: Record<string, string> = {
   sql_database: '#7b1fa2',
   cosmosdb: '#6a1b9a',
   storage: '#ff9800',
+  storage_account: '#ff9800',
   cache: '#f44336',
   
   // Messaging (Service Bus)
@@ -598,20 +599,28 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           position: 'absolute',
           top: 200,
           right: 16,
-          minWidth: 180,
+          minWidth: 200,
+          maxWidth: 220,
           opacity: 0.95,
         }}
       >
         <CardContent>
           <Typography variant="body2" fontWeight={600} gutterBottom>
-            Service Types
+            Resource Types
           </Typography>
           <Stack spacing={0.5}>
             {[
+              { label: 'Pods', color: serviceColors.pod },
               { label: 'Services', color: serviceColors.service },
+              { label: 'Deployments', color: serviceColors.deployment },
               { label: 'Databases', color: serviceColors.database },
+              { label: 'Storage Accounts', color: serviceColors.storage_account },
+              { label: 'Cache/Redis', color: serviceColors.cache },
               { label: 'Load Balancers', color: serviceColors.load_balancer },
-              { label: 'Storage', color: serviceColors.storage },
+              { label: 'App Gateways', color: serviceColors.application_gateway },
+              { label: 'Service Bus', color: serviceColors.servicebus_namespace },
+              { label: 'AKS Clusters', color: serviceColors.aks_cluster },
+              { label: 'App Services', color: serviceColors.app_service },
             ].map((item) => (
               <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box

@@ -23,6 +23,7 @@ const colorMap: Record<string, string> = {
   service: '#2196f3',
   database: '#9c27b0',
   storage: '#ff9800',
+  storage_account: '#ff9800',
   load_balancer: '#f44336',
   gateway: '#00bcd4',
 };
@@ -207,12 +208,13 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
           right: 16,
           p: 2,
           opacity: 0.95,
+          maxWidth: 200,
         }}
       >
         <Typography variant="body2" gutterBottom fontWeight={600}>
           Cloud Providers
         </Typography>
-        <Box display="flex" flexDirection="column" gap={0.5}>
+        <Box display="flex" flexDirection="column" gap={0.5} mb={2}>
           {Object.entries(colorMap)
             .filter(([key]) => ['azure', 'aws', 'gcp'].includes(key))
             .map(([key, color]) => (
@@ -227,6 +229,30 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
                 }}
               />
             ))}
+        </Box>
+        <Typography variant="body2" gutterBottom fontWeight={600}>
+          Resource Types
+        </Typography>
+        <Box display="flex" flexDirection="column" gap={0.5}>
+          {[
+            { key: 'pod', label: 'Pods', color: colorMap.pod },
+            { key: 'service', label: 'Services', color: colorMap.service },
+            { key: 'database', label: 'Databases', color: colorMap.database },
+            { key: 'storage', label: 'Storage', color: colorMap.storage },
+            { key: 'load_balancer', label: 'Load Balancers', color: colorMap.load_balancer },
+            { key: 'gateway', label: 'Gateways', color: colorMap.gateway },
+          ].map((item) => (
+            <Chip
+              key={item.key}
+              label={item.label}
+              size="small"
+              sx={{
+                backgroundColor: item.color,
+                color: '#fff',
+                fontWeight: 500,
+              }}
+            />
+          ))}
         </Box>
       </Paper>
 

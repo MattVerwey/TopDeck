@@ -25,9 +25,11 @@ except ImportError:
 try:
     from kubernetes import client as k8s_client
     from kubernetes import config as k8s_config
+    import yaml
 except ImportError:
     k8s_client = None
     k8s_config = None
+    yaml = None
 
 from ..models import DiscoveredResource, ResourceDependency
 from .mapper import AzureResourceMapper
@@ -879,6 +881,216 @@ async def get_aks_servicebus_connections(
             servicebus_connections[aks_id] = namespaces
 
     return servicebus_connections
+
+
+async def discover_aks_pods_and_storage(
+    subscription_id: str,
+    credential,
+    aks_resources: list[DiscoveredResource],
+) -> tuple[list[DiscoveredResource], list[ResourceDependency]]:
+    """
+    Discover Kubernetes pods and their storage dependencies from AKS clusters.
+    
+    Detects:
+    - Pods running in AKS clusters
+    - PersistentVolumeClaims (PVCs) used by pods
+    - StorageClass configurations
+    - Azure Disk CSI and Azure Blob CSI storage providers
+    - Pod -> Storage Account dependencies via CSI drivers
+    
+    LIMITATIONS:
+    - Storage account dependencies use placeholder IDs based on CSI provisioner and StorageClass
+    - Actual storage account resource ID resolution requires additional PV inspection or SC parameters
+    - Dependencies must be matched with discovered storage accounts in post-processing
+    
+    Args:
+        subscription_id: Azure subscription ID
+        credential: Azure credential object
+        aks_resources: List of AKS cluster resources
+        
+    Returns:
+        Tuple of (discovered pods as DiscoveredResource, storage dependencies)
+    """
+    from ..models import DependencyCategory, DependencyType
+    
+    pods = []
+    dependencies = []
+    mapper = AzureResourceMapper()
+    
+    if ContainerServiceClient is None or k8s_client is None or yaml is None:
+        logger.warning("Kubernetes client or yaml not available, skipping pod discovery")
+        return pods, dependencies
+        
+    try:
+        container_client = ContainerServiceClient(credential, subscription_id)
+        
+        for aks in aks_resources:
+            try:
+                resource_group = aks.resource_group
+                if not resource_group:
+                    continue
+                    
+                # Get cluster credentials
+                try:
+                    creds = container_client.managed_clusters.list_cluster_admin_credentials(
+                        resource_group, aks.name
+                    )
+                    
+                    if not hasattr(creds, "kubeconfigs") or not creds.kubeconfigs:
+                        continue
+                        
+                    # Load kubeconfig
+                    kubeconfig = creds.kubeconfigs[0].value.decode("utf-8")
+                    
+                    kubeconfig_dict = yaml.safe_load(kubeconfig)
+                    api_client = k8s_config.new_client_from_config(config_dict=kubeconfig_dict)
+                    
+                    # Create Kubernetes API clients
+                    v1 = k8s_client.CoreV1Api(api_client=api_client)
+                    storage_v1 = k8s_client.StorageV1Api(api_client=api_client)
+                    
+                    # Get all storage classes to map provisioners to storage accounts
+                    storage_classes = {}
+                    try:
+                        sc_list = storage_v1.list_storage_class()
+                        for sc in sc_list.items:
+                            storage_classes[sc.metadata.name] = {
+                                "provisioner": sc.provisioner,
+                                "parameters": sc.parameters or {},
+                            }
+                    except Exception as e:
+                        logger.debug(f"Error listing storage classes: {e}")
+                    
+                    # Get all namespaces
+                    namespaces = v1.list_namespace()
+                    
+                    for ns in namespaces.items:
+                        ns_name = ns.metadata.name
+                        
+                        # Skip system namespaces
+                        if ns_name in ("kube-system", "kube-public", "kube-node-lease"):
+                            continue
+                        
+                        # Get PVCs in this namespace
+                        pvcs = {}
+                        try:
+                            pvc_list = v1.list_namespaced_persistent_volume_claim(ns_name)
+                            for pvc in pvc_list.items:
+                                pvcs[pvc.metadata.name] = {
+                                    "storage_class": pvc.spec.storage_class_name,
+                                    "volume_name": pvc.spec.volume_name,
+                                    "capacity": pvc.status.capacity.get("storage") if pvc.status and pvc.status.capacity else None,
+                                }
+                        except Exception as e:
+                            logger.debug(f"Error listing PVCs in {ns_name}: {e}")
+                        
+                        # Get pods in this namespace
+                        try:
+                            pod_list = v1.list_namespaced_pod(ns_name)
+                            for pod in pod_list.items:
+                                try:
+                                    # Extract pod information
+                                    pod_id = f"{aks.id}/namespaces/{ns_name}/pods/{pod.metadata.name}"
+                                    
+                                    # Extract container information
+                                    containers = []
+                                    if pod.spec and pod.spec.containers:
+                                        for container in pod.spec.containers:
+                                            containers.append({
+                                                "name": container.name,
+                                                "image": container.image,
+                                            })
+                                    
+                                    # Extract volume information
+                                    volumes = []
+                                    volume_pvc_map = {}  # Maps volume name to PVC name
+                                    if pod.spec and pod.spec.volumes:
+                                        for volume in pod.spec.volumes:
+                                            volume_info = {"name": volume.name}
+                                            if volume.persistent_volume_claim:
+                                                pvc_name = volume.persistent_volume_claim.claim_name
+                                                volume_info["pvc"] = pvc_name
+                                                volume_pvc_map[volume.name] = pvc_name
+                                            volumes.append(volume_info)
+                                    
+                                    # Create pod resource
+                                    pod_resource = mapper.map_azure_resource(
+                                        resource_id=pod_id,
+                                        resource_name=pod.metadata.name,
+                                        resource_type="Microsoft.ContainerService/pod",
+                                        location=aks.region,
+                                        tags={},
+                                        properties={
+                                            "namespace": ns_name,
+                                            "cluster": aks.name,
+                                            "cluster_id": aks.id,
+                                            "phase": pod.status.phase if pod.status else "Unknown",
+                                            "pod_ip": pod.status.pod_ip if pod.status else None,
+                                            "node_name": pod.spec.node_name if pod.spec else None,
+                                            "containers": containers,
+                                            "volumes": volumes,
+                                        },
+                                        provisioning_state=(
+                                            "Succeeded" if pod.status and pod.status.phase in ("Running", "Succeeded")
+                                            else "InProgress" if pod.status and pod.status.phase == "Pending"
+                                            else "Failed" if pod.status and pod.status.phase == "Failed"
+                                            else "Unknown"
+                                        ),
+                                    )
+                                    pods.append(pod_resource)
+                                    
+                                    # Detect storage dependencies via PVCs
+                                    for volume_name, pvc_name in volume_pvc_map.items():
+                                        if pvc_name in pvcs:
+                                            pvc_info = pvcs[pvc_name]
+                                            storage_class_name = pvc_info.get("storage_class")
+                                            
+                                            if storage_class_name and storage_class_name in storage_classes:
+                                                sc_info = storage_classes[storage_class_name]
+                                                provisioner = sc_info.get("provisioner", "")
+                                                
+                                                # Check if it's an Azure CSI driver
+                                                if "disk.csi.azure.com" in provisioner or "blob.csi.azure.com" in provisioner:
+                                                    # Extract storage account from parameters if available
+                                                    # Note: In real scenarios, storage account might be in SC parameters
+                                                    # or we need to query the PV to get the actual storage account
+                                                    # For now, we create a generic dependency that can be enriched later
+                                                    
+                                                    # We'll need to match this with discovered storage accounts
+                                                    # This is a placeholder for the dependency - it will be matched
+                                                    # during the dependency resolution phase
+                                                    dep = ResourceDependency(
+                                                        source_id=pod_id,
+                                                        target_id=f"placeholder://storage/{storage_class_name}",
+                                                        category=DependencyCategory.DATA,
+                                                        dependency_type=DependencyType.REQUIRED,
+                                                        strength=0.9,
+                                                        discovered_method="kubernetes_pvc_csi",
+                                                        description=(
+                                                            f"Pod {pod.metadata.name} uses {provisioner} via PVC {pvc_name} "
+                                                            f"(StorageClass: {storage_class_name}, Volume: {volume_name})"
+                                                        ),
+                                                    )
+                                                    dependencies.append(dep)
+                                                    
+                                except Exception as e:
+                                    logger.error(f"Error discovering pod {pod.metadata.name}: {e}")
+                                    
+                        except Exception as e:
+                            logger.debug(f"Error listing pods in {ns_name}: {e}")
+                            
+                except Exception as e:
+                    logger.debug(f"Error getting AKS credentials for {aks.name}: {e}")
+                    
+            except Exception as e:
+                logger.error(f"Error processing AKS cluster {aks.name}: {e}")
+                
+        logger.info(f"Discovered {len(pods)} pods and {len(dependencies)} storage dependencies")
+        
+    except Exception as e:
+        logger.error(f"Error discovering AKS pods and storage: {e}")
+        
+    return pods, dependencies
 
 
 async def detect_servicebus_dependencies(
