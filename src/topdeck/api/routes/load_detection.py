@@ -65,7 +65,9 @@ async def get_scaling_events(
         }
     except Exception as e:
         logger.error("get_scaling_events_failed", resource_id=resource_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to detect scaling events: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to detect scaling events: {str(e)}"
+        ) from e
 
 
 @router.get("/resources/{resource_id}/baseline")
@@ -102,7 +104,7 @@ async def get_load_baseline(resource_id: str):
         }
     except Exception as e:
         logger.error("get_load_baseline_failed", resource_id=resource_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get load baseline: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get load baseline: {str(e)}") from e
 
 
 @router.get("/resources/{resource_id}/impact-analysis")
@@ -190,7 +192,9 @@ async def analyze_scaling_impact(
 
     except Exception as e:
         logger.error("analyze_scaling_impact_failed", resource_id=resource_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to analyze scaling impact: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze scaling impact: {str(e)}"
+        ) from e
 
 
 @router.get("/resources/{resource_id}/predict-load")
@@ -259,7 +263,7 @@ async def predict_load(
 
     except Exception as e:
         logger.error("predict_load_failed", resource_id=resource_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to predict load: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to predict load: {str(e)}") from e
 
 
 @router.get("/resources/{resource_id}/high-load-patterns")
@@ -328,7 +332,7 @@ async def detect_high_load_patterns(
         logger.error("detect_high_load_patterns_failed", resource_id=resource_id, error=str(e))
         raise HTTPException(
             status_code=500, detail=f"Failed to detect high load patterns: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/health")
@@ -357,4 +361,4 @@ async def health_check():
         }
     except Exception as e:
         logger.error("health_check_failed", error=str(e))
-        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}") from e

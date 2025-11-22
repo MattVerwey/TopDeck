@@ -187,9 +187,6 @@ class LoadChangeDetector:
         start = at_time - timedelta(minutes=15)
         end = at_time
 
-        # Query multiple metrics
-        metrics = {}
-
         # Pod count
         pod_query = f'kube_deployment_status_replicas{{deployment=~".*{resource_id}.*"}}'
         pod_results = await self.prometheus.query_range(pod_query, start, end, "1m")
@@ -246,7 +243,11 @@ class LoadChangeDetector:
         Returns:
             LoadImpact with detailed analysis
         """
-        logger.info("analyze_load_impact", resource_id=resource_id, scaling_event_timestamp=scaling_event.timestamp)
+        logger.info(
+            "analyze_load_impact",
+            resource_id=resource_id,
+            scaling_event_timestamp=scaling_event.timestamp,
+        )
 
         # Get baseline before scaling
         baseline = await self.get_load_baseline(
@@ -362,9 +363,7 @@ class LoadChangeDetector:
         # Apply average changes to current baseline
         predicted_cpu = current_baseline.avg_cpu_usage * (1 + avg_cpu_change / 100)
         predicted_memory = current_baseline.avg_memory_usage * (1 + avg_memory_change / 100)
-        predicted_request_rate = current_baseline.avg_request_rate * (
-            1 + avg_request_change / 100
-        )
+        predicted_request_rate = current_baseline.avg_request_rate * (1 + avg_request_change / 100)
         predicted_latency = current_baseline.avg_latency_p95 * (1 + avg_latency_change / 100)
         predicted_error_rate = current_baseline.avg_error_rate * (1 + avg_error_change / 100)
 
@@ -463,9 +462,7 @@ class LoadChangeDetector:
 
     # Helper methods
 
-    def _extract_avg_value(
-        self, results: list[dict[str, Any]], default: float = 0.0
-    ) -> float:
+    def _extract_avg_value(self, results: list[dict[str, Any]], default: float = 0.0) -> float:
         """Extract average value from Prometheus query results."""
         if not results:
             return default
@@ -500,7 +497,9 @@ class LoadChangeDetector:
     ) -> str:
         """Determine overall impact level from metric changes."""
         # Consider absolute values of changes
-        max_change = max(abs(cpu_change), abs(memory_change), abs(latency_change), abs(error_change))
+        max_change = max(
+            abs(cpu_change), abs(memory_change), abs(latency_change), abs(error_change)
+        )
 
         if max_change > 50 or abs(error_change) > 20:
             return "critical"
@@ -578,7 +577,9 @@ class LoadChangeDetector:
             )
 
         if not recommendations:
-            recommendations.append("✅ Load impact is within acceptable ranges. Continue monitoring.")
+            recommendations.append(
+                "✅ Load impact is within acceptable ranges. Continue monitoring."
+            )
 
         return recommendations
 
@@ -619,11 +620,7 @@ class LoadChangeDetector:
                 "System may be near capacity limits."
             )
 
-        if (
-            predicted_cpu < 0.7
-            and predicted_latency < 0.5
-            and predicted_error_rate < 0.01
-        ):
+        if predicted_cpu < 0.7 and predicted_latency < 0.5 and predicted_error_rate < 0.01:
             recommendations.append(
                 "✅ Predicted metrics look healthy. This scaling change should be safe."
             )

@@ -51,10 +51,10 @@ async def test_get_scaling_events_success(client, mock_load_detector):
     ]
     mock_load_detector.detect_scaling_events.return_value = events
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
-        response = client.get("/api/v1/load/resources/test-service/scaling-events?lookback_hours=24")
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
+        response = client.get(
+            "/api/v1/load/resources/test-service/scaling-events?lookback_hours=24"
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -72,9 +72,7 @@ async def test_get_scaling_events_no_events(client, mock_load_detector):
     """Test scaling events retrieval with no events found."""
     mock_load_detector.detect_scaling_events.return_value = []
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
         response = client.get("/api/v1/load/resources/test-service/scaling-events")
 
     assert response.status_code == 200
@@ -98,9 +96,7 @@ async def test_get_load_baseline_success(client, mock_load_detector):
     )
     mock_load_detector.get_load_baseline.return_value = baseline
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
         response = client.get("/api/v1/load/resources/test-service/baseline")
 
     assert response.status_code == 200
@@ -150,10 +146,10 @@ async def test_analyze_scaling_impact_success(client, mock_load_detector):
     mock_load_detector.detect_scaling_events.return_value = [scaling_event]
     mock_load_detector.analyze_load_impact.return_value = impact
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
-        response = client.get("/api/v1/load/resources/test-service/impact-analysis?lookback_hours=24")
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
+        response = client.get(
+            "/api/v1/load/resources/test-service/impact-analysis?lookback_hours=24"
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -172,9 +168,7 @@ async def test_analyze_scaling_impact_no_events(client, mock_load_detector):
     """Test scaling impact analysis with no events."""
     mock_load_detector.detect_scaling_events.return_value = []
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
         response = client.get("/api/v1/load/resources/test-service/impact-analysis")
 
     assert response.status_code == 200
@@ -209,9 +203,7 @@ async def test_predict_load_success(client, mock_load_detector):
 
     mock_load_detector.predict_load_impact.return_value = prediction
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
         response = client.get(
             "/api/v1/load/resources/test-service/predict-load?target_pod_count=8&lookback_days=30"
         )
@@ -275,10 +267,10 @@ async def test_detect_high_load_patterns_success(client, mock_load_detector):
 
     mock_load_detector.detect_high_load_patterns.return_value = patterns
 
-    with patch(
-        "topdeck.api.routes.load_detection.load_detector", mock_load_detector
-    ):
-        response = client.get("/api/v1/load/resources/test-service/high-load-patterns?lookback_hours=24")
+    with patch("topdeck.api.routes.load_detection.load_detector", mock_load_detector):
+        response = client.get(
+            "/api/v1/load/resources/test-service/high-load-patterns?lookback_hours=24"
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -320,7 +312,9 @@ async def test_lookback_hours_validation(client):
         new_callable=AsyncMock,
         return_value=[],
     ):
-        response = client.get("/api/v1/load/resources/test-service/scaling-events?lookback_hours=48")
+        response = client.get(
+            "/api/v1/load/resources/test-service/scaling-events?lookback_hours=48"
+        )
         assert response.status_code == 200
 
 
@@ -328,9 +322,13 @@ async def test_lookback_hours_validation(client):
 async def test_lookback_days_validation(client):
     """Test validation of lookback_days parameter."""
     # Test with lookback_days too high
-    response = client.get("/api/v1/load/resources/test-service/predict-load?target_pod_count=5&lookback_days=100")
+    response = client.get(
+        "/api/v1/load/resources/test-service/predict-load?target_pod_count=5&lookback_days=100"
+    )
     assert response.status_code == 422  # Validation error
 
     # Test with lookback_days too low
-    response = client.get("/api/v1/load/resources/test-service/predict-load?target_pod_count=5&lookback_days=0")
+    response = client.get(
+        "/api/v1/load/resources/test-service/predict-load?target_pod_count=5&lookback_days=0"
+    )
     assert response.status_code == 422  # Validation error

@@ -12,7 +12,6 @@ from topdeck.monitoring.load_detector import (
     LoadBaseline,
     LoadChangeDetector,
     LoadImpact,
-    LoadPrediction,
     ScalingEvent,
 )
 
@@ -142,6 +141,7 @@ async def test_get_load_baseline(load_detector, mock_prometheus):
 @pytest.mark.asyncio
 async def test_analyze_load_impact(load_detector, mock_prometheus):
     """Test analyzing load impact of a scaling event."""
+
     # Mock Prometheus to return different values before and after
     def mock_query_side_effect(query, start, end, step):
         # Return different values based on time range
@@ -327,8 +327,12 @@ def test_generate_load_recommendations_scale_up(load_detector):
 
     # Good result - CPU decreased
     recommendations = load_detector._generate_load_recommendations(
-        event, cpu_change=-25.0, memory_change=-20.0, latency_change=-30.0, error_change=-10.0,
-        impact_level="moderate"
+        event,
+        cpu_change=-25.0,
+        memory_change=-20.0,
+        latency_change=-30.0,
+        error_change=-10.0,
+        impact_level="moderate",
     )
 
     assert len(recommendations) > 0
@@ -346,8 +350,12 @@ def test_generate_load_recommendations_critical(load_detector):
     )
 
     recommendations = load_detector._generate_load_recommendations(
-        event, cpu_change=60.0, memory_change=50.0, latency_change=70.0, error_change=30.0,
-        impact_level="critical"
+        event,
+        cpu_change=60.0,
+        memory_change=50.0,
+        latency_change=70.0,
+        error_change=30.0,
+        impact_level="critical",
     )
 
     assert len(recommendations) > 0
