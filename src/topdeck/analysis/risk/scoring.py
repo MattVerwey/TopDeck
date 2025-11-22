@@ -48,9 +48,12 @@ class RiskScorer:
         "web_app": 15,
         "function_app": 15,
         "pod": 15,
-        "aks": 15,
-        "eks": 15,
-        "gke_cluster": 15,
+        # Infrastructure hosting services (critical - can bring down many services)
+        "aks": 25,
+        "eks": 25,
+        "gke_cluster": 25,
+        "kubernetes": 25,
+        "kubernetes_cluster": 25,
         # Lower criticality
         "storage_account": 10,
         "blob_storage": 10,
@@ -97,7 +100,7 @@ class RiskScorer:
         # Start with criticality as the base score (this ensures different resource types 
         # have different base risk levels)
         criticality = self._calculate_criticality(
-            resource_type, is_single_point_of_failure, dependents_count
+            resource_type, is_single_point_of_failure, dependents_count, has_redundancy
         )
         # Criticality contributes its full value (30% weight applied later)
         base_score = criticality
@@ -149,7 +152,7 @@ class RiskScorer:
         return max(0.0, min(100.0, score))
 
     def _calculate_criticality(
-        self, resource_type: str, is_spof: bool, dependents_count: int
+        self, resource_type: str, is_spof: bool, dependents_count: int, has_redundancy: bool = False
     ) -> float:
         """
         Calculate criticality score for a resource.
@@ -158,6 +161,7 @@ class RiskScorer:
             resource_type: Type of resource
             is_spof: Whether this is a single point of failure
             dependents_count: Number of dependents
+            has_redundancy: Whether resource has redundant alternatives
 
         Returns:
             Criticality score (0-100)
@@ -170,6 +174,16 @@ class RiskScorer:
         # Boost if it's a SPOF
         if is_spof:
             base_criticality += 15
+        
+        # Infrastructure components (AKS, EKS, load balancers, clusters) without HA/redundancy
+        # should have higher criticality since they can bring down many services
+        infrastructure_types = [
+            "aks", "eks", "gke_cluster", "kubernetes", "kubernetes_cluster",
+            "load_balancer", "cluster"
+        ]
+        if resource_type.lower() in infrastructure_types and not has_redundancy:
+            # Significant boost for infrastructure without HA - these are critical
+            base_criticality += 20
 
         # Boost based on number of dependents
         if dependents_count > 10:
