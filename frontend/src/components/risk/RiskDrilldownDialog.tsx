@@ -19,8 +19,17 @@ import {
   CircularProgress,
   Alert,
   IconButton,
+  Collapse,
+  Divider,
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import {
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Warning as WarningIcon,
+  TrendingUp as TrendingUpIcon,
+  Settings as SettingsIcon,
+} from '@mui/icons-material';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import type { RiskAssessment } from '../../types';
@@ -43,6 +52,7 @@ export default function RiskDrilldownDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [risks, setRisks] = useState<RiskAssessment[]>([]);
+  const [expandedResourceId, setExpandedResourceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -76,7 +86,7 @@ export default function RiskDrilldownDialog({
           .map(result => result.value);
       }
 
-      // Filter by risk level
+      // Filter by risk level - normalize both sides for case-insensitive comparison
       const filteredRisks = allRisks.filter(risk => {
         // Normalize both values for comparison to handle case sensitivity and missing data
         const riskLevel_normalized = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
@@ -84,7 +94,11 @@ export default function RiskDrilldownDialog({
         return riskLevel_normalized === targetLevel_normalized;
       });
 
-      console.log(`Found ${filteredRisks.length} resources with ${riskLevel} risk level`);
+      console.log(`Found ${filteredRisks.length} resources with ${riskLevel} risk level out of ${allRisks.length} total resources`);
+      
+      // Sort by risk score descending to show most critical first
+      filteredRisks.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
+      
       setRisks(filteredRisks);
     } catch (err) {
       console.error('Failed to load risks:', err);
@@ -92,6 +106,10 @@ export default function RiskDrilldownDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleExpand = (resourceId: string) => {
+    setExpandedResourceId(expandedResourceId === resourceId ? null : resourceId);
   };
 
   const title = `${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk Resources`;
@@ -141,13 +159,35 @@ export default function RiskDrilldownDialog({
             </Typography>
             <Box sx={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {risks.map((risk) => (
-                <Card key={risk.resource_id} sx={{ mb: 2, background: '#0a1929' }}>
+                <Card 
+                  key={risk.resource_id} 
+                  sx={{ 
+                    mb: 2, 
+                    background: '#0a1929',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      boxShadow: 4,
+                      borderColor: `${getRiskColor(riskLevel)}.main`,
+                    },
+                  }}
+                  onClick={() => handleToggleExpand(risk.resource_id)}
+                >
                   <CardContent>
+                    {/* Header Section */}
                     <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={2}>
-                      <Box>
-                        <Typography variant="h6" fontWeight={600}>
-                          {risk.resource_name || risk.resource_id}
-                        </Typography>
+                      <Box flex={1}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography variant="h6" fontWeight={600}>
+                            {risk.resource_name || risk.resource_id}
+                          </Typography>
+                          <IconButton 
+                            size="small"
+                            sx={{ ml: 'auto' }}
+                          >
+                            {expandedResourceId === risk.resource_id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                          </IconButton>
+                        </Box>
                         <Typography variant="body2" color="text.secondary">
                           {risk.resource_type || 'Unknown Type'}
                         </Typography>
@@ -160,6 +200,7 @@ export default function RiskDrilldownDialog({
                       />
                     </Box>
 
+                    {/* Quick Stats - Always Visible */}
                     <Box display="flex" gap={2} flexWrap="wrap" mb={2}>
                       <Chip
                         label={`Risk Score: ${(risk.risk_score !== null && risk.risk_score !== undefined) ? risk.risk_score.toFixed(1) : 'N/A'}`}
@@ -191,24 +232,147 @@ export default function RiskDrilldownDialog({
                       )}
                     </Box>
 
-                    {risk.recommendations && risk.recommendations.length > 0 && (
-                      <Box>
-                        <Typography variant="body2" fontWeight={600} gutterBottom>
-                          Recommendations:
-                        </Typography>
-                        <Box component="ul" sx={{ pl: 2, mt: 0.5 }}>
-                          {risk.recommendations.slice(0, 2).map((rec, idx) => (
-                            <Typography
-                              key={idx}
-                              component="li"
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {rec}
+                    {/* Expandable Details Section */}
+                    <Collapse in={expandedResourceId === risk.resource_id} timeout="auto" unmountOnExit>
+                      <Divider sx={{ my: 2 }} />
+                      
+                      {/* Why This is Risky Section */}
+                      {(risk.single_point_of_failure ||
+                        (risk.blast_radius !== undefined && risk.blast_radius !== null && risk.blast_radius > 10) ||
+                        (risk.dependents_count !== undefined && risk.dependents_count !== null && risk.dependents_count > 5) ||
+                        (risk.deployment_failure_rate && risk.deployment_failure_rate > 0.1) ||
+                        (risk.misconfiguration_count && risk.misconfiguration_count > 0)
+                      ) && (
+                        <Box mb={3}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            <WarningIcon color="warning" fontSize="small" />
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              Why This is Risky
                             </Typography>
-                          ))}
+                          </Box>
+                          <Box component="ul" sx={{ pl: 3, mt: 0, mb: 2 }}>
+                            {risk.single_point_of_failure && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Single Point of Failure:</strong> No redundancy - if this fails, dependent services will be affected
+                              </Typography>
+                            )}
+                            {risk.blast_radius !== undefined && risk.blast_radius !== null && risk.blast_radius > 10 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Large Blast Radius:</strong> Failure would impact {risk.blast_radius} resources
+                              </Typography>
+                            )}
+                            {risk.dependents_count !== undefined && risk.dependents_count !== null && risk.dependents_count > 5 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>High Dependency:</strong> {risk.dependents_count} services depend on this resource
+                              </Typography>
+                            )}
+                            {risk.deployment_failure_rate && risk.deployment_failure_rate > 0.1 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Deployment Risk:</strong> {(risk.deployment_failure_rate * 100).toFixed(1)}% failure rate in deployments
+                              </Typography>
+                            )}
+                            {risk.misconfiguration_count && risk.misconfiguration_count > 0 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Misconfigurations Detected:</strong> {risk.misconfiguration_count} configuration issue{risk.misconfiguration_count !== 1 ? 's' : ''} found
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
+                      )}
+
+                      {/* Misconfigurations */}
+                      {risk.misconfigurations && risk.misconfigurations.length > 0 && (
+                        <Box mb={3}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            <SettingsIcon color="error" fontSize="small" />
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              Configuration Issues
+                            </Typography>
+                          </Box>
+                          <Box>
+                            {risk.misconfigurations.map((config, idx) => (
+                              <Card key={idx} sx={{ mb: 1, bgcolor: 'rgba(244, 67, 54, 0.1)' }}>
+                                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                                  <Typography variant="body2" fontWeight={600} color="error.light" gutterBottom>
+                                    {config.type || 'Configuration Issue'}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {config.description || config.message || 'Misconfiguration detected'}
+                                  </Typography>
+                                  {config.severity && (
+                                    <Chip
+                                      label={config.severity}
+                                      size="small"
+                                      color="error"
+                                      variant="outlined"
+                                      sx={{ mt: 1 }}
+                                    />
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* Risk Factors */}
+                      {risk.factors && Object.keys(risk.factors).length > 0 && (
+                        <Box mb={3}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            <TrendingUpIcon color="info" fontSize="small" />
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              Risk Factors
+                            </Typography>
+                          </Box>
+                          <Box display="flex" gap={1} flexWrap="wrap">
+                            {Object.entries(risk.factors).map(([key, value]) => (
+                              <Chip
+                                key={key}
+                                label={`${key}: ${typeof value === 'number' && value !== null ? value.toFixed(2) : value ?? 'N/A'}`}
+                                size="small"
+                                variant="outlined"
+                                color="info"
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* Recommendations - Full List */}
+                      {risk.recommendations && risk.recommendations.length > 0 && (
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={600} gutterBottom color="success.light">
+                            Recommendations to Reduce Risk
+                          </Typography>
+                          <Box component="ul" sx={{ pl: 3, mt: 1, mb: 0 }}>
+                            {risk.recommendations.map((rec, idx) => (
+                              <Typography
+                                key={idx}
+                                component="li"
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 0.5 }}
+                              >
+                                {rec}
+                              </Typography>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* Hint to click */}
+                      <Box mt={2} pt={2} borderTop="1px solid" borderColor="divider">
+                        <Typography variant="caption" color="primary.light" sx={{ fontStyle: 'italic' }}>
+                          Click again to collapse details
+                        </Typography>
                       </Box>
+                    </Collapse>
+
+                    {/* Hint to expand when collapsed */}
+                    {expandedResourceId !== risk.resource_id && (
+                      <Typography variant="caption" color="primary.light" sx={{ fontStyle: 'italic', display: 'block', mt: 1 }}>
+                        Click to see why this resource is risky →
+                      </Typography>
                     )}
                   </CardContent>
                 </Card>

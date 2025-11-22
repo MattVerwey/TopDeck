@@ -68,6 +68,13 @@ export interface RiskAssessment {
   time_since_last_change?: number;
   recommendations: string[];
   factors?: Record<string, unknown>;
+  misconfigurations?: Array<{
+    type?: string;
+    description?: string;
+    message?: string;
+    severity?: string;
+  }>;
+  misconfiguration_count?: number;
   assessed_at?: string;
 }
 
