@@ -22,6 +22,7 @@ import type {
   ApplicationSettings,
   ConnectionStatus,
   FeatureFlags,
+  SPOFResource,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -200,6 +201,18 @@ class ApiClient {
     try {
       return await this.requestWithRetry(async () => {
         const { data } = await this.client.get('/api/v1/risk/all');
+        return data;
+      });
+    } catch {
+      // Fallback to empty array if endpoint doesn't exist
+      return [];
+    }
+  }
+
+  async getSinglePointsOfFailure(): Promise<SPOFResource[]> {
+    try {
+      return await this.requestWithRetry(async () => {
+        const { data } = await this.client.get('/api/v1/risk/spof');
         return data;
       });
     } catch {
