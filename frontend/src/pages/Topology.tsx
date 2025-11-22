@@ -118,6 +118,37 @@ export default function Topology() {
     };
   }, []);
 
+  // Helper function to resolve transitive dependencies
+  const resolveTransitiveDependencies = useCallback((
+    initialIds: Set<string>,
+    topology: TopologyGraphType
+  ): Set<string> => {
+    const relatedIds = new Set<string>(initialIds);
+    const validNodeIds = new Set(topology.nodes.map(n => n.id));
+    
+    // Optimized: Only check edges connected to newly added nodes
+    let newlyAdded = new Set(initialIds);
+    while (newlyAdded.size > 0) {
+      const nextNew = new Set<string>();
+      
+      topology.edges.forEach((edge) => {
+        // Only check edges connected to newly added nodes
+        if (newlyAdded.has(edge.source_id) && validNodeIds.has(edge.target_id) && !relatedIds.has(edge.target_id)) {
+          relatedIds.add(edge.target_id);
+          nextNew.add(edge.target_id);
+        }
+        if (newlyAdded.has(edge.target_id) && validNodeIds.has(edge.source_id) && !relatedIds.has(edge.source_id)) {
+          relatedIds.add(edge.source_id);
+          nextNew.add(edge.source_id);
+        }
+      });
+      
+      newlyAdded = nextNew;
+    }
+    
+    return relatedIds;
+  }, []);
+
   // Apply filters and resource selection
   useEffect(() => {
     if (!topology) {
@@ -132,26 +163,7 @@ export default function Topology() {
     if (selectedResourceIds.length > 0) {
       // Include selected resources and ALL their transitive dependencies from the full topology
       // This ensures we see all dependencies even if they don't match other filters
-      const relatedIds = new Set<string>(selectedResourceIds);
-      
-      // Build a set of valid node IDs to prevent dangling references
-      const validNodeIds = new Set(topology.nodes.map(n => n.id));
-      
-      // Iteratively add dependencies from the FULL topology until no new ones are found
-      let previousSize = 0;
-      while (relatedIds.size > previousSize) {
-        previousSize = relatedIds.size;
-        topology.edges.forEach((edge) => {
-          // If source is in our set, add target (downstream dependency) if it exists
-          if (relatedIds.has(edge.source_id) && validNodeIds.has(edge.target_id)) {
-            relatedIds.add(edge.target_id);
-          }
-          // If target is in our set, add source (upstream dependency) if it exists
-          if (relatedIds.has(edge.target_id) && validNodeIds.has(edge.source_id)) {
-            relatedIds.add(edge.source_id);
-          }
-        });
-      }
+      const relatedIds = resolveTransitiveDependencies(new Set(selectedResourceIds), topology);
 
       // Use the full topology to get all related nodes and edges
       filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
@@ -200,24 +212,7 @@ export default function Topology() {
       }
 
       // Now add all dependencies of the matching nodes
-      const relatedIds = new Set<string>(matchingNodeIds);
-      const validNodeIds = new Set(topology.nodes.map(n => n.id));
-      
-      // Iteratively add dependencies
-      let previousSize = 0;
-      while (relatedIds.size > previousSize) {
-        previousSize = relatedIds.size;
-        topology.edges.forEach((edge) => {
-          // If source is in our set, add target (downstream dependency) if it exists
-          if (relatedIds.has(edge.source_id) && validNodeIds.has(edge.target_id)) {
-            relatedIds.add(edge.target_id);
-          }
-          // If target is in our set, add source (upstream dependency) if it exists
-          if (relatedIds.has(edge.target_id) && validNodeIds.has(edge.source_id)) {
-            relatedIds.add(edge.source_id);
-          }
-        });
-      }
+      const relatedIds = resolveTransitiveDependencies(matchingNodeIds, topology);
 
       // Apply the filter with all related nodes
       filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
@@ -230,7 +225,7 @@ export default function Topology() {
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters, applyNodeFilter]);
+  }, [topology, selectedResourceIds, filters, applyNodeFilter, resolveTransitiveDependencies]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);

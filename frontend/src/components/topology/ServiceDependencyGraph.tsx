@@ -116,7 +116,12 @@ const getNodeColor = (node: Resource, riskLevel?: string): string => {
 // Helper to get node's risk level from risk assessments
 const getNodeRiskLevel = (nodeId: string, riskMap: Map<string, RiskAssessment>): string | undefined => {
   const risk = riskMap.get(nodeId);
-  return risk ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)) : undefined;
+  if (!risk) return undefined;
+  
+  return risk.risk_level?.toLowerCase() ||
+    (risk.risk_score !== undefined && risk.risk_score !== null && !Number.isNaN(risk.risk_score)
+      ? getRiskLevelFromScore(risk.risk_score).toLowerCase()
+      : 'unknown');
 };
 
 // Relationship type to description mapping
@@ -170,16 +175,23 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           // Log bulk endpoint failure and fallback to individual requests
           console.warn('Bulk risk endpoint failed, falling back to individual requests:', bulkError);
           
-          // Fallback to individual requests (potential N+1 issue, but necessary if bulk fails)
-          const riskPromises = data.nodes.map(node =>
-            apiClient.getRiskAssessment(node.id).catch(err => {
-              console.debug(`Failed to fetch risk for ${node.id}:`, err);
-              return null;
-            })
-          );
-          const risks = await Promise.all(riskPromises);
-          allRisks = risks.filter((r): r is RiskAssessment => r !== null);
-          console.log(`Loaded ${allRisks.length}/${data.nodes.length} risk assessments via individual requests`);
+          // Batch requests in chunks of 10 to avoid overwhelming the server
+          const BATCH_SIZE = 10;
+          const allRisksBatch: (RiskAssessment | null)[] = [];
+          for (let i = 0; i < data.nodes.length; i += BATCH_SIZE) {
+            const chunk = data.nodes.slice(i, i + BATCH_SIZE);
+            const chunkRisks = await Promise.all(
+              chunk.map(node =>
+                apiClient.getRiskAssessment(node.id).catch(err => {
+                  console.debug(`Failed to fetch risk for ${node.id}:`, err);
+                  return null;
+                })
+              )
+            );
+            allRisksBatch.push(...chunkRisks);
+          }
+          allRisks = allRisksBatch.filter((r): r is RiskAssessment => r !== null);
+          console.log(`Loaded ${allRisks.length}/${data.nodes.length} risk assessments via batched individual requests`);
         }
 
         // Create a map of resource_id to risk assessment
@@ -188,7 +200,10 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         
         allRisks.forEach(risk => {
           riskMap.set(risk.resource_id, risk);
-          const level = (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)).toLowerCase();
+          const level = risk.risk_level?.toLowerCase() ||
+            (risk.risk_score !== undefined && risk.risk_score !== null && !Number.isNaN(risk.risk_score)
+              ? getRiskLevelFromScore(risk.risk_score).toLowerCase()
+              : 'unknown');
           if (level === 'critical') stats.critical++;
           else if (level === 'high') stats.high++;
           else if (level === 'medium') stats.medium++;
@@ -226,7 +241,16 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       ...data.nodes.map((node) => {
         const risk = riskAssessments.get(node.id);
         const riskLevel = risk
-          ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score))
+          ? (
+              risk.risk_level?.toLowerCase() ||
+              (
+                risk.risk_score !== undefined &&
+                risk.risk_score !== null &&
+                !Number.isNaN(risk.risk_score)
+                  ? getRiskLevelFromScore(risk.risk_score)
+                  : 'unknown'
+              )
+            )
           : 'unknown';
         
         return {
@@ -297,30 +321,6 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             'border-width': 5,
             'border-color': '#ff1744', // Bright red border for SPOF
             'border-style': 'double',
-          } as cytoscape.Css.Node,
-        },
-        {
-          selector: 'node[riskLevel = "critical"]',
-          style: {
-            'background-color': riskColors.critical,
-          } as cytoscape.Css.Node,
-        },
-        {
-          selector: 'node[riskLevel = "high"]',
-          style: {
-            'background-color': riskColors.high,
-          } as cytoscape.Css.Node,
-        },
-        {
-          selector: 'node[riskLevel = "medium"]',
-          style: {
-            'background-color': riskColors.medium,
-          } as cytoscape.Css.Node,
-        },
-        {
-          selector: 'node[riskLevel = "low"]',
-          style: {
-            'background-color': riskColors.low,
           } as cytoscape.Css.Node,
         },
         {
@@ -563,7 +563,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                 ))}
               </Stack>
             </Grid>
-            {!loadingRisks && (riskStats.critical > 0 || riskStats.high > 0 || riskStats.medium > 0) && (
+            {!loadingRisks && riskAssessments.size > 0 && (
               <Grid size={{ xs: 12 }}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="body2" color="text.secondary" gutterBottom>
