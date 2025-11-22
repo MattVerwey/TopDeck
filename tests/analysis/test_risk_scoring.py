@@ -259,3 +259,73 @@ def test_risk_score_bounds(risk_scorer):
         has_redundancy=True,
     )
     assert 0 <= score_min <= 100
+
+
+def test_aks_cluster_without_ha_never_low_risk(risk_scorer):
+    """Test that AKS cluster without HA is never LOW risk."""
+    # Even with minimal dependents and no SPOF marking,
+    # AKS without HA should be at least MEDIUM risk
+    score = risk_scorer.calculate_risk_score(
+        dependency_count=2,
+        dependents_count=2,
+        resource_type="aks",
+        is_single_point_of_failure=False,
+        has_redundancy=False,
+    )
+    
+    risk_level = risk_scorer.get_risk_level(score)
+    
+    # Should NOT be LOW risk (score should be >= 25)
+    assert score >= 25, f"AKS without HA should never be LOW risk, got score {score}"
+    assert risk_level != RiskLevel.LOW, "AKS without HA should not have LOW risk level"
+
+
+def test_aks_cluster_with_ha_can_be_lower_risk(risk_scorer):
+    """Test that AKS cluster with HA has significantly lower risk."""
+    # Score without HA
+    score_no_ha = risk_scorer.calculate_risk_score(
+        dependency_count=2,
+        dependents_count=5,
+        resource_type="aks",
+        is_single_point_of_failure=False,
+        has_redundancy=False,
+    )
+    
+    # Score with HA
+    score_with_ha = risk_scorer.calculate_risk_score(
+        dependency_count=2,
+        dependents_count=5,
+        resource_type="aks",
+        is_single_point_of_failure=False,
+        has_redundancy=True,
+    )
+    
+    # HA should significantly reduce risk
+    assert score_with_ha < score_no_ha, "HA should reduce risk score"
+    assert (score_no_ha - score_with_ha) > 15, "HA should reduce risk by significant amount"
+
+
+def test_infrastructure_without_redundancy_is_critical(risk_scorer):
+    """Test that infrastructure components without redundancy get higher criticality."""
+    # Load balancer without redundancy
+    lb_no_redundancy = risk_scorer.calculate_risk_score(
+        dependency_count=1,
+        dependents_count=10,
+        resource_type="load_balancer",
+        is_single_point_of_failure=False,
+        has_redundancy=False,
+    )
+    
+    # Load balancer with redundancy
+    lb_with_redundancy = risk_scorer.calculate_risk_score(
+        dependency_count=1,
+        dependents_count=10,
+        resource_type="load_balancer",
+        is_single_point_of_failure=False,
+        has_redundancy=True,
+    )
+    
+    # Without redundancy should have higher risk
+    assert lb_no_redundancy > lb_with_redundancy
+    # And should be at least MEDIUM risk
+    assert lb_no_redundancy >= 25
