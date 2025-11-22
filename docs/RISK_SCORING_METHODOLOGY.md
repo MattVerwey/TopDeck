@@ -159,6 +159,7 @@ Resources are categorized by their primary failure mode:
 | Front Door | 33 | Global entry point |
 | AKS/EKS/GKE | 32 | Container orchestration, multiple workloads |
 | Service Bus Namespace | 32 | Message infrastructure |
+| Service Bus Topic/Queue | 30 | Messaging channels |
 | Event Hub | 30 | Event streaming platform |
 | Redis Cache | 28 | Performance-critical in-memory cache |
 
@@ -167,7 +168,6 @@ Resources are categorized by their primary failure mode:
 | Resource Type | Base Score | Reasoning |
 |--------------|------------|-----------|
 | Load Balancer | 26 | Traffic routing for backend services |
-| Service Bus Topic/Queue | 30 | Messaging channels |
 | Web App | 22 | User-facing application |
 | Function App | 20 | Serverless compute |
 
@@ -178,13 +178,13 @@ Resources are categorized by their primary failure mode:
 | Container Registry | 18 | Deployment dependency |
 | VM Scale Set | 18 | Auto-scaling compute group |
 | Blob Storage | 16 | Object storage |
+| Express Route | 15 | Dedicated connectivity |
 | VM | 15 | Single compute instance |
 
 ### Low Tier (11-5 points)
 
 | Resource Type | Base Score | Reasoning |
 |--------------|------------|-----------|
-| Express Route | 15 | Dedicated connectivity |
 | VPN Gateway | 12 | VPN connectivity |
 | DNS Zone | 12 | Name resolution |
 | NSG | 10 | Firewall rules |
@@ -260,7 +260,8 @@ Infrastructure resources (AKS, load balancers, gateways) without redundancy rece
 
 **Example:**
 - AKS with HA: Base 32 * 1.2 (infrastructure) * 0.85 (has redundancy) = ~32 points
-- AKS without HA: Base 32 * 1.2 + 20 (no HA bonus) * 1.2 (no redundancy) = ~74 points
+- AKS without HA: (Base 32 * 1.2 + 20 (no HA bonus)) * 1.2 (no redundancy) = ~70 points
+  - Detailed: (32 * 1.2 + 20) = 58.4; 58.4 * 1.2 = 70.08
 
 ### Single Point of Failure (SPOF)
 
@@ -288,13 +289,20 @@ Dependents: 15 services
 SPOF: Yes
 Redundancy: No
 
-Calculation:
+Criticality Calculation:
 - Base: 35 (API gateway)
 - Category multiplier: 35 * 1.3 = 45.5
 - SPOF boost: +15 = 60.5
 - Infrastructure without HA: +20 = 80.5
 - High dependents: +20 = 100.5
-- Redundancy multiplier: 100.5 * 1.2 = 120.6
+
+Additional Factors (simplified, assuming defaults):
+- Dependency contribution: ~5 (15 dependents)
+- Failure contribution: 0 (no history)
+- Recency contribution: 0 (no recent changes)
+
+Final Score Calculation:
+- (100.5 + 5 + 0 + 0) * 1.2 (no redundancy) = 126.6
 - Capped at 100
 
 Final Score: 100 (CRITICAL)
@@ -315,14 +323,22 @@ Dependents: 7 services
 SPOF: No
 Redundancy: Yes (read replicas)
 
-Calculation:
+Criticality Calculation:
 - Base: 33 (PostgreSQL)
 - Category multiplier: 33 * 1.15 = 37.95
 - SPOF boost: 0
 - Dependents (5-10): +10 = 47.95
-- Redundancy multiplier: 47.95 * 0.85 = 40.76
 
-Final Score: 41 (MEDIUM)
+Additional Factors (simplified, assuming defaults):
+- Dependency contribution: ~2.8 (7 dependents)
+- Failure contribution: 0 (no history)
+- Recency contribution: 0 (no recent changes)
+
+Final Score Calculation:
+- (47.95 + 2.8 + 0 + 0) * 0.85 (has redundancy) = 43.14
+- Rounded: 43
+
+Final Score: 43 (MEDIUM)
 Risk Level: MEDIUM
 ```
 
@@ -339,13 +355,21 @@ Dependents: 2 services
 SPOF: No
 Redundancy: Yes (multiple instances)
 
-Calculation:
+Criticality Calculation:
 - Base: 20 (Function App)
 - Category multiplier: 20 * 1.0 = 20 (compute baseline)
 - Dependents (1-4): +5 = 25
-- Redundancy multiplier: 25 * 0.85 = 21.25
 
-Final Score: 21 (LOW)
+Additional Factors (simplified, assuming defaults):
+- Dependency contribution: ~0.8 (2 dependents)
+- Failure contribution: 0 (no history)
+- Recency contribution: 0 (no recent changes)
+
+Final Score Calculation:
+- (25 + 0.8 + 0 + 0) * 0.85 (has redundancy) = 21.93
+- Rounded: 22
+
+Final Score: 22 (LOW)
 Risk Level: LOW
 ```
 
@@ -361,12 +385,19 @@ Dependents: 12 services
 SPOF: Yes (central secrets)
 Redundancy: No
 
-Calculation:
+Criticality Calculation:
 - Base: 45 (Key Vault)
 - Category multiplier: 45 * 1.25 = 56.25 (security)
 - SPOF boost: +15 = 71.25
 - High dependents: +20 = 91.25
-- Redundancy multiplier: 91.25 * 1.2 = 109.5
+
+Additional Factors (simplified, assuming defaults):
+- Dependency contribution: ~4.8 (12 dependents)
+- Failure contribution: 0 (no history)
+- Recency contribution: 0 (no recent changes)
+
+Final Score Calculation:
+- (91.25 + 4.8 + 0 + 0) * 1.2 (no redundancy) = 115.26
 - Capped at 100
 
 Final Score: 100 (CRITICAL)

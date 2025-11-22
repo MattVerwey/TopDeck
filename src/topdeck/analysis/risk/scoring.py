@@ -25,7 +25,7 @@ class ResourceImpactCategory(str, Enum):
     - Entry points: Block access to all downstream services
     - Data stores: Data loss, compliance, recovery time
     - Infrastructure: Cascade to all hosted workloads
-    - Integration: Transaction integrity, message loss
+    - Messaging: Transaction integrity, message loss
     """
     ENTRY_POINT = "entry_point"  # API gateways, load balancers - block downstream access
     DATA_STORE = "data_store"  # Databases, caches - data availability/integrity
@@ -130,6 +130,8 @@ class RiskScorer:
         "vm": 15,  # Virtual machine
         "virtual_machine": 15,
         "vm_scale_set": 18,  # Auto-scaling VM group
+        "availability_set": 18,  # Availability set for VMs
+        "cluster": 25,  # Generic cluster resource
         
         # LOW TIER (5-12): Networking, Monitoring, Non-Critical
         # Network infrastructure - usually redundant
