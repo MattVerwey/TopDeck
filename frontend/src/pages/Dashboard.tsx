@@ -277,29 +277,61 @@ export default function Dashboard() {
       {
         resource_id: 'sql-db-1',
         resource_name: 'SQL-Primary',
+        resource_type: 'database',
         risk_score: 85,
         single_point_of_failure: true,
         dependencies_count: 5,
+        dependents_count: 12,
+        blast_radius: 15,
       },
       {
         resource_id: 'app-gateway-1',
         resource_name: 'AppGateway-Prod',
+        resource_type: 'network',
         risk_score: 78,
         single_point_of_failure: false,
         dependencies_count: 12,
+        dependents_count: 8,
+        blast_radius: 10,
       },
       {
         resource_id: 'aks-cluster-1',
         resource_name: 'AKS-Prod-Cluster',
+        resource_type: 'kubernetes',
         risk_score: 72,
         single_point_of_failure: false,
         dependencies_count: 8,
+        dependents_count: 15,
+        blast_radius: 20,
       },
-    ];
+      {
+        resource_id: 'redis-cache-1',
+        resource_name: 'Redis-Cache',
+        resource_type: 'cache',
+        risk_score: 65,
+        single_point_of_failure: true,
+        dependencies_count: 3,
+        dependents_count: 18,
+        blast_radius: 22,
+      },
+      {
+        resource_id: 'api-service-1',
+        resource_name: 'API-Service-Main',
+        resource_type: 'service',
+        risk_score: 58,
+        single_point_of_failure: false,
+        dependencies_count: 10,
+        dependents_count: 5,
+        blast_radius: 8,
+      },
+    ] as RiskAssessment[];
     
-    setTopRisks(mockRisks.map(r => ({
+    // Set allRisks for the table
+    setAllRisks(mockRisks);
+    
+    setTopRisks(mockRisks.slice(0, 3).map(r => ({
       id: r.resource_id,
-      resource: r.resource_name,
+      resource: r.resource_name || r.resource_id,
       riskScore: r.risk_score,
       reason: r.single_point_of_failure ? 'Single Point of Failure' : `${r.dependencies_count} dependencies`,
     })));
