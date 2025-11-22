@@ -323,7 +323,7 @@ export default function RiskDrilldownDialog({
                             {Object.entries(risk.factors).map(([key, value]) => (
                               <Chip
                                 key={key}
-                                label={`${key}: ${typeof value === 'number' ? value.toFixed(2) : value}`}
+                                label={`${key}: ${typeof value === 'number' && value !== null ? value.toFixed(2) : value ?? 'N/A'}`}
                                 size="small"
                                 variant="outlined"
                                 color="info"
