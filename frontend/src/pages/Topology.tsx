@@ -20,9 +20,15 @@ import {
   Button,
   Autocomplete,
   TextField,
+  FormControlLabel,
+  Switch,
+  Tooltip,
+  Radio,
+  RadioGroup,
+  FormLabel,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
-import { AccountTree, ViewModule, FilterList } from '@mui/icons-material';
+import { AccountTree, ViewModule, FilterList, Info } from '@mui/icons-material';
 import { useStore } from '../store/useStore';
 import apiClient from '../services/api';
 import TopologyGraph from '../components/topology/TopologyGraph';
@@ -30,15 +36,17 @@ import ServiceDependencyGraph from '../components/topology/ServiceDependencyGrap
 import ResourceSelector from '../components/topology/ResourceSelector';
 import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
-import type { TopologyGraph as TopologyGraphType } from '../types';
+import type { TopologyGraph as TopologyGraphType, FilterMode } from '../types';
 
 export default function Topology() {
   const {
     topology,
     filters,
+    filterSettings,
     viewMode,
     setTopology,
     setFilters,
+    setFilterSettings,
     setViewMode,
     setLoading,
     setError,
@@ -159,17 +167,30 @@ export default function Topology() {
     let filtered = { ...topology };
 
     // Filter by selected resources if any - this overrides other filters
-    // and shows ALL dependencies of the selected resources from the ORIGINAL topology
     if (selectedResourceIds.length > 0) {
-      // Include selected resources and ALL their transitive dependencies from the full topology
-      // This ensures we see all dependencies even if they don't match other filters
-      const relatedIds = resolveTransitiveDependencies(new Set(selectedResourceIds), topology);
-
-      // Use the full topology to get all related nodes and edges
-      filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
+      // Include selected resources and their dependencies based on filter mode
+      if (filterSettings.mode === 'strict') {
+        // Show ONLY the selected resources, no dependencies
+        filtered = applyNodeFilter(topology, (n) => selectedResourceIds.includes(n.id));
+      } else if (filterSettings.mode === 'with-dependencies') {
+        // Show selected resources and their DIRECT dependencies (1 level)
+        const directlyRelatedIds = new Set<string>(selectedResourceIds);
+        topology.edges.forEach((edge) => {
+          if (selectedResourceIds.includes(edge.source_id)) {
+            directlyRelatedIds.add(edge.target_id);
+          }
+          if (selectedResourceIds.includes(edge.target_id)) {
+            directlyRelatedIds.add(edge.source_id);
+          }
+        });
+        filtered = applyNodeFilter(topology, (n) => directlyRelatedIds.has(n.id));
+      } else {
+        // 'full-graph': Show selected resources and ALL their transitive dependencies
+        const relatedIds = resolveTransitiveDependencies(new Set(selectedResourceIds), topology);
+        filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
+      }
     } else {
       // Apply standard filters only when no resources are selected
-      // First, collect all nodes that match ANY of the active filters
       const matchingNodeIds = new Set<string>();
       
       // If no filters are active, include all nodes
@@ -211,21 +232,38 @@ export default function Topology() {
         });
       }
 
-      // Now add all dependencies of the matching nodes
-      const relatedIds = resolveTransitiveDependencies(matchingNodeIds, topology);
-
-      // Apply the filter with all related nodes
-      filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
+      // Apply filter mode to determine what to show
+      if (filterSettings.mode === 'strict') {
+        // Show ONLY the matching nodes (no dependencies)
+        filtered = applyNodeFilter(topology, (n) => matchingNodeIds.has(n.id));
+      } else if (filterSettings.mode === 'with-dependencies') {
+        // Show matching nodes and their DIRECT dependencies (1 level)
+        const directlyRelatedIds = new Set(matchingNodeIds);
+        topology.edges.forEach((edge) => {
+          if (matchingNodeIds.has(edge.source_id)) {
+            directlyRelatedIds.add(edge.target_id);
+          }
+          if (matchingNodeIds.has(edge.target_id)) {
+            directlyRelatedIds.add(edge.source_id);
+          }
+        });
+        filtered = applyNodeFilter(topology, (n) => directlyRelatedIds.has(n.id));
+      } else {
+        // 'full-graph': Show matching nodes and ALL their transitive dependencies
+        const relatedIds = resolveTransitiveDependencies(matchingNodeIds, topology);
+        filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
+      }
     }
 
     filtered.metadata = {
       ...filtered.metadata,
       total_nodes: filtered.nodes.length,
       total_edges: filtered.edges.length,
+      filter_mode: filterSettings.mode,
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters, applyNodeFilter, resolveTransitiveDependencies]);
+  }, [topology, selectedResourceIds, filters, filterSettings, applyNodeFilter, resolveTransitiveDependencies]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);
@@ -282,6 +320,92 @@ export default function Topology() {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2}>
+          {/* Filter Mode Selection */}
+          <Box>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <FormLabel component="legend" sx={{ minWidth: 120 }}>
+                Filter Mode:
+              </FormLabel>
+              <RadioGroup
+                row
+                value={filterSettings.mode}
+                onChange={(e) => setFilterSettings({ ...filterSettings, mode: e.target.value as FilterMode })}
+              >
+                <FormControlLabel
+                  value="strict"
+                  control={<Radio size="small" />}
+                  label={
+                    <Tooltip title="Show only resources that match the filter criteria (no dependencies)">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2">Strict</Typography>
+                        <Info fontSize="small" sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      </Box>
+                    </Tooltip>
+                  }
+                />
+                <FormControlLabel
+                  value="with-dependencies"
+                  control={<Radio size="small" />}
+                  label={
+                    <Tooltip title="Show filtered resources plus their direct dependencies (1 level)">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2">With Direct Dependencies</Typography>
+                        <Info fontSize="small" sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      </Box>
+                    </Tooltip>
+                  }
+                />
+                <FormControlLabel
+                  value="full-graph"
+                  control={<Radio size="small" />}
+                  label={
+                    <Tooltip title="Show filtered resources plus all transitive dependencies (full dependency chain)">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2">Full Dependency Graph</Typography>
+                        <Info fontSize="small" sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      </Box>
+                    </Tooltip>
+                  }
+                />
+              </RadioGroup>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 15, display: 'block', mt: 0.5 }}>
+              {filterSettings.mode === 'strict' && 'Reduces clutter by showing only matching resources'}
+              {filterSettings.mode === 'with-dependencies' && 'Shows immediate connections without overwhelming the view'}
+              {filterSettings.mode === 'full-graph' && 'Shows complete dependency chains (may be cluttered with many resources)'}
+            </Typography>
+          </Box>
+
+          {/* Grouping Options */}
+          <Stack direction="row" spacing={2} alignItems="center">
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filterSettings.showGrouping}
+                  onChange={(e) => setFilterSettings({ ...filterSettings, showGrouping: e.target.checked })}
+                  size="small"
+                />
+              }
+              label="Enable Grouping"
+            />
+            {filterSettings.showGrouping && (
+              <FormControl sx={{ minWidth: 180 }} size="small">
+                <InputLabel>Group By</InputLabel>
+                <Select
+                  value={filterSettings.groupBy || ''}
+                  label="Group By"
+                  onChange={(e) => setFilterSettings({ ...filterSettings, groupBy: e.target.value as any })}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  <MenuItem value="cluster">Cluster</MenuItem>
+                  <MenuItem value="namespace">Namespace</MenuItem>
+                  <MenuItem value="resource_type">Resource Type</MenuItem>
+                  <MenuItem value="cloud_provider">Cloud Provider</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </Stack>
+
           {/* Resource Selector Button */}
           <Box>
             <Button
@@ -404,13 +528,41 @@ export default function Topology() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : filteredTopology ? (
-        <Paper sx={{ p: 0, height: 'calc(100vh - 400px)', minHeight: 500 }}>
-          {graphView === 'dependency' ? (
-            <ServiceDependencyGraph data={filteredTopology} />
-          ) : (
-            <TopologyGraph data={filteredTopology} viewMode={viewMode} />
+        <>
+          {/* Filter Status Banner */}
+          {(activeFilterCount > 0 || filterSettings.mode !== 'strict') && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Stack spacing={1}>
+                <Typography variant="body2" fontWeight={600}>
+                  Active Filtering: {filterSettings.mode === 'strict' ? 'Strict Mode' : filterSettings.mode === 'with-dependencies' ? 'Direct Dependencies' : 'Full Dependency Graph'}
+                </Typography>
+                <Typography variant="caption">
+                  Showing {filteredTopology.nodes.length} of {topology?.nodes.length || 0} total resources
+                  {filterSettings.mode === 'strict' && ' (only matching resources)'}
+                  {filterSettings.mode === 'with-dependencies' && ' (matching resources + direct dependencies)'}
+                  {filterSettings.mode === 'full-graph' && ' (matching resources + all dependencies)'}
+                </Typography>
+                {activeFilterCount > 0 && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {filters.cloud_provider && <Chip size="small" label={`Provider: ${filters.cloud_provider}`} />}
+                    {filters.resource_type && <Chip size="small" label={`Type: ${filters.resource_type}`} />}
+                    {filters.cluster && <Chip size="small" label={`Cluster: ${filters.cluster}`} />}
+                    {filters.namespace && <Chip size="small" label={`Namespace: ${filters.namespace}`} />}
+                    {selectedResourceIds.length > 0 && <Chip size="small" label={`Selected: ${selectedResourceIds.length} resources`} />}
+                  </Stack>
+                )}
+              </Stack>
+            </Alert>
           )}
-        </Paper>
+          
+          <Paper sx={{ p: 0, height: 'calc(100vh - 400px)', minHeight: 500 }}>
+            {graphView === 'dependency' ? (
+              <ServiceDependencyGraph data={filteredTopology} />
+            ) : (
+              <TopologyGraph data={filteredTopology} viewMode={viewMode} />
+            )}
+          </Paper>
+        </>
       ) : (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="text.secondary">No topology data available</Typography>

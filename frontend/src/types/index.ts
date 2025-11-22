@@ -106,6 +106,14 @@ export interface FilterOptions {
   cluster?: string;
 }
 
+export type FilterMode = 'strict' | 'with-dependencies' | 'full-graph';
+
+export interface TopologyFilterSettings {
+  mode: FilterMode;
+  showGrouping: boolean;
+  groupBy?: 'cluster' | 'namespace' | 'resource_type' | 'cloud_provider';
+}
+
 export interface Integration {
   id: string;
   name: string;
