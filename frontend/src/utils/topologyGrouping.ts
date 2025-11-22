@@ -94,7 +94,11 @@ export function createGroupElements(
  */
 function formatGroupLabel(key: string, groupBy: string): string {
   if (key === 'ungrouped' || key === 'unknown') {
-    return `No ${groupBy.replace('_', ' ')}`;
+    // Don't add collapse hint to ungrouped items
+    return groupBy
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ') + ' (None)';
   }
 
   // Capitalize and format

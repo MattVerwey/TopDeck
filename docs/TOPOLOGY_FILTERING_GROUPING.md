@@ -160,6 +160,6 @@ For even more focused analysis:
 
 ## Related Documentation
 
-- [Enhanced Topology Analysis Guide](./ENHANCED_TOPOLOGY_ANALYSIS.md)
+- [Enhanced Topology Analysis Guide](./features/ENHANCED_TOPOLOGY_ANALYSIS.md)
 - [Network Flow Diagrams](./architecture/network-flow-diagrams.md)
-- [Topology API Reference](./api/topology.md)
+- [Topology API Reference](./api/TOPOLOGY_API.md)

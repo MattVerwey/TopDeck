@@ -285,6 +285,26 @@ export default function Topology() {
   const activeFilterCount = Object.keys(filters).filter((k) => filters[k as keyof typeof filters]).length + 
     (selectedResourceIds.length > 0 ? 1 : 0);
 
+  // Helper function to format filter mode name
+  const getFilterModeName = (mode: FilterMode): string => {
+    const modeNames: Record<FilterMode, string> = {
+      'strict': 'Strict Mode',
+      'with-dependencies': 'Direct Dependencies',
+      'full-graph': 'Full Dependency Graph',
+    };
+    return modeNames[mode];
+  };
+
+  // Helper function to get filter mode description
+  const getFilterModeDescription = (mode: FilterMode): string => {
+    const descriptions: Record<FilterMode, string> = {
+      'strict': ' (only matching resources)',
+      'with-dependencies': ' (matching resources + direct dependencies)',
+      'full-graph': ' (matching resources + all dependencies)',
+    };
+    return descriptions[mode];
+  };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
@@ -537,13 +557,11 @@ export default function Topology() {
             <Alert severity="info" sx={{ mb: 2 }}>
               <Stack spacing={1}>
                 <Typography variant="body2" fontWeight={600}>
-                  Active Filtering: {filterSettings.mode === 'strict' ? 'Strict Mode' : filterSettings.mode === 'with-dependencies' ? 'Direct Dependencies' : 'Full Dependency Graph'}
+                  Active Filtering: {getFilterModeName(filterSettings.mode)}
                 </Typography>
                 <Typography variant="caption">
                   Showing {filteredTopology.nodes.length} of {topology?.nodes.length || 0} total resources
-                  {filterSettings.mode === 'strict' && ' (only matching resources)'}
-                  {filterSettings.mode === 'with-dependencies' && ' (matching resources + direct dependencies)'}
-                  {filterSettings.mode === 'full-graph' && ' (matching resources + all dependencies)'}
+                  {getFilterModeDescription(filterSettings.mode)}
                 </Typography>
                 {activeFilterCount > 0 && (
                   <Stack direction="row" spacing={1} flexWrap="wrap">
