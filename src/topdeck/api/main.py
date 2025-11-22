@@ -12,6 +12,7 @@ from topdeck.api.routes import (
     discovery,
     error_replay,
     integrations,
+    load_detection,
     monitoring,
     prediction,
     reporting,
@@ -190,6 +191,7 @@ app.include_router(error_replay.router)
 app.include_router(sla.router)
 app.include_router(reporting.router)
 app.include_router(settings_router.router)
+app.include_router(load_detection.router)
 
 
 @app.get("/")
