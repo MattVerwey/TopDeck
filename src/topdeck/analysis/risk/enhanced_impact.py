@@ -262,7 +262,7 @@ class EnhancedImpactAnalyzer:
             or resource.get("risk_score", 0) > 75
             or category in [ResourceCategory.USER_FACING, ResourceCategory.DATA_STORE]
             # Infrastructure without redundancy is critical (can bring down many services)
-            or (category == ResourceCategory.INFRASTRUCTURE and not resource.get("has_redundancy", True))
+            or (category == ResourceCategory.INFRASTRUCTURE and not resource.get("has_redundancy", False))
         )
 
         # Determine impact severity based on category
