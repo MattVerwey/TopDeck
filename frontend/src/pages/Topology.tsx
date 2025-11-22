@@ -118,6 +118,37 @@ export default function Topology() {
     };
   }, []);
 
+  // Helper function to resolve transitive dependencies
+  const resolveTransitiveDependencies = useCallback((
+    initialIds: Set<string>,
+    topology: TopologyGraphType
+  ): Set<string> => {
+    const relatedIds = new Set<string>(initialIds);
+    const validNodeIds = new Set(topology.nodes.map(n => n.id));
+    
+    // Optimized: Only check edges connected to newly added nodes
+    let newlyAdded = new Set(initialIds);
+    while (newlyAdded.size > 0) {
+      const nextNew = new Set<string>();
+      
+      topology.edges.forEach((edge) => {
+        // Only check edges connected to newly added nodes
+        if (newlyAdded.has(edge.source_id) && validNodeIds.has(edge.target_id) && !relatedIds.has(edge.target_id)) {
+          relatedIds.add(edge.target_id);
+          nextNew.add(edge.target_id);
+        }
+        if (newlyAdded.has(edge.target_id) && validNodeIds.has(edge.source_id) && !relatedIds.has(edge.source_id)) {
+          relatedIds.add(edge.source_id);
+          nextNew.add(edge.source_id);
+        }
+      });
+      
+      newlyAdded = nextNew;
+    }
+    
+    return relatedIds;
+  }, []);
+
   // Apply filters and resource selection
   useEffect(() => {
     if (!topology) {
@@ -127,56 +158,63 @@ export default function Topology() {
 
     let filtered = { ...topology };
 
-    // Apply other filters to the data (these will be ignored if resources are selected)
-    if (filters.cloud_provider) {
-      filtered = applyNodeFilter(filtered, (n) => n.cloud_provider === filters.cloud_provider);
-    }
-
-    if (filters.resource_type) {
-      filtered = applyNodeFilter(filtered, (n) => n.resource_type === filters.resource_type);
-    }
-
-    if (filters.cluster) {
-      filtered = applyNodeFilter(filtered, (n) => 
-        (n.properties?.cluster as string) === filters.cluster ||
-        (n.metadata?.cluster as string) === filters.cluster
-      );
-    }
-
-    if (filters.namespace) {
-      filtered = applyNodeFilter(filtered, (n) => 
-        (n.properties?.namespace as string) === filters.namespace ||
-        (n.metadata?.namespace as string) === filters.namespace
-      );
-    }
-
     // Filter by selected resources if any - this overrides other filters
     // and shows ALL dependencies of the selected resources from the ORIGINAL topology
     if (selectedResourceIds.length > 0) {
       // Include selected resources and ALL their transitive dependencies from the full topology
       // This ensures we see all dependencies even if they don't match other filters
-      const relatedIds = new Set<string>(selectedResourceIds);
+      const relatedIds = resolveTransitiveDependencies(new Set(selectedResourceIds), topology);
+
+      // Use the full topology to get all related nodes and edges
+      filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
+    } else {
+      // Apply standard filters only when no resources are selected
+      // First, collect all nodes that match ANY of the active filters
+      const matchingNodeIds = new Set<string>();
       
-      // Build a set of valid node IDs to prevent dangling references
-      const validNodeIds = new Set(topology.nodes.map(n => n.id));
+      // If no filters are active, include all nodes
+      const hasActiveFilters = !!(filters.cloud_provider || filters.resource_type || filters.cluster || filters.namespace);
       
-      // Iteratively add dependencies from the FULL topology until no new ones are found
-      let previousSize = 0;
-      while (relatedIds.size > previousSize) {
-        previousSize = relatedIds.size;
-        topology.edges.forEach((edge) => {
-          // If source is in our set, add target (downstream dependency) if it exists
-          if (relatedIds.has(edge.source_id) && validNodeIds.has(edge.target_id)) {
-            relatedIds.add(edge.target_id);
+      if (!hasActiveFilters) {
+        // No filters - include all nodes
+        topology.nodes.forEach(n => matchingNodeIds.add(n.id));
+      } else {
+        // Apply filters to find matching nodes
+        topology.nodes.forEach((node) => {
+          let matches = true;
+          
+          if (filters.cloud_provider && node.cloud_provider !== filters.cloud_provider) {
+            matches = false;
           }
-          // If target is in our set, add source (upstream dependency) if it exists
-          if (relatedIds.has(edge.target_id) && validNodeIds.has(edge.source_id)) {
-            relatedIds.add(edge.source_id);
+          
+          if (filters.resource_type && node.resource_type !== filters.resource_type) {
+            matches = false;
+          }
+          
+          if (filters.cluster) {
+            const nodeCluster = (node.properties?.cluster as string) || (node.metadata?.cluster as string);
+            if (nodeCluster !== filters.cluster) {
+              matches = false;
+            }
+          }
+          
+          if (filters.namespace) {
+            const nodeNamespace = (node.properties?.namespace as string) || (node.metadata?.namespace as string);
+            if (nodeNamespace !== filters.namespace) {
+              matches = false;
+            }
+          }
+          
+          if (matches) {
+            matchingNodeIds.add(node.id);
           }
         });
       }
 
-      // Use the full topology to get all related nodes and edges
+      // Now add all dependencies of the matching nodes
+      const relatedIds = resolveTransitiveDependencies(matchingNodeIds, topology);
+
+      // Apply the filter with all related nodes
       filtered = applyNodeFilter(topology, (n) => relatedIds.has(n.id));
     }
 
@@ -187,7 +225,7 @@ export default function Topology() {
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters, applyNodeFilter]);
+  }, [topology, selectedResourceIds, filters, applyNodeFilter, resolveTransitiveDependencies]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);

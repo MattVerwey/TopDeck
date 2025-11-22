@@ -17,6 +17,7 @@ import {
   Tooltip,
   Divider,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   ZoomIn,
@@ -29,10 +30,13 @@ import {
   Info,
   Warning,
   CheckCircle,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
-import type { TopologyGraph as TopologyGraphType, Resource } from '../../types';
+import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment } from '../../types';
 import { useStore } from '../../store/useStore';
+import apiClient from '../../services/api';
+import { getRiskLevelFromScore } from '../../utils/riskUtils';
 
 
 // Constants for node sizing and padding
@@ -49,7 +53,16 @@ interface ServiceDependencyGraphProps {
   data: TopologyGraphType;
 }
 
-// Enhanced color scheme for service types
+// Risk-based color scheme - prioritizes risk level over service type
+const riskColors: Record<string, string> = {
+  critical: '#d32f2f',  // Bright red
+  high: '#f57c00',      // Orange
+  medium: '#fbc02d',    // Yellow
+  low: '#388e3c',       // Green
+  unknown: '#607d8b',   // Gray
+};
+
+// Enhanced color scheme for service types (used when no risk data)
 const serviceColors: Record<string, string> = {
   // Core services
   pod: '#4caf50',
@@ -86,12 +99,29 @@ const serviceColors: Record<string, string> = {
   gcp: '#4285f4',
 };
 
-// Get color based on resource type or provider
-const getNodeColor = (node: Resource): string => {
+// Get color based on risk level first, then resource type or provider
+const getNodeColor = (node: Resource, riskLevel?: string): string => {
+  // Prioritize risk level for coloring
+  if (riskLevel) {
+    return riskColors[riskLevel.toLowerCase()] || riskColors.unknown;
+  }
+  
+  // Fallback to service type colors
   const type = node.resource_type?.toLowerCase() || '';
   const provider = node.cloud_provider?.toLowerCase() || '';
   
   return serviceColors[type] || serviceColors[provider] || '#607d8b';
+};
+
+// Helper to get node's risk level from risk assessments
+const getNodeRiskLevel = (nodeId: string, riskMap: Map<string, RiskAssessment>): string | undefined => {
+  const risk = riskMap.get(nodeId);
+  if (!risk) return undefined;
+  
+  return risk.risk_level?.toLowerCase() ||
+    (risk.risk_score !== undefined && risk.risk_score !== null && !Number.isNaN(risk.risk_score)
+      ? getRiskLevelFromScore(risk.risk_score).toLowerCase()
+      : 'unknown');
 };
 
 // Relationship type to description mapping
@@ -119,6 +149,79 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     providers: new Set<string>(),
     types: new Set<string>(),
   });
+  const [riskAssessments, setRiskAssessments] = useState<Map<string, RiskAssessment>>(new Map());
+  const [loadingRisks, setLoadingRisks] = useState(false);
+  const [riskStats, setRiskStats] = useState({
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    unknown: 0,
+  });
+
+  // Load risk assessments for all nodes
+  useEffect(() => {
+    if (!data || data.nodes.length === 0) return;
+
+    const loadRiskAssessments = async () => {
+      setLoadingRisks(true);
+      try {
+        // Try bulk endpoint first
+        let allRisks: RiskAssessment[] = [];
+        try {
+          allRisks = await apiClient.getAllRisks();
+          console.log(`Loaded ${allRisks.length} risk assessments via bulk endpoint`);
+        } catch (bulkError) {
+          // Log bulk endpoint failure and fallback to individual requests
+          console.warn('Bulk risk endpoint failed, falling back to individual requests:', bulkError);
+          
+          // Batch requests in chunks of 10 to avoid overwhelming the server
+          const BATCH_SIZE = 10;
+          const allRisksBatch: (RiskAssessment | null)[] = [];
+          for (let i = 0; i < data.nodes.length; i += BATCH_SIZE) {
+            const chunk = data.nodes.slice(i, i + BATCH_SIZE);
+            const chunkRisks = await Promise.all(
+              chunk.map(node =>
+                apiClient.getRiskAssessment(node.id).catch(err => {
+                  console.debug(`Failed to fetch risk for ${node.id}:`, err);
+                  return null;
+                })
+              )
+            );
+            allRisksBatch.push(...chunkRisks);
+          }
+          allRisks = allRisksBatch.filter((r): r is RiskAssessment => r !== null);
+          console.log(`Loaded ${allRisks.length}/${data.nodes.length} risk assessments via batched individual requests`);
+        }
+
+        // Create a map of resource_id to risk assessment
+        const riskMap = new Map<string, RiskAssessment>();
+        const stats = { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 };
+        
+        allRisks.forEach(risk => {
+          riskMap.set(risk.resource_id, risk);
+          const level = risk.risk_level?.toLowerCase() ||
+            (risk.risk_score !== undefined && risk.risk_score !== null && !Number.isNaN(risk.risk_score)
+              ? getRiskLevelFromScore(risk.risk_score).toLowerCase()
+              : 'unknown');
+          if (level === 'critical') stats.critical++;
+          else if (level === 'high') stats.high++;
+          else if (level === 'medium') stats.medium++;
+          else if (level === 'low') stats.low++;
+          else stats.unknown++;
+        });
+
+        setRiskAssessments(riskMap);
+        setRiskStats(stats);
+      } catch (error) {
+        console.error('Failed to load risk assessments:', error);
+      } finally {
+        setLoadingRisks(false);
+      }
+    };
+
+    loadRiskAssessments();
+  }, [data]);
 
   useEffect(() => {
     if (!containerRef.current || !data) return;
@@ -133,21 +236,42 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       types,
     });
 
-    // Convert data to Cytoscape format with enhanced metadata
+    // Convert data to Cytoscape format with enhanced metadata including risk
     const elements = [
-      ...data.nodes.map((node) => ({
-        data: {
-          ...node,
-          id: node.id,
-          label: node.name,
-          type: node.resource_type,
-          provider: node.cloud_provider,
-          region: node.region || 'N/A',
-          // Add properties for better visualization
-          importance: node.metadata?.importance || 1,
-          health: node.properties?.health_status || 'unknown',
-        },
-      })),
+      ...data.nodes.map((node) => {
+        const risk = riskAssessments.get(node.id);
+        const riskLevel = risk
+          ? (
+              risk.risk_level?.toLowerCase() ||
+              (
+                risk.risk_score !== undefined &&
+                risk.risk_score !== null &&
+                !Number.isNaN(risk.risk_score)
+                  ? getRiskLevelFromScore(risk.risk_score)
+                  : 'unknown'
+              )
+            )
+          : 'unknown';
+        
+        return {
+          data: {
+            ...node,
+            id: node.id,
+            label: node.name,
+            type: node.resource_type,
+            provider: node.cloud_provider,
+            region: node.region || 'N/A',
+            // Add properties for better visualization
+            importance: node.metadata?.importance || 1,
+            health: node.properties?.health_status || 'unknown',
+            // Risk data
+            riskLevel,
+            riskScore: risk?.risk_score,
+            blastRadius: risk?.blast_radius,
+            spof: risk?.single_point_of_failure || false,
+          },
+        };
+      }),
       ...data.edges.map((edge, idx) => ({
         data: {
           ...edge,
@@ -169,8 +293,10 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           selector: 'node',
           style: {
             shape: 'roundrectangle',
-            'background-color': (ele: cytoscape.NodeSingular) =>
-              getNodeColor(ele.data() as Resource),
+            'background-color': (ele: cytoscape.NodeSingular) => {
+              const nodeData = ele.data() as Resource & { riskLevel?: string };
+              return getNodeColor(nodeData, nodeData.riskLevel);
+            },
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
@@ -187,6 +313,14 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             'border-width': 3,
             'border-color': '#1e293b',
             'overlay-opacity': 0,
+          } as cytoscape.Css.Node,
+        },
+        {
+          selector: 'node[?spof]',
+          style: {
+            'border-width': 5,
+            'border-color': '#ff1744', // Bright red border for SPOF
+            'border-style': 'double',
           } as cytoscape.Css.Node,
         },
         {
@@ -292,7 +426,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     return () => {
       cyRef.current?.destroy();
     };
-  }, [data, setSelectedResource]);
+  }, [data, setSelectedResource, riskAssessments]);
 
   // Zoom controls
   const handleZoomIn = () => {
@@ -429,6 +563,62 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                 ))}
               </Stack>
             </Grid>
+            {!loadingRisks && riskAssessments.size > 0 && (
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Risk Distribution
+                </Typography>
+                <Stack spacing={0.5}>
+                  {riskStats.critical > 0 && (
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: riskColors.critical }} />
+                        <Typography variant="caption">Critical</Typography>
+                      </Box>
+                      <Typography variant="caption" fontWeight={600}>{riskStats.critical}</Typography>
+                    </Box>
+                  )}
+                  {riskStats.high > 0 && (
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: riskColors.high }} />
+                        <Typography variant="caption">High</Typography>
+                      </Box>
+                      <Typography variant="caption" fontWeight={600}>{riskStats.high}</Typography>
+                    </Box>
+                  )}
+                  {riskStats.medium > 0 && (
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: riskColors.medium }} />
+                        <Typography variant="caption">Medium</Typography>
+                      </Box>
+                      <Typography variant="caption" fontWeight={600}>{riskStats.medium}</Typography>
+                    </Box>
+                  )}
+                  {riskStats.low > 0 && (
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: riskColors.low }} />
+                        <Typography variant="caption">Low</Typography>
+                      </Box>
+                      <Typography variant="caption" fontWeight={600}>{riskStats.low}</Typography>
+                    </Box>
+                  )}
+                </Stack>
+              </Grid>
+            )}
+            {loadingRisks && (
+              <Grid size={{ xs: 12 }}>
+                <Box display="flex" alignItems="center" gap={1} justifyContent="center" py={1}>
+                  <CircularProgress size={16} />
+                  <Typography variant="caption" color="text.secondary">
+                    Loading risks...
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </CardContent>
       </Card>
@@ -457,7 +647,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                         width: 48,
                         height: 48,
                         borderRadius: '8px',
-                        backgroundColor: getNodeColor(selectedNode),
+                        backgroundColor: getNodeColor(selectedNode, getNodeRiskLevel(selectedNode.id, riskAssessments)),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -480,17 +670,40 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                       </Typography>
                     </Box>
                   </Box>
-                  {health && (
-                    <Chip
-                      icon={health.icon}
-                      label={health.text}
-                      sx={{
-                        backgroundColor: health.color,
-                        color: '#fff',
-                        fontWeight: 600,
-                      }}
-                    />
-                  )}
+                  <Stack direction="row" spacing={1}>
+                    {health && (
+                      <Chip
+                        icon={health.icon}
+                        label={health.text}
+                        sx={{
+                          backgroundColor: health.color,
+                          color: '#fff',
+                          fontWeight: 600,
+                        }}
+                      />
+                    )}
+                    {(() => {
+                      const riskLevel = getNodeRiskLevel(selectedNode.id, riskAssessments);
+                      if (riskLevel) {
+                        const riskIcon = riskLevel === 'critical' ? <ErrorIcon /> :
+                                       riskLevel === 'high' ? <Warning /> :
+                                       riskLevel === 'medium' ? <Info /> :
+                                       <CheckCircle />;
+                        return (
+                          <Chip
+                            icon={riskIcon}
+                            label={`${riskLevel.toUpperCase()} Risk`}
+                            sx={{
+                              backgroundColor: riskColors[riskLevel],
+                              color: '#fff',
+                              fontWeight: 600,
+                            }}
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Stack>
                 </Stack>
               </Grid>
 
@@ -533,12 +746,77 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                   label={selectedNode.resource_type}
                   size="small"
                   sx={{
-                    backgroundColor: getNodeColor(selectedNode),
+                    backgroundColor: getNodeColor(selectedNode, getNodeRiskLevel(selectedNode.id, riskAssessments)),
                     color: '#fff',
                     fontWeight: 500,
                   }}
                 />
               </Grid>
+
+              {/* Risk Metrics */}
+              {(() => {
+                const risk = riskAssessments.get(selectedNode.id);
+                if (risk) {
+                  return (
+                    <>
+                      <Grid size={{ xs: 12 }}>
+                        <Divider />
+                      </Grid>
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Risk Metrics
+                        </Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" gap={0.5}>
+                          {risk.risk_score !== undefined && risk.risk_score !== null && (
+                            <Chip
+                              label={`Risk Score: ${risk.risk_score.toFixed(1)}`}
+                              size="small"
+                              variant="outlined"
+                              color={
+                                risk.risk_score >= 75 ? 'error' :
+                                risk.risk_score >= 50 ? 'warning' :
+                                risk.risk_score >= 25 ? 'info' : 'success'
+                              }
+                            />
+                          )}
+                          {risk.blast_radius !== undefined && risk.blast_radius !== null && (
+                            <Chip
+                              label={`Blast Radius: ${risk.blast_radius}`}
+                              size="small"
+                              variant="outlined"
+                              color={risk.blast_radius > 10 ? 'warning' : 'info'}
+                            />
+                          )}
+                          {risk.dependencies_count !== undefined && (
+                            <Chip
+                              label={`Dependencies: ${risk.dependencies_count}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                          {risk.dependents_count !== undefined && (
+                            <Chip
+                              label={`Dependents: ${risk.dependents_count}`}
+                              size="small"
+                              variant="outlined"
+                              color={risk.dependents_count > 5 ? 'warning' : 'info'}
+                            />
+                          )}
+                          {risk.single_point_of_failure && (
+                            <Chip
+                              label="SPOF"
+                              size="small"
+                              color="error"
+                              variant="filled"
+                            />
+                          )}
+                        </Stack>
+                      </Grid>
+                    </>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Additional Properties */}
               {Object.keys(selectedNode.properties || {}).length > 0 && (
@@ -606,6 +884,30 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       >
         <CardContent>
           <Typography variant="body2" fontWeight={600} gutterBottom>
+            Risk Levels
+          </Typography>
+          <Stack spacing={0.5} mb={2}>
+            {[
+              { label: 'Critical Risk', color: riskColors.critical },
+              { label: 'High Risk', color: riskColors.high },
+              { label: 'Medium Risk', color: riskColors.medium },
+              { label: 'Low Risk', color: riskColors.low },
+            ].map((item) => (
+              <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '4px',
+                    backgroundColor: item.color,
+                  }}
+                />
+                <Typography variant="caption">{item.label}</Typography>
+              </Box>
+            ))}
+          </Stack>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="body2" fontWeight={600} gutterBottom>
             Resource Types
           </Typography>
           <Stack spacing={0.5}>
@@ -635,6 +937,19 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
               </Box>
             ))}
           </Stack>
+          <Divider sx={{ my: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: '4px',
+                border: '3px double #ff1744',
+                backgroundColor: 'transparent',
+              }}
+            />
+            <Typography variant="caption">Single Point of Failure</Typography>
+          </Box>
         </CardContent>
       </Card>
     </Box>
