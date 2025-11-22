@@ -80,11 +80,11 @@ export interface RiskAssessment {
 
 export interface SPOFResource {
   resource_id: string;
-  resource_name: string;
+  resource_name?: string;
   resource_type: string;
-  dependents_count: number;
-  blast_radius: number;
-  risk_score: number;
+  dependents_count?: number;
+  blast_radius?: number;
+  risk_score?: number;
   recommendations: string[];
 }
 
