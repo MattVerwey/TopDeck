@@ -22,6 +22,7 @@ import type {
   ApplicationSettings,
   ConnectionStatus,
   FeatureFlags,
+  SPOFResource,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -208,15 +209,7 @@ class ApiClient {
     }
   }
 
-  async getSinglePointsOfFailure(): Promise<Array<{
-    resource_id: string;
-    resource_name: string;
-    resource_type: string;
-    dependents_count: number;
-    blast_radius: number;
-    risk_score: number;
-    recommendations: string[];
-  }>> {
+  async getSinglePointsOfFailure(): Promise<SPOFResource[]> {
     try {
       return await this.requestWithRetry(async () => {
         const { data } = await this.client.get('/api/v1/risk/spof');

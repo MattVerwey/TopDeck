@@ -78,6 +78,16 @@ export interface RiskAssessment {
   assessed_at?: string;
 }
 
+export interface SPOFResource {
+  resource_id: string;
+  resource_name: string;
+  resource_type: string;
+  dependents_count: number;
+  blast_radius: number;
+  risk_score: number;
+  recommendations: string[];
+}
+
 export interface ChangeImpact {
   service_id: string;
   affected_services: string[];

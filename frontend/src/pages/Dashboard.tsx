@@ -1,9 +1,8 @@
 /**
- * Main dashboard page with overview metrics and topology preview
- * Enhanced to show comprehensive risk overview and analytics
+ * Risk-focused dashboard with SPOF detection, risk distribution, and actionable insights
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -38,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 import { useStore } from '../store/useStore';
-import type { TopologyGraph, RiskAssessment } from '../types';
+import type { TopologyGraph, RiskAssessment, SPOFResource } from '../types';
 import apiClient from '../services/api';
 import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
@@ -67,16 +66,6 @@ interface TopRisk {
   reason: string;
 }
 
-type SPOFResource = {
-  resource_id: string;
-  resource_name: string;
-  resource_type: string;
-  dependents_count: number;
-  blast_radius: number;
-  risk_score: number;
-  recommendations: string[];
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const { setTopology, setLoading, setError, loading } = useStore();
@@ -87,6 +76,12 @@ export default function Dashboard() {
   const [allRisks, setAllRisks] = useState<RiskAssessment[]>([]);
   const [riskDistribution, setRiskDistribution] = useState<{ name: string; value: number; color: string }[]>([]);
   const [usingMockData, setUsingMockData] = useState(false);
+
+  // Memoize sorted risks to avoid re-sorting on every render
+  const sortedRisks = useMemo(
+    () => allRisks.sort((a, b) => b.risk_score - a.risk_score).slice(0, 10),
+    [allRisks]
+  );
 
   useEffect(() => {
     loadDashboardData();
@@ -196,7 +191,9 @@ export default function Dashboard() {
         severity: change.risk_level as 'low' | 'medium' | 'high',
       }));
       setRecentChanges(recent);
-    } catch {
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.warn('Failed to load recent changes:', error.message || 'Unknown error');
       // If API fails, keep empty or use mock data
       loadMockRecentChanges();
     }
@@ -240,7 +237,9 @@ export default function Dashboard() {
     try {
       const spofs = await apiClient.getSinglePointsOfFailure();
       setSpofResources(spofs);
-    } catch {
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.warn('Failed to load SPOF resources:', error.message || 'Unknown error');
       // If API fails, use mock data
       loadMockSPOFResources();
     }
@@ -273,58 +272,68 @@ export default function Dashboard() {
   };
 
   const loadMockTopRisks = () => {
-    const mockRisks = [
+    const mockRisks: RiskAssessment[] = [
       {
         resource_id: 'sql-db-1',
         resource_name: 'SQL-Primary',
         resource_type: 'database',
         risk_score: 85,
+        criticality: 'critical',
         single_point_of_failure: true,
         dependencies_count: 5,
         dependents_count: 12,
         blast_radius: 15,
+        recommendations: ['Set up read replicas', 'Configure automatic failover'],
       },
       {
         resource_id: 'app-gateway-1',
         resource_name: 'AppGateway-Prod',
         resource_type: 'network',
         risk_score: 78,
+        criticality: 'high',
         single_point_of_failure: false,
         dependencies_count: 12,
         dependents_count: 8,
         blast_radius: 10,
+        recommendations: ['Deploy multiple instances'],
       },
       {
         resource_id: 'aks-cluster-1',
         resource_name: 'AKS-Prod-Cluster',
         resource_type: 'kubernetes',
         risk_score: 72,
+        criticality: 'high',
         single_point_of_failure: false,
         dependencies_count: 8,
         dependents_count: 15,
         blast_radius: 20,
+        recommendations: ['Implement auto-scaling'],
       },
       {
         resource_id: 'redis-cache-1',
         resource_name: 'Redis-Cache',
         resource_type: 'cache',
         risk_score: 65,
+        criticality: 'high',
         single_point_of_failure: true,
         dependencies_count: 3,
         dependents_count: 18,
         blast_radius: 22,
+        recommendations: ['Enable Redis clustering'],
       },
       {
         resource_id: 'api-service-1',
         resource_name: 'API-Service-Main',
         resource_type: 'service',
         risk_score: 58,
+        criticality: 'medium',
         single_point_of_failure: false,
         dependencies_count: 10,
         dependents_count: 5,
         blast_radius: 8,
+        recommendations: ['Add health checks'],
       },
-    ] as RiskAssessment[];
+    ];
     
     // Set allRisks for the table
     setAllRisks(mockRisks);
@@ -628,7 +637,7 @@ export default function Dashboard() {
                 </Typography>
               </Box>
               <Chip 
-                label={`${spofResources.length} Critical`}
+                label={spofResources.length === 1 ? '1 Critical SPOF' : `${spofResources.length} Critical SPOFs`}
                 color="error"
                 size="small"
               />
@@ -653,7 +662,7 @@ export default function Dashboard() {
                       primary={
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                           <Typography variant="body1" fontWeight={600}>
-                            {spof.resource_name}
+                            {spof.resource_name || spof.resource_id}
                           </Typography>
                           <Chip
                             label={spof.resource_type}
@@ -665,10 +674,10 @@ export default function Dashboard() {
                       secondary={
                         <Box sx={{ mt: 0.5 }}>
                           <Typography variant="body2" color="text.secondary">
-                            {spof.dependents_count} dependents • Blast radius: {spof.blast_radius}
+                            {spof.dependents_count ?? 0} dependents • Blast radius: {spof.blast_radius ?? 0}
                           </Typography>
                           <Typography variant="caption" color="error.main">
-                            Risk Score: {spof.risk_score}
+                            Risk Score: {spof.risk_score ?? 0}
                           </Typography>
                         </Box>
                       }
@@ -726,49 +735,46 @@ export default function Dashboard() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {allRisks
-                  .sort((a, b) => b.risk_score - a.risk_score)
-                  .slice(0, 10)
-                  .map((risk) => (
-                    <TableRow
-                      key={risk.resource_id}
-                      onClick={() => handleRiskClick(risk.resource_id)}
-                      sx={{
-                        cursor: 'pointer',
-                        '&:hover': {
-                          bgcolor: 'rgba(255, 152, 0, 0.08)',
-                        },
-                      }}
-                    >
-                      <TableCell>
-                        <Tooltip title={risk.resource_id}>
-                          <Typography variant="body2" fontWeight={600}>
-                            {risk.resource_name || risk.resource_id}
-                          </Typography>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={risk.resource_type || 'N/A'} size="small" />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography
-                          variant="body2"
-                          fontWeight={700}
-                          sx={{ color: getRiskColor(risk.risk_score) }}
-                        >
-                          {(risk.risk_score || 0).toFixed(0)}
+                {sortedRisks.map((risk) => (
+                  <TableRow
+                    key={risk.resource_id}
+                    onClick={() => handleRiskClick(risk.resource_id)}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 152, 0, 0.08)',
+                      },
+                    }}
+                  >
+                    <TableCell>
+                      <Tooltip title={risk.resource_id}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {risk.resource_name || risk.resource_id}
                         </Typography>
-                      </TableCell>
-                      <TableCell align="center">{risk.dependencies_count}</TableCell>
-                      <TableCell align="center">{risk.dependents_count}</TableCell>
-                      <TableCell align="center">{risk.blast_radius}</TableCell>
-                      <TableCell align="center">
-                        {risk.single_point_of_failure && (
-                          <ErrorIcon color="error" fontSize="small" />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={risk.resource_type || 'N/A'} size="small" />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        sx={{ color: getRiskColor(risk.risk_score) }}
+                      >
+                        {(risk.risk_score || 0).toFixed(0)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">{risk.dependencies_count ?? 0}</TableCell>
+                    <TableCell align="center">{risk.dependents_count ?? 0}</TableCell>
+                    <TableCell align="center">{risk.blast_radius ?? 0}</TableCell>
+                    <TableCell align="center">
+                      {risk.single_point_of_failure && (
+                        <ErrorIcon color="error" fontSize="small" />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
