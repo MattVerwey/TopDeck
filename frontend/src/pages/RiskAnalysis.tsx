@@ -209,9 +209,12 @@ export default function RiskAnalysis() {
           let highAssigned = 0;
           let mediumAssigned = 0;
           
-          topology.nodes.forEach((node) => {
-            let riskLevel: 'critical' | 'high' | 'medium' | 'low' = 'low';
-            let riskScore = 20;
+          // Shuffle nodes to create realistic mock distribution
+          const shuffledNodes = [...topology.nodes].sort(() => Math.random() - 0.5);
+          
+          shuffledNodes.forEach((node) => {
+            let riskLevel: 'critical' | 'high' | 'medium' | 'low';
+            let riskScore;
             
             // Assign risk levels based on counts
             if (criticalAssigned < riskCounts.critical) {

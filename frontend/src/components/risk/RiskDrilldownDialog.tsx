@@ -28,7 +28,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon,
-  Link as LinkIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
@@ -97,7 +97,7 @@ export default function RiskDrilldownDialog({
       console.log(`Found ${filteredRisks.length} resources with ${riskLevel} risk level out of ${allRisks.length} total resources`);
       
       // Sort by risk score descending to show most critical first
-      filteredRisks.sort((a, b) => b.risk_score - a.risk_score);
+      filteredRisks.sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0));
       
       setRisks(filteredRisks);
     } catch (err) {
@@ -168,9 +168,7 @@ export default function RiskDrilldownDialog({
                     transition: 'all 0.2s',
                     '&:hover': {
                       boxShadow: 4,
-                      borderColor: getRiskColor(riskLevel) === 'error' ? 'error.main' :
-                                   getRiskColor(riskLevel) === 'warning' ? 'warning.main' :
-                                   getRiskColor(riskLevel) === 'info' ? 'info.main' : 'success.main',
+                      borderColor: `${getRiskColor(riskLevel)}.main`,
                     },
                   }}
                   onClick={() => handleToggleExpand(risk.resource_id)}
@@ -239,47 +237,54 @@ export default function RiskDrilldownDialog({
                       <Divider sx={{ my: 2 }} />
                       
                       {/* Why This is Risky Section */}
-                      <Box mb={3}>
-                        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                          <WarningIcon color="warning" fontSize="small" />
-                          <Typography variant="subtitle2" fontWeight={600}>
-                            Why This is Risky
-                          </Typography>
+                      {(risk.single_point_of_failure ||
+                        (risk.blast_radius !== undefined && risk.blast_radius !== null && risk.blast_radius > 10) ||
+                        (risk.dependents_count !== undefined && risk.dependents_count !== null && risk.dependents_count > 5) ||
+                        (risk.deployment_failure_rate && risk.deployment_failure_rate > 0.1) ||
+                        (risk.misconfiguration_count && risk.misconfiguration_count > 0)
+                      ) && (
+                        <Box mb={3}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            <WarningIcon color="warning" fontSize="small" />
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              Why This is Risky
+                            </Typography>
+                          </Box>
+                          <Box component="ul" sx={{ pl: 3, mt: 0, mb: 2 }}>
+                            {risk.single_point_of_failure && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Single Point of Failure:</strong> No redundancy - if this fails, dependent services will be affected
+                              </Typography>
+                            )}
+                            {risk.blast_radius !== undefined && risk.blast_radius !== null && risk.blast_radius > 10 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Large Blast Radius:</strong> Failure would impact {risk.blast_radius} resources
+                              </Typography>
+                            )}
+                            {risk.dependents_count !== undefined && risk.dependents_count !== null && risk.dependents_count > 5 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>High Dependency:</strong> {risk.dependents_count} services depend on this resource
+                              </Typography>
+                            )}
+                            {risk.deployment_failure_rate && risk.deployment_failure_rate > 0.1 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Deployment Risk:</strong> {(risk.deployment_failure_rate * 100).toFixed(1)}% failure rate in deployments
+                              </Typography>
+                            )}
+                            {risk.misconfiguration_count && risk.misconfiguration_count > 0 && (
+                              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                <strong>Misconfigurations Detected:</strong> {risk.misconfiguration_count} configuration issue{risk.misconfiguration_count !== 1 ? 's' : ''} found
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
-                        <Box component="ul" sx={{ pl: 3, mt: 0, mb: 2 }}>
-                          {risk.single_point_of_failure && (
-                            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>Single Point of Failure:</strong> No redundancy - if this fails, dependent services will be affected
-                            </Typography>
-                          )}
-                          {risk.blast_radius > 10 && (
-                            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>Large Blast Radius:</strong> Failure would impact {risk.blast_radius} resources
-                            </Typography>
-                          )}
-                          {risk.dependents_count > 5 && (
-                            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>High Dependency:</strong> {risk.dependents_count} services depend on this resource
-                            </Typography>
-                          )}
-                          {risk.deployment_failure_rate && risk.deployment_failure_rate > 0.1 && (
-                            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>Deployment Risk:</strong> {(risk.deployment_failure_rate * 100).toFixed(1)}% failure rate in deployments
-                            </Typography>
-                          )}
-                          {risk.misconfiguration_count && risk.misconfiguration_count > 0 && (
-                            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>Misconfigurations Detected:</strong> {risk.misconfiguration_count} configuration issue{risk.misconfiguration_count !== 1 ? 's' : ''} found
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
+                      )}
 
                       {/* Misconfigurations */}
                       {risk.misconfigurations && risk.misconfigurations.length > 0 && (
                         <Box mb={3}>
                           <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                            <LinkIcon color="error" fontSize="small" />
+                            <SettingsIcon color="error" fontSize="small" />
                             <Typography variant="subtitle2" fontWeight={600}>
                               Configuration Issues
                             </Typography>
