@@ -4,6 +4,9 @@
 
 import type { Resource, TopologyGraph } from '../types';
 
+// Interaction hint text constant
+const COLLAPSE_EXPAND_HINT = '(click to collapse/expand)';
+
 export interface GroupedNode {
   id: string;
   label: string;
@@ -100,7 +103,7 @@ function formatGroupLabel(key: string, groupBy: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   
-  return `${formatted} (click to collapse/expand)`;
+  return `${formatted} ${COLLAPSE_EXPAND_HINT}`;
 }
 
 /**

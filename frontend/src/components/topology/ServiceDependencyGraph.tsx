@@ -443,7 +443,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           if (isCollapsed) {
             // Expand: show all children
             children.removeClass('collapsed-child');
-            children.style('display', 'element');
+            children.removeStyle('display');
           } else {
             // Collapse: hide all children
             children.addClass('collapsed-child');

@@ -394,7 +394,10 @@ export default function Topology() {
                 <Select
                   value={filterSettings.groupBy || ''}
                   label="Group By"
-                  onChange={(e) => setFilterSettings({ ...filterSettings, groupBy: e.target.value as any })}
+                  onChange={(e) => setFilterSettings({ 
+                    ...filterSettings, 
+                    groupBy: e.target.value as TopologyFilterSettings['groupBy']
+                  })}
                 >
                   <MenuItem value="">None</MenuItem>
                   <MenuItem value="cluster">Cluster</MenuItem>
