@@ -59,8 +59,12 @@ const MemoizedRiskCard = memo(({
       transition: 'all 0.2s',
       '&:hover': {
         transform: 'translateY(-4px)',
-        boxShadow: 4,
+        boxShadow: 6,
         borderLeftWidth: '6px',
+        bgcolor: 'action.hover',
+      },
+      '&:active': {
+        transform: 'translateY(-2px)',
       },
     }}
     onClick={onClick}
@@ -77,8 +81,8 @@ const MemoizedRiskCard = memo(({
         value={(metric.count / (nodeCount || 1)) * 100}
         sx={{ mt: 2, height: 6, borderRadius: 3 }}
       />
-      <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block' }}>
-        Click to view details
+      <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block', fontWeight: 600 }}>
+        Click to view details →
       </Typography>
     </CardContent>
   </Card>
@@ -101,6 +105,7 @@ export default function RiskAnalysis() {
   const [activeTab, setActiveTab] = useState(0);
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [selectedRiskLevel, setSelectedRiskLevel] = useState<'critical' | 'high' | 'medium' | 'low'>('critical');
+  const [cachedRiskAssessments, setCachedRiskAssessments] = useState<RiskAssessment[]>([]);
 
   useEffect(() => {
     loadRiskData();
@@ -173,6 +178,9 @@ export default function RiskAnalysis() {
       });
       
       console.log('Risk distribution:', riskCounts);
+
+      // Cache the risk assessments for use in drilldown dialog
+      setCachedRiskAssessments(allRisks);
 
       // If no API data, use estimates based on topology
       // These percentages provide reasonable defaults based on typical risk distribution:
@@ -463,6 +471,7 @@ export default function RiskAnalysis() {
         open={drilldownOpen}
         onClose={() => setDrilldownOpen(false)}
         riskLevel={selectedRiskLevel}
+        cachedRisks={cachedRiskAssessments}
       />
     </Box>
   );
