@@ -9,7 +9,7 @@ import cytoscape from 'cytoscape';
 import type { TopologyGraph as TopologyGraphType, ViewMode } from '../../types';
 import { useStore } from '../../store/useStore';
 import TransactionFlowDialog from './TransactionFlowDialog';
-import { applyGroupingToElements } from '../../utils/topologyGrouping';
+import { applyGroupingToElements, type NodeElement } from '../../utils/topologyGrouping';
 
 interface TopologyGraphProps {
   data: TopologyGraphType;
@@ -67,7 +67,7 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
           label: edge.relationship_type,
         },
       })),
-    ];
+    ] as NodeElement[];
 
     // Apply grouping if enabled
     const finalElements = filterSettings.showGrouping && filterSettings.groupBy

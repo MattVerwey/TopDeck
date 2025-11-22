@@ -37,7 +37,8 @@ import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment, Topo
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import { getRiskLevelFromScore } from '../../utils/riskUtils';
-import { applyGroupingToElements } from '../../utils/topologyGrouping';
+import { applyGroupingToElements, type NodeElement } from '../../utils/topologyGrouping';
+
 
 
 // Constants for node sizing and padding
@@ -283,7 +284,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           relType: edge.relationship_type,
         },
       })),
-    ];
+    ] as NodeElement[];
 
     // Apply grouping if enabled
     const finalElements = filterSettings.showGrouping && filterSettings.groupBy

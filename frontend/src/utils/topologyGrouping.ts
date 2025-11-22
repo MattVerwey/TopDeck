@@ -20,7 +20,7 @@ export interface NodeElement {
     label: string;
     parent?: string;
     isGroup?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   classes?: string;
 }
@@ -133,10 +133,10 @@ export function assignNodeParents(
  * Apply grouping to topology data for Cytoscape
  */
 export function applyGroupingToElements(
-  elements: any[],
+  elements: NodeElement[],
   groupBy: 'cluster' | 'namespace' | 'resource_type' | 'cloud_provider' | undefined,
   nodes: Resource[]
-): any[] {
+): NodeElement[] {
   if (!groupBy) {
     return elements;
   }
