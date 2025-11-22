@@ -278,7 +278,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           } as cytoscape.Css.Node,
         },
         {
-          selector: 'node[spof = true]',
+          selector: 'node[?spof]',
           style: {
             'border-width': 5,
             'border-color': '#ff1744', // Bright red border for SPOF
