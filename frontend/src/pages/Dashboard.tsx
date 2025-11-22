@@ -67,7 +67,7 @@ interface TopRisk {
   reason: string;
 }
 
-interface SPOFResource {
+type SPOFResource = {
   resource_id: string;
   resource_name: string;
   resource_type: string;
@@ -75,7 +75,7 @@ interface SPOFResource {
   blast_radius: number;
   risk_score: number;
   recommendations: string[];
-}
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -111,8 +111,8 @@ export default function Dashboard() {
         loadSPOFResources(),
       ]);
     } catch (err: unknown) {
-      const error = err as Error;
-      console.warn('API unavailable, using mock data:', error.message);
+      const error = err as { message?: string };
+      console.warn('API unavailable, using mock data:', error.message || 'Unknown error');
       // Fallback to mock data when API is unavailable
       setTopology(mockTopologyData);
       setUsingMockData(true);
@@ -391,9 +391,10 @@ export default function Dashboard() {
   };
 
   const getRiskColor = (score: number) => {
-    if (score >= 80) return '#f44336';
-    if (score >= 60) return '#ff9800';
-    return '#4caf50';
+    if (score >= 80) return '#f44336'; // Critical - red
+    if (score >= 60) return '#ff9800'; // High - orange
+    if (score >= 40) return '#ffc107'; // Medium - yellow
+    return '#4caf50'; // Low - green
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -755,7 +756,7 @@ export default function Dashboard() {
                           fontWeight={700}
                           sx={{ color: getRiskColor(risk.risk_score) }}
                         >
-                          {risk.risk_score.toFixed(0)}
+                          {(risk.risk_score || 0).toFixed(0)}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">{risk.dependencies_count}</TableCell>
