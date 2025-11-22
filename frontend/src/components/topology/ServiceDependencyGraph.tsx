@@ -350,6 +350,12 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           } as cytoscape.Css.Node,
         },
         {
+          selector: 'node.collapsed-child',
+          style: {
+            display: 'none',
+          } as cytoscape.Css.Node,
+        },
+        {
           selector: 'node:selected',
           style: {
             'border-width': 5,
@@ -425,7 +431,35 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     // Add event handlers
     cyRef.current.on('tap', 'node', (evt) => {
       const node = evt.target;
-      const nodeData = node.data() as Resource;
+      const nodeData = node.data() as Resource & { isGroup?: boolean };
+      
+      // Handle group node collapse/expand
+      if (nodeData.isGroup) {
+        const children = node.children();
+        if (children.length > 0) {
+          // Check if currently collapsed
+          const isCollapsed = children.some((child: any) => child.hasClass('collapsed-child'));
+          
+          if (isCollapsed) {
+            // Expand: show all children
+            children.removeClass('collapsed-child');
+            children.style('display', 'element');
+          } else {
+            // Collapse: hide all children
+            children.addClass('collapsed-child');
+            children.style('display', 'none');
+          }
+          
+          // Re-layout after collapse/expand
+          cyRef.current?.layout({
+            name: 'cose',
+            animate: true,
+            animationDuration: 300,
+          }).run();
+        }
+        return; // Don't show details for group nodes
+      }
+      
       setSelectedNode(nodeData);
       setSelectedResource(nodeData);
       

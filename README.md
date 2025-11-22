@@ -46,6 +46,7 @@ TopDeck provides that answer by:
 
 ### Topology & Dependencies (NEW!)
 - **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
+- **[Topology Filtering & Grouping Guide](docs/TOPOLOGY_FILTERING_GROUPING.md)** - ✨ NEW! Advanced filtering modes and visual grouping
 - **[Topology Analysis Quick Reference](docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
 - **[Multi-Source Dependency Verification](docs/DEPENDENCY_VERIFICATION.md)** - ✨ NEW! Verify dependencies across Azure, ADO, Prometheus, and Tempo
 - **[Dependency Verification Quick Reference](docs/DEPENDENCY_VERIFICATION_QUICK_REF.md)** - Quick verification commands
