@@ -113,6 +113,12 @@ const getNodeColor = (node: Resource, riskLevel?: string): string => {
   return serviceColors[type] || serviceColors[provider] || '#607d8b';
 };
 
+// Helper to get node's risk level from risk assessments
+const getNodeRiskLevel = (nodeId: string, riskMap: Map<string, RiskAssessment>): string | undefined => {
+  const risk = riskMap.get(nodeId);
+  return risk ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score)) : undefined;
+};
+
 // Relationship type to description mapping
 const relationshipLabels: Record<string, string> = {
   depends_on: 'depends on',
@@ -159,13 +165,21 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
         let allRisks: RiskAssessment[] = [];
         try {
           allRisks = await apiClient.getAllRisks();
-        } catch {
-          // Fallback to individual requests
+          console.log(`Loaded ${allRisks.length} risk assessments via bulk endpoint`);
+        } catch (bulkError) {
+          // Log bulk endpoint failure and fallback to individual requests
+          console.warn('Bulk risk endpoint failed, falling back to individual requests:', bulkError);
+          
+          // Fallback to individual requests (potential N+1 issue, but necessary if bulk fails)
           const riskPromises = data.nodes.map(node =>
-            apiClient.getRiskAssessment(node.id).catch(() => null)
+            apiClient.getRiskAssessment(node.id).catch(err => {
+              console.debug(`Failed to fetch risk for ${node.id}:`, err);
+              return null;
+            })
           );
           const risks = await Promise.all(riskPromises);
           allRisks = risks.filter((r): r is RiskAssessment => r !== null);
+          console.log(`Loaded ${allRisks.length}/${data.nodes.length} risk assessments via individual requests`);
         }
 
         // Create a map of resource_id to risk assessment
@@ -633,13 +647,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                         width: 48,
                         height: 48,
                         borderRadius: '8px',
-                        backgroundColor: (() => {
-                          const risk = riskAssessments.get(selectedNode.id);
-                          const riskLevel = risk
-                            ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score))
-                            : undefined;
-                          return getNodeColor(selectedNode, riskLevel);
-                        })(),
+                        backgroundColor: getNodeColor(selectedNode, getNodeRiskLevel(selectedNode.id, riskAssessments)),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -675,10 +683,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                       />
                     )}
                     {(() => {
-                      const risk = riskAssessments.get(selectedNode.id);
-                      const riskLevel = risk
-                        ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score))
-                        : undefined;
+                      const riskLevel = getNodeRiskLevel(selectedNode.id, riskAssessments);
                       if (riskLevel) {
                         const riskIcon = riskLevel === 'critical' ? <ErrorIcon /> :
                                        riskLevel === 'high' ? <Warning /> :
@@ -741,13 +746,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
                   label={selectedNode.resource_type}
                   size="small"
                   sx={{
-                    backgroundColor: (() => {
-                      const risk = riskAssessments.get(selectedNode.id);
-                      const riskLevel = risk
-                        ? (risk.risk_level?.toLowerCase() || getRiskLevelFromScore(risk.risk_score))
-                        : undefined;
-                      return getNodeColor(selectedNode, riskLevel);
-                    })(),
+                    backgroundColor: getNodeColor(selectedNode, getNodeRiskLevel(selectedNode.id, riskAssessments)),
                     color: '#fff',
                     fontWeight: 500,
                   }}
