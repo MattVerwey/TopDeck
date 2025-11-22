@@ -37,6 +37,7 @@ import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment, Topo
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import { getRiskLevelFromScore } from '../../utils/riskUtils';
+import { applyGroupingToElements } from '../../utils/topologyGrouping';
 
 
 // Constants for node sizing and padding
@@ -141,7 +142,7 @@ const relationshipLabels: Record<string, string> = {
 export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const { setSelectedResource } = useStore();
+  const { setSelectedResource, filterSettings } = useStore();
   const [selectedNode, setSelectedNode] = useState<Resource | null>(null);
   const [graphStats, setGraphStats] = useState({
     nodes: 0,
@@ -284,11 +285,36 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       })),
     ];
 
+    // Apply grouping if enabled
+    const finalElements = filterSettings.showGrouping && filterSettings.groupBy
+      ? applyGroupingToElements(elements, filterSettings.groupBy, data.nodes)
+      : elements;
+
     // Initialize Cytoscape with enhanced styling
     cyRef.current = cytoscape({
       container: containerRef.current,
-      elements,
+      elements: finalElements,
       style: [
+        // Group node styling
+        {
+          selector: '.group-node',
+          style: {
+            shape: 'roundrectangle',
+            'background-color': '#1e293b',
+            'background-opacity': 0.1,
+            'border-width': 2,
+            'border-color': '#475569',
+            'border-style': 'dashed',
+            label: 'data(label)',
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'text-margin-y': 10,
+            'font-size': '14px',
+            'font-weight': 700,
+            color: '#cbd5e1',
+            'padding': 20,
+          } as cytoscape.Css.Node,
+        },
         {
           selector: 'node',
           style: {
@@ -426,7 +452,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     return () => {
       cyRef.current?.destroy();
     };
-  }, [data, setSelectedResource, riskAssessments]);
+  }, [data, setSelectedResource, riskAssessments, filterSettings]);
 
   // Zoom controls
   const handleZoomIn = () => {
