@@ -70,6 +70,8 @@ TopDeck provides that answer by:
 ### API & Performance
 - **[Rate Limiting Guide](docs/RATE_LIMITING.md)** - ✨ NEW! Redis-based distributed rate limiting with token bucket algorithm
 - **[Rate Limiting Quick Reference](docs/RATE_LIMITING_QUICK_REF.md)** - Quick rate limiting configuration and troubleshooting
+- **[Load Change Detection](docs/LOAD_CHANGE_DETECTION.md)** - ✨ NEW! Detect scaling events and predict load impact using Prometheus
+- **[Load Detection Quick Reference](docs/LOAD_CHANGE_DETECTION_QUICK_REF.md)** - Quick commands for load monitoring
 
 ### Project Status
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
@@ -504,7 +506,43 @@ curl "http://localhost:8000/api/v1/prediction/health"
 
 See **[ML Prediction Research](docs/ML_PREDICTION_RESEARCH.md)** for technical analysis and **[ML Prediction Guide](docs/ML_PREDICTION_GUIDE.md)** for usage examples.
 
-**8. Change Management** ✨ **NEW**
+**8. Load Change Detection** ✨ **NEW**
+```bash
+# Detect scaling events from Prometheus
+curl "http://localhost:8000/api/v1/load/resources/{resource-id}/scaling-events?lookback_hours=24"
+
+# Get current load baseline
+curl "http://localhost:8000/api/v1/load/resources/{resource-id}/baseline"
+
+# Analyze impact of scaling events
+curl "http://localhost:8000/api/v1/load/resources/{resource-id}/impact-analysis?lookback_hours=24"
+
+# Predict load at target pod count
+curl "http://localhost:8000/api/v1/load/resources/{resource-id}/predict-load?target_pod_count=8&lookback_days=30"
+
+# Detect high load patterns and capacity issues
+curl "http://localhost:8000/api/v1/load/resources/{resource-id}/high-load-patterns?lookback_hours=24"
+```
+
+**Load Change Detection Features:**
+- ✅ **Scaling Event Detection**: Automatically detect when pods/services are added or removed
+- ✅ **Load Impact Analysis**: Measure CPU, memory, latency, and error rate changes after scaling
+- ✅ **Predictive Load Modeling**: Predict performance at target pod count based on historical patterns
+- ✅ **High Load Pattern Detection**: Identify services under stress that need attention
+- ✅ **Historical Pattern Analysis**: Learn from past scaling events to improve predictions
+- ✅ **Confidence Scoring**: Prediction confidence based on available historical data
+- ✅ **Actionable Recommendations**: Get specific guidance for scaling decisions
+- ✅ **Prometheus Integration**: Uses existing Prometheus metrics (CPU, memory, latency, errors)
+
+**Use Cases:**
+- **Before Scaling**: Predict impact of adding/removing pods
+- **After Scaling**: Validate scaling was effective
+- **Proactive Monitoring**: Detect services approaching capacity limits
+- **Post-Incident Analysis**: Understand if scaling contributed to issues
+
+See **[Load Change Detection Guide](docs/LOAD_CHANGE_DETECTION.md)** and **[Quick Reference](docs/LOAD_CHANGE_DETECTION_QUICK_REF.md)** for complete documentation.
+
+**9. Change Management** ✨ **NEW**
 ```bash
 # Create a change request
 curl -X POST http://localhost:8000/api/v1/changes \
@@ -539,7 +577,7 @@ curl "http://localhost:8000/api/v1/changes/calendar?start_date=2024-11-01T00:00:
 
 See **[Change Management Guide](docs/CHANGE_MANAGEMENT_GUIDE.md)** for complete documentation.
 
-**9. Error Replay & Debugging** ✨ **NEW**
+**10. Error Replay & Debugging** ✨ **NEW**
 ```bash
 # Capture an error with full context
 curl -X POST http://localhost:8000/error-replay/capture \
@@ -585,7 +623,7 @@ curl "http://localhost:8000/error-replay/statistics?start_time=2024-01-01T00:00:
 
 See **[Error Replay Guide](docs/ERROR_REPLAY_GUIDE.md)** for complete documentation.
 
-**10. Reporting & Analysis** ✨ **NEW**
+**11. Reporting & Analysis** ✨ **NEW**
 ```bash
 # Generate comprehensive report for a resource
 curl -X POST http://localhost:8000/api/v1/reports/generate \
