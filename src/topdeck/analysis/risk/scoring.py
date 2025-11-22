@@ -61,6 +61,15 @@ class RiskScorer:
         "vnet": 5,
     }
 
+    # Infrastructure types that host multiple services and require HA/redundancy
+    # These get additional criticality boost when lacking redundancy
+    # Note: Load balancers have lower base criticality (20) but still benefit from
+    # redundancy boost since they're single points of failure for traffic routing
+    INFRASTRUCTURE_TYPES = frozenset([
+        "aks", "eks", "gke_cluster", "kubernetes", "kubernetes_cluster",
+        "load_balancer", "cluster"
+    ])
+
     def __init__(self, weights: dict[str, float] | None = None):
         """
         Initialize risk scorer.
@@ -177,11 +186,8 @@ class RiskScorer:
         
         # Infrastructure components (AKS, EKS, load balancers, clusters) without HA/redundancy
         # should have higher criticality since they can bring down many services
-        infrastructure_types = [
-            "aks", "eks", "gke_cluster", "kubernetes", "kubernetes_cluster",
-            "load_balancer", "cluster"
-        ]
-        if resource_type.lower() in infrastructure_types and not has_redundancy:
+        # Note: resource_type is converted to lowercase for case-insensitive comparison
+        if resource_type.lower() in self.INFRASTRUCTURE_TYPES and not has_redundancy:
             # Significant boost for infrastructure without HA - these are critical
             base_criticality += 20
 
