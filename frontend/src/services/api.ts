@@ -208,6 +208,26 @@ class ApiClient {
     }
   }
 
+  async getSinglePointsOfFailure(): Promise<Array<{
+    resource_id: string;
+    resource_name: string;
+    resource_type: string;
+    dependents_count: number;
+    blast_radius: number;
+    risk_score: number;
+    recommendations: string[];
+  }>> {
+    try {
+      return await this.requestWithRetry(async () => {
+        const { data } = await this.client.get('/api/v1/risk/spof');
+        return data;
+      });
+    } catch {
+      // Fallback to empty array if endpoint doesn't exist
+      return [];
+    }
+  }
+
   async getChangeImpact(serviceId: string, changeType: string): Promise<ChangeImpact> {
     return this.requestWithRetry(async () => {
       const { data } = await this.client.post(`/api/v1/risk/impact`, {
