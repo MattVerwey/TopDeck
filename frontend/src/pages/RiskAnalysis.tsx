@@ -201,6 +201,74 @@ export default function RiskAnalysis() {
         riskCounts.high = Math.max(Math.floor(nodeCount * HIGH_PERCENTAGE), MIN_HIGH);
         riskCounts.medium = Math.max(Math.floor(nodeCount * MEDIUM_PERCENTAGE), MIN_MEDIUM);
         riskCounts.low = Math.max(nodeCount - riskCounts.critical - riskCounts.high - riskCounts.medium, MIN_LOW);
+        
+        // Create mock risk assessments for demo mode when API is unavailable
+        const mockRisks: RiskAssessment[] = [];
+        if (topology?.nodes) {
+          let criticalAssigned = 0;
+          let highAssigned = 0;
+          let mediumAssigned = 0;
+          
+          topology.nodes.forEach((node) => {
+            let riskLevel: 'critical' | 'high' | 'medium' | 'low' = 'low';
+            let riskScore = 20;
+            
+            // Assign risk levels based on counts
+            if (criticalAssigned < riskCounts.critical) {
+              riskLevel = 'critical';
+              riskScore = 75 + Math.random() * 25; // 75-100
+              criticalAssigned++;
+            } else if (highAssigned < riskCounts.high) {
+              riskLevel = 'high';
+              riskScore = 50 + Math.random() * 25; // 50-75
+              highAssigned++;
+            } else if (mediumAssigned < riskCounts.medium) {
+              riskLevel = 'medium';
+              riskScore = 25 + Math.random() * 25; // 25-50
+              mediumAssigned++;
+            } else {
+              riskLevel = 'low';
+              riskScore = Math.random() * 25; // 0-25
+            }
+            
+            // Create mock assessment
+            mockRisks.push({
+              resource_id: node.id,
+              resource_name: node.name,
+              resource_type: node.resource_type,
+              risk_score: riskScore,
+              risk_level: riskLevel,
+              criticality: riskLevel,
+              criticality_score: riskScore,
+              dependencies_count: Math.floor(Math.random() * 5),
+              dependents_count: Math.floor(Math.random() * 10),
+              blast_radius: Math.floor(Math.random() * 15),
+              single_point_of_failure: riskLevel === 'critical' && Math.random() > 0.5,
+              deployment_failure_rate: riskLevel === 'critical' ? Math.random() * 0.3 : Math.random() * 0.1,
+              time_since_last_change: Math.random() * 72,
+              recommendations: [
+                `Add redundancy for ${node.name}`,
+                `Implement health checks`,
+                `Configure auto-scaling`,
+              ].slice(0, riskLevel === 'critical' ? 3 : riskLevel === 'high' ? 2 : 1),
+              factors: {
+                importance: node.metadata?.importance || 1,
+                health: node.properties?.health_status === 'healthy' ? 1 : 0.5,
+              },
+              misconfigurations: riskLevel === 'critical' || riskLevel === 'high' ? [
+                {
+                  type: 'Security',
+                  description: 'Missing network security group rules',
+                  severity: riskLevel,
+                }
+              ] : [],
+              misconfiguration_count: riskLevel === 'critical' || riskLevel === 'high' ? 1 : 0,
+            });
+          });
+          
+          // Set the mock risks as cached data for the dialog
+          setCachedRiskAssessments(mockRisks);
+        }
       }
 
       const riskMetrics: RiskMetric[] = [
