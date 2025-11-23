@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from topdeck import __version__
 from topdeck.api.routes import (
+    alerts,
     change_management,
     discovery,
     error_replay,
@@ -194,6 +195,7 @@ app.include_router(reporting.router)
 app.include_router(settings_router.router)
 app.include_router(load_detection.router)
 app.include_router(live_diagnostics.router)
+app.include_router(alerts.router)
 
 
 @app.get("/")
