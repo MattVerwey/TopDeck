@@ -273,10 +273,10 @@ class BaselineAnalyzer:
             
             # Calculate percentiles
             sorted_values = sorted(values)
-            p95_idx = int(len(sorted_values) * 0.95)
-            p99_idx = int(len(sorted_values) * 0.99)
-            percentile_95 = sorted_values[p95_idx] if p95_idx < len(sorted_values) else max_val
-            percentile_99 = sorted_values[p99_idx] if p99_idx < len(sorted_values) else max_val
+            p95_idx = min(int(len(sorted_values) * 0.95), len(sorted_values) - 1)
+            p99_idx = min(int(len(sorted_values) * 0.99), len(sorted_values) - 1)
+            percentile_95 = sorted_values[p95_idx]
+            percentile_99 = sorted_values[p99_idx]
             
             return BaselineMetric(
                 metric_name=metric_type.value,
@@ -440,7 +440,8 @@ class BaselineAnalyzer:
         if historical_value != 0:
             percent_change = ((current_value - historical_value) / historical_value) * 100
         else:
-            percent_change = 0 if current_value == 0 else float('inf')
+            # Avoid using float('inf') which causes JSON serialization issues
+            percent_change = 0 if current_value == 0 else 999999.0
         
         absolute_change = current_value - historical_value
         

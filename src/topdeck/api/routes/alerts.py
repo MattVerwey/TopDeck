@@ -5,6 +5,7 @@ Endpoints for creating alert rules, managing destinations, and viewing alert his
 """
 
 import logging
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any, Optional
@@ -13,7 +14,6 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from topdeck.monitoring.alerting import (
-    Alert,
     AlertDestination,
     AlertDestinationType,
     AlertingEngine,
@@ -49,11 +49,16 @@ def get_alerting_engine() -> AlertingEngine:
         
         # Initialize alerting engine
         # SMTP settings should come from environment variables
-        import os
+        try:
+            smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        except ValueError:
+            smtp_port = 587
+            logger.warning("Invalid SMTP_PORT value, using default 587")
+        
         _alerting_engine = AlertingEngine(
             diagnostics_service=diagnostics_service,
             smtp_host=os.getenv("SMTP_HOST"),
-            smtp_port=int(os.getenv("SMTP_PORT", "587")),
+            smtp_port=smtp_port,
             smtp_username=os.getenv("SMTP_USERNAME"),
             smtp_password=os.getenv("SMTP_PASSWORD"),
             smtp_from_address=os.getenv("SMTP_FROM_ADDRESS"),

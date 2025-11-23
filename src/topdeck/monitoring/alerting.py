@@ -5,8 +5,6 @@ Provides rule-based alerting for service health, anomalies, and traffic patterns
 Supports multiple notification channels: Email, Slack, PagerDuty, custom webhooks.
 """
 
-import asyncio
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -17,11 +15,7 @@ import aiohttp
 import aiosmtplib
 from email.message import EmailMessage
 
-from topdeck.monitoring.live_diagnostics import (
-    LiveDiagnosticsService,
-    ServiceHealthStatus,
-    AnomalyAlert,
-)
+from topdeck.monitoring.live_diagnostics import LiveDiagnosticsService
 
 logger = logging.getLogger(__name__)
 

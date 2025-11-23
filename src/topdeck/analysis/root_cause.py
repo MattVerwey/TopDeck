@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any, Optional
 
-from topdeck.monitoring.live_diagnostics import LiveDiagnosticsService, AnomalyAlert
+from topdeck.monitoring.live_diagnostics import LiveDiagnosticsService
 from topdeck.monitoring.prometheus_collector import PrometheusCollector
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -494,7 +494,6 @@ class RootCauseAnalyzer:
             (root_cause_type, primary_cause, contributing_factors, confidence)
         """
         contributing_factors = []
-        confidence = 0.5  # Base confidence
         
         # Check for propagation from dependency
         if propagation:
@@ -509,7 +508,7 @@ class RootCauseAnalyzer:
         
         # Check for recent deployment
         recent_deployments = [e for e in timeline if e.event_type == "deployment"]
-        if recent_deployments:
+        if recent_deployments and timeline:
             deployment = recent_deployments[-1]
             # If deployment was within 1 hour of failure
             time_diff = abs((deployment.timestamp - timeline[-1].timestamp).total_seconds())
