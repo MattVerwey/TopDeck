@@ -15,7 +15,17 @@ import {
   TableHead,
   TableRow,
   Chip,
+  IconButton,
+  Collapse,
+  Stack,
+  LinearProgress,
 } from '@mui/material';
+import {
+  KeyboardArrowDown as ExpandIcon,
+  KeyboardArrowUp as CollapseIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+} from '@mui/icons-material';
 import BaseWidget, { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
 
@@ -42,6 +52,7 @@ export default function TrafficHeatmapWidget({
   const [patterns, setPatterns] = useState<TrafficPattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   const showErrors = config.config?.show_errors !== false;
 
@@ -69,6 +80,56 @@ export default function TrafficHeatmapWidget({
     return '#f44336';
   };
 
+  const getLatencyColor = (latency: number) => {
+    if (latency < 100) return '#4caf50';
+    if (latency < 500) return '#ff9800';
+    return '#f44336';
+  };
+
+  const handleRowClick = (index: number) => {
+    setExpandedRow(expandedRow === index ? null : index);
+  };
+
+  const renderExpandedDetails = (pattern: TrafficPattern) => (
+    <Box sx={{ p: 2, bgcolor: 'background.default' }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Traffic Details
+      </Typography>
+      <Stack spacing={1}>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Request Rate Trend
+          </Typography>
+          <LinearProgress 
+            variant="determinate" 
+            value={Math.min(pattern.request_rate * 10, 100)} 
+            sx={{ height: 8, borderRadius: 1, mt: 0.5 }}
+          />
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Error Budget
+          </Typography>
+          <LinearProgress 
+            variant="determinate" 
+            value={100 - pattern.error_rate} 
+            color={pattern.error_rate < 1 ? 'success' : 'error'}
+            sx={{ height: 8, borderRadius: 1, mt: 0.5 }}
+          />
+        </Box>
+        <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+          <Chip 
+            icon={pattern.error_rate < 5 ? <TrendingDownIcon /> : <TrendingUpIcon />}
+            label={`Error Trend: ${pattern.error_rate < 5 ? 'Improving' : 'Degrading'}`}
+            size="small"
+            color={pattern.error_rate < 5 ? 'success' : 'error'}
+            variant="outlined"
+          />
+        </Stack>
+      </Stack>
+    </Box>
+  );
+
   return (
     <BaseWidget
       config={config}
@@ -95,49 +156,104 @@ export default function TrafficHeatmapWidget({
         <TableContainer>
           <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Source</TableCell>
-                <TableCell>Target</TableCell>
-                <TableCell align="right">Req/s</TableCell>
-                <TableCell align="right">Error %</TableCell>
-                <TableCell align="right">P95 (ms)</TableCell>
+              <TableRow sx={{ bgcolor: 'background.default' }}>
+                <TableCell sx={{ width: 40 }}></TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Target</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                  Req/s
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                  Error Rate
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                  P95 Latency
+                </TableCell>
                 <TableCell>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {patterns.map((pattern, index) => (
-                <TableRow
-                  key={`${pattern.source_id}-${pattern.target_id}`}
-                  sx={{
-                    '&:hover': { bgcolor: 'action.hover' },
-                    bgcolor: pattern.is_abnormal ? 'error.light' : 'transparent',
-                  }}
-                >
-                  <TableCell>{pattern.source_id}</TableCell>
-                  <TableCell>{pattern.target_id}</TableCell>
-                  <TableCell align="right">
-                    {pattern.request_rate.toFixed(2)}
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ color: getErrorRateColor(pattern.error_rate) }}
+                <>
+                  <TableRow
+                    key={`${pattern.source_id}-${pattern.target_id}`}
+                    onClick={() => handleRowClick(index)}
+                    sx={{
+                      '&:hover': { bgcolor: 'action.hover', cursor: 'pointer' },
+                      bgcolor: pattern.is_abnormal 
+                        ? 'rgba(244, 67, 54, 0.1)' 
+                        : 'transparent',
+                    }}
                   >
-                    {pattern.error_rate.toFixed(2)}%
-                  </TableCell>
-                  <TableCell align="right">
-                    {pattern.latency_p95.toFixed(0)}
-                  </TableCell>
-                  <TableCell>
-                    {pattern.is_abnormal && (
+                    <TableCell>
+                      <IconButton size="small">
+                        {expandedRow === index ? <CollapseIcon /> : <ExpandIcon />}
+                      </IconButton>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="medium">
+                        {pattern.source_id}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="medium">
+                        {pattern.target_id}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
                       <Chip
-                        label="Abnormal"
+                        label={pattern.request_rate.toFixed(2)}
                         size="small"
-                        color="error"
-                        variant="outlined"
+                        sx={{ 
+                          minWidth: 60,
+                          bgcolor: 'primary.dark',
+                          fontWeight: 'bold'
+                        }}
                       />
-                    )}
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={`${pattern.error_rate.toFixed(2)}%`}
+                        size="small"
+                        sx={{ 
+                          minWidth: 60,
+                          bgcolor: getErrorRateColor(pattern.error_rate),
+                          color: 'white',
+                          fontWeight: 'bold'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={`${pattern.latency_p95.toFixed(0)}ms`}
+                        size="small"
+                        sx={{ 
+                          minWidth: 70,
+                          bgcolor: getLatencyColor(pattern.latency_p95),
+                          color: 'white',
+                          fontWeight: 'bold'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {pattern.is_abnormal && (
+                        <Chip
+                          label="Abnormal"
+                          size="small"
+                          color="error"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                      <Collapse in={expandedRow === index} timeout="auto" unmountOnExit>
+                        {renderExpandedDetails(pattern)}
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </>
               ))}
             </TableBody>
           </Table>

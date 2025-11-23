@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Chip, Stack } from '@mui/material';
 import {
   LineChart,
   Line,
@@ -17,6 +17,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import BaseWidget, { WidgetConfig } from '../BaseWidget';
@@ -79,27 +80,130 @@ export default function CustomMetricWidget({
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Format value based on metric type
+  const formatValue = (value: number) => {
+    if (metric.includes('latency') || metric.includes('p95') || metric.includes('p99')) {
+      return `${value.toFixed(2)}ms`;
+    }
+    if (metric.includes('cpu') || metric.includes('memory') || metric.includes('error_rate')) {
+      return `${value.toFixed(1)}%`;
+    }
+    if (metric.includes('request_rate')) {
+      return `${value.toFixed(2)} req/s`;
+    }
+    return value.toFixed(2);
+  };
+
+  // Get metric display name
+  const getMetricLabel = () => {
+    const labels: Record<string, string> = {
+      'latency_p95': 'P95 Latency (ms)',
+      'latency_p99': 'P99 Latency (ms)',
+      'latency_p50': 'P50 Latency (ms)',
+      'cpu_usage': 'CPU Usage (%)',
+      'memory_usage': 'Memory Usage (%)',
+      'request_rate': 'Request Rate (req/s)',
+      'error_rate': 'Error Rate (%)',
+    };
+    return labels[metric] || metric;
+  };
+
+  // Custom tooltip with Grafana-style formatting
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <Box
+          sx={{
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 1,
+            p: 1.5,
+            boxShadow: 2,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" display="block">
+            {payload[0].payload.time}
+          </Typography>
+          <Typography variant="body2" fontWeight="medium" color="primary" sx={{ mt: 0.5 }}>
+            {getMetricLabel()}: {formatValue(payload[0].value)}
+          </Typography>
+        </Box>
+      );
+    }
+    return null;
+  };
+
+  // Calculate statistics for display
+  const stats = data.length > 0 ? {
+    current: data[data.length - 1].value,
+    min: Math.min(...data.map(d => d.value)),
+    max: Math.max(...data.map(d => d.value)),
+    avg: data.reduce((sum, d) => sum + d.value, 0) / data.length,
+  } : null;
+
   const renderChart = () => {
     const chartData = data.map(d => ({
       time: formatTime(d.timestamp),
-      value: d.value,
+      [getMetricLabel()]: d.value,
     }));
 
     const commonProps = {
       data: chartData,
-      margin: { top: 10, right: 30, left: 0, bottom: 0 },
+      margin: { top: 5, right: 10, left: 0, bottom: 5 },
     };
+
+    // Grafana-inspired color palette
+    const colors = {
+      primary: '#33b5e5',
+      success: '#00e396',
+      warning: '#feb019',
+      error: '#ff4560',
+    };
+
+    const getColor = () => {
+      if (metric.includes('error')) return colors.error;
+      if (metric.includes('latency')) return colors.warning;
+      if (metric.includes('cpu') || metric.includes('memory')) return colors.primary;
+      return colors.success;
+    };
+
+    const chartColor = getColor();
 
     switch (chartType) {
       case 'area':
         return (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" />
+              <defs>
+                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={chartColor} stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis 
+                dataKey="time" 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <YAxis 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+                tickFormatter={formatValue}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="line"
+              />
+              <Area 
+                type="monotone" 
+                dataKey={getMetricLabel()} 
+                stroke={chartColor} 
+                fill="url(#colorValue)"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         );
@@ -108,11 +212,27 @@ export default function CustomMetricWidget({
         return (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#8884d8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis 
+                dataKey="time" 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <YAxis 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+                tickFormatter={formatValue}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="rect"
+              />
+              <Bar 
+                dataKey={getMetricLabel()} 
+                fill={chartColor}
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -121,11 +241,30 @@ export default function CustomMetricWidget({
         return (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis 
+                dataKey="time" 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <YAxis 
+                tick={{ fontSize: 11 }}
+                stroke="rgba(255,255,255,0.5)"
+                tickFormatter={formatValue}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="line"
+              />
+              <Line 
+                type="monotone" 
+                dataKey={getMetricLabel()} 
+                stroke={chartColor} 
+                strokeWidth={2}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -155,8 +294,47 @@ export default function CustomMetricWidget({
           </Typography>
         </Box>
       ) : (
-        <Box sx={{ height: '100%', width: '100%' }}>
-          {renderChart()}
+        <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+          {/* Stats Summary - Grafana style */}
+          {stats && (
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              sx={{ 
+                mb: 1, 
+                pb: 1, 
+                borderBottom: 1, 
+                borderColor: 'divider' 
+              }}
+            >
+              <Chip 
+                label={`Current: ${formatValue(stats.current)}`}
+                size="small"
+                sx={{ bgcolor: 'primary.dark', fontSize: '0.75rem' }}
+              />
+              <Chip 
+                label={`Avg: ${formatValue(stats.avg)}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: '0.75rem' }}
+              />
+              <Chip 
+                label={`Min: ${formatValue(stats.min)}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: '0.75rem' }}
+              />
+              <Chip 
+                label={`Max: ${formatValue(stats.max)}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: '0.75rem' }}
+              />
+            </Stack>
+          )}
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            {renderChart()}
+          </Box>
         </Box>
       )}
     </BaseWidget>
