@@ -93,6 +93,13 @@ async def main():
     print("\nNote: Ensure the TopDeck API server is running on localhost:8000")
     print("Start with: uvicorn topdeck.api.main:app --host 0.0.0.0 --port 8000\n")
     
+    print("This test verifies:")
+    print("  1. WebSocket endpoint is accessible")
+    print("  2. Connection can be established")
+    print("  3. Messages are received")
+    print("  4. Ping/pong keep-alive works")
+    print("  5. Health check endpoint responds\n")
+    
     # Test health endpoint first
     health_ok = await test_health_endpoint()
     
