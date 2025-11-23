@@ -10,6 +10,7 @@ from topdeck import __version__
 from topdeck.api.routes import (
     alerts,
     change_management,
+    dashboards,
     discovery,
     error_replay,
     integrations,
@@ -198,6 +199,7 @@ app.include_router(load_detection.router)
 app.include_router(live_diagnostics.router)
 app.include_router(live_diagnostics_ws.router)
 app.include_router(alerts.router)
+app.include_router(dashboards.router)
 
 
 @app.get("/")
