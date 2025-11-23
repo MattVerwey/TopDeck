@@ -536,3 +536,151 @@ async def get_service_error_logs(
     except Exception as e:
         logger.error("get_service_error_logs_failed", resource_id=resource_id, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}")
+
+
+# Root Cause Analysis endpoints
+
+class RootCauseAnalysisResponse(BaseModel):
+    """Response model for root cause analysis."""
+    
+    analysis_id: str
+    resource_id: str
+    resource_name: str
+    failure_time: datetime
+    root_cause_type: str
+    primary_cause: str
+    contributing_factors: list[str]
+    confidence: float
+    timeline: list[dict[str, Any]]
+    correlated_anomalies: list[dict[str, Any]]
+    propagation: dict[str, Any] | None
+    recommendations: list[str]
+    metadata: dict[str, Any]
+
+
+_rca_analyzer: "RootCauseAnalyzer | None" = None
+
+
+def get_rca_analyzer():
+    """Get or create RCA analyzer instance."""
+    global _rca_analyzer
+    
+    if _rca_analyzer is None:
+        from topdeck.analysis.root_cause import RootCauseAnalyzer
+        
+        neo4j = get_neo4j_client()
+        prometheus = get_prometheus_collector()
+        diagnostics = get_diagnostics_service()
+        
+        _rca_analyzer = RootCauseAnalyzer(
+            neo4j_client=neo4j,
+            prometheus_collector=prometheus,
+            diagnostics_service=diagnostics,
+        )
+    
+    return _rca_analyzer
+
+
+@router.post("/services/{resource_id}/root-cause-analysis", response_model=RootCauseAnalysisResponse)
+async def analyze_root_cause(
+    resource_id: str,
+    failure_time: datetime | None = Query(
+        None,
+        description="When the failure occurred (defaults to now)",
+    ),
+    lookback_hours: int = Query(
+        2,
+        ge=1,
+        le=24,
+        description="How far back to analyze (1-24 hours)",
+    ),
+) -> RootCauseAnalysisResponse:
+    """
+    Perform root cause analysis for a service failure.
+    
+    Analyzes a service failure to identify the root cause through:
+    - Timeline reconstruction of events leading to failure
+    - Correlation analysis with anomalies
+    - Dependency chain analysis
+    - Failure propagation detection
+    
+    Args:
+        resource_id: ID of the failed resource
+        failure_time: When the failure occurred (defaults to now)
+        lookback_hours: How far back to analyze (1-24 hours)
+        
+    Returns:
+        Complete root cause analysis with recommendations
+        
+    Example:
+        POST /api/v1/live-diagnostics/services/web-app-001/root-cause-analysis?lookback_hours=2
+    """
+    try:
+        analyzer = get_rca_analyzer()
+        
+        # Perform RCA
+        analysis = await analyzer.analyze_failure(
+            resource_id=resource_id,
+            failure_time=failure_time,
+            lookback_hours=lookback_hours,
+        )
+        
+        # Convert to response format
+        timeline_data = [
+            {
+                "timestamp": event.timestamp.isoformat(),
+                "event_type": event.event_type,
+                "resource_id": event.resource_id,
+                "resource_name": event.resource_name,
+                "description": event.description,
+                "severity": event.severity,
+                "metadata": event.metadata,
+            }
+            for event in analysis.timeline
+        ]
+        
+        anomalies_data = [
+            {
+                "resource_id": anomaly.resource_id,
+                "resource_name": anomaly.resource_name,
+                "metric_name": anomaly.metric_name,
+                "deviation": anomaly.deviation,
+                "severity": anomaly.severity,
+                "timestamp": anomaly.timestamp.isoformat(),
+                "correlation_score": anomaly.correlation_score,
+            }
+            for anomaly in analysis.correlated_anomalies
+        ]
+        
+        propagation_data = None
+        if analysis.propagation:
+            propagation_data = {
+                "initial_failure": analysis.propagation.initial_failure,
+                "propagation_path": analysis.propagation.propagation_path,
+                "propagation_delay": analysis.propagation.propagation_delay,
+                "affected_services": analysis.propagation.affected_services,
+                "metadata": analysis.propagation.metadata,
+            }
+        
+        return RootCauseAnalysisResponse(
+            analysis_id=analysis.analysis_id,
+            resource_id=analysis.resource_id,
+            resource_name=analysis.resource_name,
+            failure_time=analysis.failure_time,
+            root_cause_type=analysis.root_cause_type.value,
+            primary_cause=analysis.primary_cause,
+            contributing_factors=analysis.contributing_factors,
+            confidence=analysis.confidence,
+            timeline=timeline_data,
+            correlated_anomalies=anomalies_data,
+            propagation=propagation_data,
+            recommendations=analysis.recommendations,
+            metadata=analysis.metadata,
+        )
+        
+    except Exception as e:
+        logger.error("root_cause_analysis_failed", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to perform root cause analysis: {str(e)}",
+        )
