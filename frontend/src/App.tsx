@@ -13,6 +13,7 @@ import SLAManagement from './pages/SLAManagement';
 import Integrations from './pages/Integrations';
 import Settings from './pages/Settings';
 import LiveDiagnostics from './pages/LiveDiagnostics';
+import CustomDashboards from './pages/CustomDashboards';
 
 const theme = createTheme({
   palette: {
@@ -48,6 +49,7 @@ function App() {
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/live-diagnostics" element={<LiveDiagnostics />} />
+            <Route path="/custom-dashboards" element={<CustomDashboards />} />
           </Routes>
         </Layout>
       </Router>
