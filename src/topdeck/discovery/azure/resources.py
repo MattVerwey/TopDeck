@@ -404,13 +404,31 @@ async def discover_messaging_resources(
                                     "subscriptions": []
                                 }
                                 
+                                # Create topic as a separate DiscoveredResource
+                                topic_resource = mapper.map_azure_resource(
+                                    resource_id=topic.id,
+                                    resource_name=topic.name,
+                                    resource_type=f"{namespace.type}/topics",
+                                    location=namespace.location,
+                                    tags=namespace.tags,
+                                    properties={
+                                        "namespace": namespace.name,
+                                        "max_size_in_mb": topic_data["max_size_in_mb"],
+                                        "requires_duplicate_detection": topic_data["requires_duplicate_detection"],
+                                        "support_ordering": topic_data["support_ordering"],
+                                        "status": topic_data["status"],
+                                    },
+                                    provisioning_state=topic_data["status"],
+                                )
+                                resources.append(topic_resource)
+                                
                                 # Discover subscriptions for this topic
                                 try:
                                     subscriptions = servicebus_client.subscriptions.list_by_topic(
                                         namespace_rg, namespace.name, topic.name
                                     )
                                     for subscription in subscriptions:
-                                        topic_data["subscriptions"].append({
+                                        subscription_data = {
                                             "name": subscription.name,
                                             "id": subscription.id,
                                             "max_delivery_count": (
@@ -428,7 +446,26 @@ async def discover_messaging_resources(
                                                 if hasattr(subscription, "status")
                                                 else None
                                             ),
-                                        })
+                                        }
+                                        topic_data["subscriptions"].append(subscription_data)
+                                        
+                                        # Create subscription as a separate DiscoveredResource
+                                        subscription_resource = mapper.map_azure_resource(
+                                            resource_id=subscription.id,
+                                            resource_name=subscription.name,
+                                            resource_type=f"{namespace.type}/topics/subscriptions",
+                                            location=namespace.location,
+                                            tags=namespace.tags,
+                                            properties={
+                                                "namespace": namespace.name,
+                                                "topic": topic.name,
+                                                "max_delivery_count": subscription_data["max_delivery_count"],
+                                                "requires_session": subscription_data["requires_session"],
+                                                "status": subscription_data["status"],
+                                            },
+                                            provisioning_state=subscription_data["status"],
+                                        )
+                                        resources.append(subscription_resource)
                                 except Exception as e:
                                     logger.error(f"Error discovering subscriptions for topic {topic.name}: {e}")
                                 
@@ -451,7 +488,7 @@ async def discover_messaging_resources(
                         logger.info(f"Successfully retrieved {len(queue_list)} queues")
                         for queue in queue_list:
                             try:
-                                queues_list.append({
+                                queue_data = {
                                     "name": queue.name,
                                     "id": queue.id,
                                     "max_size_in_mb": (
@@ -475,7 +512,27 @@ async def discover_messaging_resources(
                                         else None
                                     ),
                                     "status": queue.status if hasattr(queue, "status") else None,
-                                })
+                                }
+                                queues_list.append(queue_data)
+                                
+                                # Create queue as a separate DiscoveredResource
+                                queue_resource = mapper.map_azure_resource(
+                                    resource_id=queue.id,
+                                    resource_name=queue.name,
+                                    resource_type=f"{namespace.type}/queues",
+                                    location=namespace.location,
+                                    tags=namespace.tags,
+                                    properties={
+                                        "namespace": namespace.name,
+                                        "max_size_in_mb": queue_data["max_size_in_mb"],
+                                        "requires_duplicate_detection": queue_data["requires_duplicate_detection"],
+                                        "requires_session": queue_data["requires_session"],
+                                        "max_delivery_count": queue_data["max_delivery_count"],
+                                        "status": queue_data["status"],
+                                    },
+                                    provisioning_state=queue_data["status"],
+                                )
+                                resources.append(queue_resource)
                             except Exception as e:
                                 logger.error(f"Error discovering queue {queue.name}: {e}")
                         
