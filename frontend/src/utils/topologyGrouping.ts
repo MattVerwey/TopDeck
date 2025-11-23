@@ -35,7 +35,7 @@ export function groupNodesByProperty(
   const groups = new Map<string, Resource[]>();
 
   nodes.forEach((node) => {
-    let groupKey: string | undefined;
+    let groupKey: string;
 
     switch (groupBy) {
       case 'cluster':
@@ -52,12 +52,10 @@ export function groupNodesByProperty(
         break;
     }
 
-    if (groupKey) {
-      if (!groups.has(groupKey)) {
-        groups.set(groupKey, []);
-      }
-      groups.get(groupKey)!.push(node);
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
     }
+    groups.get(groupKey)!.push(node);
   });
 
   return groups;

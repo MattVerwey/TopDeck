@@ -127,6 +127,26 @@ export default function Topology() {
     };
   }, []);
 
+  // Helper function to get direct dependencies (1-level) from edges
+  const getDirectDependencies = useCallback((
+    nodeIds: Set<string> | string[],
+    edges: TopologyGraphType['edges']
+  ): Set<string> => {
+    const nodeSet = nodeIds instanceof Set ? nodeIds : new Set(nodeIds);
+    const directlyRelatedIds = new Set(nodeSet);
+    
+    edges.forEach((edge) => {
+      if (nodeSet.has(edge.source_id)) {
+        directlyRelatedIds.add(edge.target_id);
+      }
+      if (nodeSet.has(edge.target_id)) {
+        directlyRelatedIds.add(edge.source_id);
+      }
+    });
+    
+    return directlyRelatedIds;
+  }, []);
+
   // Helper function to resolve transitive dependencies
   const resolveTransitiveDependencies = useCallback((
     initialIds: Set<string>,
@@ -175,15 +195,7 @@ export default function Topology() {
         filtered = applyNodeFilter(topology, (n) => selectedResourceIds.includes(n.id));
       } else if (filterSettings.mode === 'with-dependencies') {
         // Show selected resources and their DIRECT dependencies (1 level)
-        const directlyRelatedIds = new Set<string>(selectedResourceIds);
-        topology.edges.forEach((edge) => {
-          if (selectedResourceIds.includes(edge.source_id)) {
-            directlyRelatedIds.add(edge.target_id);
-          }
-          if (selectedResourceIds.includes(edge.target_id)) {
-            directlyRelatedIds.add(edge.source_id);
-          }
-        });
+        const directlyRelatedIds = getDirectDependencies(selectedResourceIds, topology.edges);
         filtered = applyNodeFilter(topology, (n) => directlyRelatedIds.has(n.id));
       } else {
         // 'full-graph': Show selected resources and ALL their transitive dependencies
@@ -240,27 +252,22 @@ export default function Topology() {
         // Show ONLY the matching nodes (no dependencies)
         // But add expanded nodes' dependencies
         if (expandedNodeIds.size > 0) {
-          topology.edges.forEach((edge) => {
-            if (expandedNodeIds.has(edge.source_id)) {
-              nodesToShow.add(edge.target_id);
-            }
-            if (expandedNodeIds.has(edge.target_id)) {
-              nodesToShow.add(edge.source_id);
-            }
-          });
+          // Performance optimization: filter edges first
+          topology.edges
+            .filter(edge => expandedNodeIds.has(edge.source_id) || expandedNodeIds.has(edge.target_id))
+            .forEach((edge) => {
+              if (expandedNodeIds.has(edge.source_id)) {
+                nodesToShow.add(edge.target_id);
+              }
+              if (expandedNodeIds.has(edge.target_id)) {
+                nodesToShow.add(edge.source_id);
+              }
+            });
         }
         filtered = applyNodeFilter(topology, (n) => nodesToShow.has(n.id));
       } else if (filterSettings.mode === 'with-dependencies') {
         // Show matching nodes and their DIRECT dependencies (1 level)
-        const directlyRelatedIds = new Set(matchingNodeIds);
-        topology.edges.forEach((edge) => {
-          if (matchingNodeIds.has(edge.source_id)) {
-            directlyRelatedIds.add(edge.target_id);
-          }
-          if (matchingNodeIds.has(edge.target_id)) {
-            directlyRelatedIds.add(edge.source_id);
-          }
-        });
+        const directlyRelatedIds = getDirectDependencies(matchingNodeIds, topology.edges);
         
         // Add expanded nodes' full dependencies
         if (expandedNodeIds.size > 0) {
@@ -285,7 +292,7 @@ export default function Topology() {
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters, filterSettings, expandedNodeIds, applyNodeFilter, resolveTransitiveDependencies]);
+  }, [topology, selectedResourceIds, filters, filterSettings, expandedNodeIds, applyNodeFilter, getDirectDependencies, resolveTransitiveDependencies]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);

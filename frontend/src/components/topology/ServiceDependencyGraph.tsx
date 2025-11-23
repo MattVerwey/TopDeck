@@ -450,7 +450,7 @@ export default function ServiceDependencyGraph({ data, onNodeExpand, expandedNod
         const children = node.children();
         if (children.length > 0) {
           // Check if currently collapsed
-          const isCollapsed = children.some((child: any) => child.hasClass('collapsed-child'));
+          const isCollapsed = children.some((child: cytoscape.NodeSingular) => child.hasClass('collapsed-child'));
           
           if (isCollapsed) {
             // Expand: show all children
@@ -494,11 +494,14 @@ export default function ServiceDependencyGraph({ data, onNodeExpand, expandedNod
         return;
       }
       
+      // Visual feedback for expanded state (check BEFORE toggling)
+      const isCurrentlyExpanded = expandedNodeIds.has(nodeData.id);
+      
       // Toggle expand state
       onNodeExpand(nodeData.id);
       
-      // Visual feedback for expanded state
-      if (expandedNodeIds.has(nodeData.id)) {
+      // Update visual class based on previous state
+      if (isCurrentlyExpanded) {
         node.removeClass('expanded-node');
       } else {
         node.addClass('expanded-node');
