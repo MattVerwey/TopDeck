@@ -83,6 +83,7 @@ export default function BaseWidget({
     >
       {/* Widget Header */}
       <Box
+        className="drag-handle"
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -91,6 +92,10 @@ export default function BaseWidget({
           borderBottom: 1,
           borderColor: 'divider',
           bgcolor: 'background.default',
+          cursor: 'move',
+          '&:hover': {
+            bgcolor: 'action.hover',
+          },
         }}
       >
         <Typography variant="subtitle1" fontWeight="medium">

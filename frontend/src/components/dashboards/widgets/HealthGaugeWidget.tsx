@@ -48,6 +48,7 @@ export default function HealthGaugeWidget({
   onConfigure,
 }: HealthGaugeWidgetProps) {
   const [healthData, setHealthData] = useState<HealthScoreData | null>(null);
+  const [snapshot, setSnapshot] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -58,11 +59,12 @@ export default function HealthGaugeWidget({
       setError(null);
 
       // Fetch live diagnostics snapshot
-      const snapshot = await apiClient.getLiveDiagnosticsSnapshot(1);
+      const fetchedSnapshot = await apiClient.getLiveDiagnosticsSnapshot(1);
+      setSnapshot(fetchedSnapshot);
       
       // Calculate overall health score
-      const services = snapshot.services || [];
-      const totalScore = services.reduce((sum, s) => sum + (s.health_score || 0), 0);
+      const services = fetchedSnapshot.services || [];
+      const totalScore = services.reduce((sum: number, s: any) => sum + (s.health_score || 0), 0);
       const avgScore = services.length > 0 ? totalScore / services.length : 100;
       
       // Determine status based on score
@@ -76,7 +78,7 @@ export default function HealthGaugeWidget({
         score: avgScore,
         status,
         services_count: services.length,
-        anomaly_count: snapshot.anomalies?.length || 0,
+        anomaly_count: fetchedSnapshot.anomalies?.length || 0,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch health score');
@@ -266,30 +268,30 @@ export default function HealthGaugeWidget({
                   Health Metrics Breakdown
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  {/* Note: Using sample data - will be replaced with real metrics from API */}
+                  {/* Real metrics from API snapshot */}
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">CPU Usage</Typography>
+                      <Typography variant="caption">Average Response Time</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {Math.random() > 0.5 ? '45%' : '78%'}
+                        {snapshot?.metrics?.avg_latency_ms ? `${snapshot.metrics.avg_latency_ms.toFixed(0)}ms` : 'N/A'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={Math.random() * 100} 
+                      value={snapshot?.metrics?.avg_latency_ms ? Math.min((snapshot.metrics.avg_latency_ms / 1000) * 100, 100) : 0} 
                       sx={{ height: 6, borderRadius: 3 }}
                     />
                   </Box>
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">Memory Usage</Typography>
+                      <Typography variant="caption">Request Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {Math.random() > 0.5 ? '62%' : '89%'}
+                        {snapshot?.metrics?.request_count || 0} req/min
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={Math.random() * 100} 
+                      value={snapshot?.metrics?.request_count ? Math.min((snapshot.metrics.request_count / 100) * 100, 100) : 0} 
                       color="warning"
                       sx={{ height: 6, borderRadius: 3 }}
                     />
@@ -298,13 +300,13 @@ export default function HealthGaugeWidget({
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">Error Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {healthData.anomaly_count > 0 ? '3.2%' : '0.1%'}
+                        {snapshot?.metrics?.error_rate ? `${(snapshot.metrics.error_rate * 100).toFixed(1)}%` : '0.0%'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={healthData.anomaly_count > 0 ? 32 : 1} 
-                      color={healthData.anomaly_count > 0 ? 'error' : 'success'}
+                      value={snapshot?.metrics?.error_rate ? snapshot.metrics.error_rate * 100 : 0} 
+                      color={snapshot?.metrics?.error_rate && snapshot.metrics.error_rate > 0.05 ? 'error' : 'success'}
                       sx={{ height: 6, borderRadius: 3 }}
                     />
                   </Box>

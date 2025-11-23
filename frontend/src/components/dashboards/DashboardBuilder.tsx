@@ -2,6 +2,7 @@
  * Dashboard Builder Component
  * 
  * Allows users to create and customize dashboards with drag-and-drop widgets.
+ * Enhanced with react-grid-layout for true drag-and-drop positioning.
  */
 
 import { useState, useEffect } from 'react';
@@ -13,12 +14,10 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Grid,
   Typography,
   Fab,
   Menu,
   MenuItem,
-  Alert,
   Snackbar,
 } from '@mui/material';
 import {
@@ -26,6 +25,9 @@ import {
   Save as SaveIcon,
   ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
+import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import { WidgetConfig } from './BaseWidget';
 import {
   HealthGaugeWidget,
@@ -34,6 +36,10 @@ import {
   TrafficHeatmapWidget,
   CustomMetricWidget,
 } from './widgets';
+import WidgetConfigDialog from './WidgetConfigDialog';
+import apiClient from '../../services/api';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface Dashboard {
   id?: string;
@@ -97,6 +103,8 @@ export default function DashboardBuilder({
   });
   const [widgetMenuAnchor, setWidgetMenuAnchor] = useState<null | HTMLElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [selectedWidget, setSelectedWidget] = useState<WidgetConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -113,12 +121,11 @@ export default function DashboardBuilder({
   const loadDashboard = async (id: string) => {
     try {
       setLoading(true);
-      // const loadedDashboard = await apiClient.getDashboard(id);
-      // setDashboard(loadedDashboard);
-      // For now, just show a placeholder
+      const loadedDashboard = await apiClient.getDashboard(id);
+      setDashboard(loadedDashboard);
       setSnackbar({
         open: true,
-        message: 'Dashboard loaded (placeholder)',
+        message: 'Dashboard loaded successfully',
         severity: 'success',
       });
     } catch (error) {
@@ -167,13 +174,56 @@ export default function DashboardBuilder({
     });
   };
 
+  const handleConfigureWidget = (widget: WidgetConfig) => {
+    setSelectedWidget(widget);
+    setConfigDialogOpen(true);
+  };
+
+  const handleSaveWidgetConfig = (widgetId: string, newConfig: Record<string, any>) => {
+    setDashboard({
+      ...dashboard,
+      widgets: dashboard.widgets.map(w =>
+        w.id === widgetId ? { ...w, config: newConfig } : w
+      ),
+    });
+    setConfigDialogOpen(false);
+    setSelectedWidget(null);
+  };
+
+  const handleLayoutChange = (layout: Layout[]) => {
+    // Update widget positions based on layout changes
+    const updatedWidgets = dashboard.widgets.map(widget => {
+      const layoutItem = layout.find(l => l.i === widget.id);
+      if (layoutItem) {
+        return {
+          ...widget,
+          position: {
+            x: layoutItem.x,
+            y: layoutItem.y,
+            width: layoutItem.w,
+            height: layoutItem.h,
+          },
+        };
+      }
+      return widget;
+    });
+
+    setDashboard({
+      ...dashboard,
+      widgets: updatedWidgets,
+    });
+  };
+
   const handleSaveDashboard = async () => {
     try {
       setLoading(true);
       
       // Call API to save dashboard
-      // For now, just simulate a save
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (dashboard.id) {
+        await apiClient.updateDashboard(dashboard.id, dashboard);
+      } else {
+        await apiClient.createDashboard(dashboard);
+      }
       
       setSnackbar({
         open: true,
@@ -201,6 +251,7 @@ export default function DashboardBuilder({
     const commonProps = {
       config: widget,
       onRemove: () => handleRemoveWidget(widget.id),
+      onConfigure: () => handleConfigureWidget(widget),
     };
 
     switch (widget.type) {
@@ -246,23 +297,39 @@ export default function DashboardBuilder({
         </Button>
       </Box>
 
-      {/* Dashboard Grid */}
+      {/* Dashboard Grid with Drag-and-Drop */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        <Grid container spacing={2}>
-          {dashboard.widgets.map((widget) => (
-            <Grid
-              key={widget.id}
-              item
-              xs={12}
-              md={widget.position.width}
-              sx={{ height: `${widget.position.height * 100}px` }}
-            >
-              {renderWidget(widget)}
-            </Grid>
-          ))}
-        </Grid>
-
-        {dashboard.widgets.length === 0 && (
+        {dashboard.widgets.length > 0 ? (
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: dashboard.widgets.map(w => ({
+              i: w.id,
+              x: w.position.x,
+              y: w.position.y,
+              w: w.position.width,
+              h: w.position.height,
+              minW: 2,
+              minH: 1,
+            })) }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            rowHeight={dashboard.layout_config.rowHeight || 80}
+            margin={dashboard.layout_config.margin || [10, 10]}
+            onLayoutChange={handleLayoutChange}
+            isDraggable={!loading}
+            isResizable={!loading}
+            draggableHandle=".drag-handle"
+          >
+            {dashboard.widgets.map((widget) => (
+              <div
+                key={widget.id}
+                style={{ height: '100%' }}
+              >
+                {renderWidget(widget)}
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        ) : (
           <Box
             sx={{
               height: '100%',
@@ -351,15 +418,27 @@ export default function DashboardBuilder({
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        message={snackbar.message}
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            backgroundColor: snackbar.severity === 'success' ? 'success.main' : 'error.main',
+          },
+        }}
+      />
+
+      {/* Widget Configuration Dialog */}
+      {selectedWidget && (
+        <WidgetConfigDialog
+          open={configDialogOpen}
+          widget={selectedWidget}
+          onClose={() => {
+            setConfigDialogOpen(false);
+            setSelectedWidget(null);
+          }}
+          onSave={(config) => handleSaveWidgetConfig(selectedWidget.id, config)}
+        />
+      )}
     </Box>
   );
 }
