@@ -11,6 +11,10 @@ from typing import Any
 
 from topdeck.storage.neo4j_client import Neo4jClient
 
+# Performance configuration constants
+MAX_QUERY_DEPTH = 5  # Maximum depth for variable-length path queries
+MAX_RESULT_LIMIT = 1000  # Maximum results to return from queries
+
 
 class FlowType(str, Enum):
     """Types of data flows between resources."""
@@ -349,9 +353,9 @@ class TopologyService:
 
             # Get upstream dependencies (what this resource depends on)
             if direction in ("upstream", "both"):
-                # Limit depth to 5 for performance, add result limit
+                # Limit depth to MAX_QUERY_DEPTH for performance, add result limit
                 upstream_query = f"""
-                MATCH path = (r:Resource {{id: $id}})-[*1..{min(depth, 5)}]->(dep:Resource)
+                MATCH path = (r:Resource {{id: $id}})-[*1..{min(depth, MAX_QUERY_DEPTH)}]->(dep:Resource)
                 WITH DISTINCT dep, min(length(path)) as shortest_path
                 RETURN dep.id as id,
                        dep.resource_type as resource_type,
@@ -360,7 +364,7 @@ class TopologyService:
                        dep.region as region,
                        dep as properties
                 ORDER BY shortest_path
-                LIMIT 1000
+                LIMIT {MAX_RESULT_LIMIT}
                 """
 
                 result = session.run(upstream_query, id=resource_id)
@@ -381,9 +385,9 @@ class TopologyService:
 
             # Get downstream dependencies (what depends on this resource)
             if direction in ("downstream", "both"):
-                # Limit depth to 5 for performance, add result limit
+                # Limit depth to MAX_QUERY_DEPTH for performance, add result limit
                 downstream_query = f"""
-                MATCH path = (dep:Resource)-[*1..{min(depth, 5)}]->(r:Resource {{id: $id}})
+                MATCH path = (dep:Resource)-[*1..{min(depth, MAX_QUERY_DEPTH)}]->(r:Resource {{id: $id}})
                 WITH DISTINCT dep, min(length(path)) as shortest_path
                 RETURN dep.id as id,
                        dep.resource_type as resource_type,
@@ -392,7 +396,7 @@ class TopologyService:
                        dep.region as region,
                        dep as properties
                 ORDER BY shortest_path
-                LIMIT 1000
+                LIMIT {MAX_RESULT_LIMIT}
                 """
 
                 result = session.run(downstream_query, id=resource_id)

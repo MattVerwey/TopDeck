@@ -125,27 +125,20 @@ class QueryCache:
 
     def invalidate_pattern(self, pattern: str) -> int:
         """
-        Invalidate all cached queries matching a pattern.
+        Clear all cached entries.
+        
+        Note: Pattern matching not currently implemented - this clears the entire cache.
+        In a future version, this could filter based on query content.
 
         Args:
-            pattern: String pattern to match in query
+            pattern: String pattern (currently ignored)
 
         Returns:
-            Number of entries invalidated
+            Number of entries cleared
         """
-        count = 0
         with self._lock:
-            keys_to_remove = []
-            for key in self._cache:
-                # We can't directly access the query from the key,
-                # so this is a simplified pattern match
-                # In practice, you might want to store metadata
-                keys_to_remove.append(key)
-            
-            for key in keys_to_remove:
-                del self._cache[key]
-                count += 1
-
+            count = len(self._cache)
+            self._cache.clear()
         return count
 
     def clear(self) -> None:

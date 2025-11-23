@@ -729,9 +729,9 @@ class Neo4jClient:
             return 0
 
         # Validate all resources have an ID
-        for resource in resources:
+        for idx, resource in enumerate(resources):
             if "id" not in resource:
-                raise ValueError("All resources must include 'id'")
+                raise ValueError(f"Resource at index {idx} is missing required 'id' field")
 
         with self.session() as session:
             result = session.run(
@@ -763,9 +763,9 @@ class Neo4jClient:
             return 0
 
         # Validate all resources have an ID
-        for resource in resources:
+        for idx, resource in enumerate(resources):
             if "id" not in resource:
-                raise ValueError("All resources must include 'id'")
+                raise ValueError(f"Resource at index {idx} is missing required 'id' field")
 
         with self.session() as session:
             result = session.run(
@@ -802,9 +802,16 @@ class Neo4jClient:
             return 0
 
         # Validate all dependencies have required fields
-        for dep in dependencies:
+        for idx, dep in enumerate(dependencies):
             if "source_id" not in dep or "target_id" not in dep:
-                raise ValueError("All dependencies must include 'source_id' and 'target_id'")
+                missing = []
+                if "source_id" not in dep:
+                    missing.append("source_id")
+                if "target_id" not in dep:
+                    missing.append("target_id")
+                raise ValueError(
+                    f"Dependency at index {idx} is missing required fields: {', '.join(missing)}"
+                )
 
         with self.session() as session:
             result = session.run(
