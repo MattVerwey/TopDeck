@@ -30,6 +30,9 @@ import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
 import type { LiveDiagnosticsSnapshot } from '../../../types/diagnostics';
 
+// Constants
+const DEFAULT_UPTIME_PERCENTAGE = 99.9;
+
 interface HealthScoreData {
   score: number;
   status: 'excellent' | 'good' | 'degraded' | 'critical';
@@ -118,7 +121,7 @@ export default function HealthGaugeWidget({
         const latency = service.metrics['latency_p95'] || service.metrics['latency'] || 0;
         const requests = service.metrics['request_count'] || service.metrics['requests'] || 0;
         const errors = service.metrics['error_count'] || service.metrics['errors'] || 0;
-        const uptime = service.metrics['uptime'] || 99.9; // Default to 99.9 if not provided
+        const uptime = service.metrics['uptime'] || DEFAULT_UPTIME_PERCENTAGE;
 
         totalLatency += latency;
         totalRequests += requests;
@@ -129,7 +132,7 @@ export default function HealthGaugeWidget({
 
     const avgLatency = servicesWithMetrics > 0 ? totalLatency / servicesWithMetrics : 0;
     const avgErrorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
-    const avgUptime = servicesWithMetrics > 0 ? totalUptime / servicesWithMetrics : 99.9;
+    const avgUptime = servicesWithMetrics > 0 ? totalUptime / servicesWithMetrics : DEFAULT_UPTIME_PERCENTAGE;
 
     return {
       avgLatency,

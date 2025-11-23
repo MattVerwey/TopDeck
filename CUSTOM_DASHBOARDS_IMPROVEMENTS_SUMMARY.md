@@ -149,7 +149,7 @@ This document summarizes the work completed to address the known limitations and
 ### Dependencies Added
 ```json
 {
-  "@types/react-grid-layout": "^1.3.5" (dev)
+  "@types/react-grid-layout": "^1.3.6" (dev)
 }
 ```
 (react-grid-layout itself was already installed)
