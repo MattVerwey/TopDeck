@@ -45,6 +45,13 @@ class Predictor:
     MIN_COMPLETENESS_THRESHOLD = 0.1
     LOW_DATA_PENALTY_FACTOR = 0.5
 
+    # Error analysis configuration
+    ERROR_MESSAGE_TRUNCATE_LENGTH = 200
+    MAX_PATTERN_EXAMPLES = 2
+    MAX_PATTERNS_FOR_RECOMMENDATIONS = 3
+    MAX_RECOMMENDATIONS = 5
+    CRITICAL_PATTERN_THRESHOLD_PCT = 20.0
+
     def __init__(
         self, feature_extractor: FeatureExtractor | None = None, model_dir: str = "/data/models"
     ):
@@ -664,8 +671,10 @@ class Predictor:
                 message_lower = log.get("message", "").lower()
                 if any(keyword in message_lower for keyword in keywords):
                     count += 1
-                    if len(examples) < 2:  # Keep up to 2 examples
-                        examples.append(log.get("message", "")[:200])
+                    if len(examples) < self.MAX_PATTERN_EXAMPLES:
+                        examples.append(
+                            log.get("message", "")[: self.ERROR_MESSAGE_TRUNCATE_LENGTH]
+                        )
 
             if count > 0:
                 pattern_counts[pattern_name] = count
@@ -745,7 +754,7 @@ class Predictor:
         recommendations = []
 
         # Generate recommendations based on top patterns
-        for pattern in error_patterns[:3]:  # Top 3 patterns
+        for pattern in error_patterns[: self.MAX_PATTERNS_FOR_RECOMMENDATIONS]:
             pattern_name = pattern["pattern"]
 
             if pattern_name == "connection_timeout":
@@ -801,7 +810,7 @@ class Predictor:
                 seen.add(rec)
                 unique_recommendations.append(rec)
 
-        return unique_recommendations[:5]  # Top 5 recommendations
+        return unique_recommendations[: self.MAX_RECOMMENDATIONS]
 
     def _assess_error_severity(self, error_logs: list[dict], error_patterns: list[dict]) -> str:
         """Assess overall severity of errors."""
@@ -811,7 +820,10 @@ class Predictor:
         # Check for critical patterns
         critical_patterns = ["out_of_memory", "database_error"]
         for pattern in error_patterns:
-            if pattern["pattern"] in critical_patterns and pattern["percentage"] > 20:
+            if (
+                pattern["pattern"] in critical_patterns
+                and pattern["percentage"] > self.CRITICAL_PATTERN_THRESHOLD_PCT
+            ):
                 return "critical"
 
         # High severity if many errors or high error rate

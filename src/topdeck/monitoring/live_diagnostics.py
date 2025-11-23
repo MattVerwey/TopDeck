@@ -406,7 +406,7 @@ class LiveDiagnosticsService:
 
     async def get_recent_error_logs(
         self, resource_id: str, limit: int = 10, duration_hours: int = 1
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
         Get recent error logs for a specific resource with ML-based analysis.
 
@@ -416,11 +416,11 @@ class LiveDiagnosticsService:
             duration_hours: Time window for log search (default: 1 hour)
 
         Returns:
-            List of error log entries with timestamp, message, level, and ML analysis
+            Dictionary with 'logs' (list of error entries) and 'ml_analysis' (analysis results)
         """
         if not self.loki:
             logger.warning("loki_collector_not_configured")
-            return []
+            return {"logs": [], "ml_analysis": None}
 
         try:
             # Get error logs from Loki
@@ -446,6 +446,8 @@ class LiveDiagnosticsService:
             limited_entries = error_entries[:limit]
 
             # Use ML to analyze error patterns and provide insights
+            # Analysis is done once and returned separately to avoid duplication
+            ml_analysis = None
             if limited_entries:
                 resource_info = await self._get_resource_info(resource_id)
                 resource_type = resource_info.get("type", "service")
@@ -456,15 +458,11 @@ class LiveDiagnosticsService:
                     resource_type=resource_type,
                 )
 
-                # Add ML analysis to response
-                for entry in limited_entries:
-                    entry["ml_analysis"] = ml_analysis
-
-            return limited_entries
+            return {"logs": limited_entries, "ml_analysis": ml_analysis}
 
         except Exception as e:
             logger.error("get_recent_error_logs_failed", resource_id=resource_id, error=str(e))
-            return []
+            return {"logs": [], "ml_analysis": None}
 
     def _calculate_overall_health(self, services: list[ServiceHealthStatus]) -> str:
         """Calculate overall system health from service statuses."""

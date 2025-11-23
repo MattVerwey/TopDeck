@@ -74,6 +74,7 @@ export default function ErrorDetailDrawer({
   snapshot,
 }: ErrorDetailDrawerProps) {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [mlAnalysis, setMlAnalysis] = useState<ErrorLog['ml_analysis'] | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
 
@@ -102,11 +103,13 @@ export default function ErrorDetailDrawer({
       }
       
       const data = await response.json();
-      setErrorLogs(data.error_logs || []);
+      setErrorLogs(data.logs || []);
+      setMlAnalysis(data.ml_analysis || null);
     } catch (error) {
       console.error('Error fetching logs:', error);
       setLogsError(error instanceof Error ? error.message : 'Failed to fetch error logs');
       setErrorLogs([]);
+      setMlAnalysis(null);
     } finally {
       setLoadingLogs(false);
     }
@@ -247,7 +250,7 @@ export default function ErrorDetailDrawer({
             </Card>
 
             {/* ML Analysis Section */}
-            {!loadingLogs && errorLogs.length > 0 && errorLogs[0]?.ml_analysis && (
+            {!loadingLogs && errorLogs.length > 0 && mlAnalysis && (
               <Card sx={{ mb: 2, backgroundColor: 'rgba(33, 150, 243, 0.05)' }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -257,12 +260,12 @@ export default function ErrorDetailDrawer({
                     </Typography>
                     <Chip
                       size="small"
-                      label={`${Math.round(errorLogs[0].ml_analysis.confidence * 100)}% confident`}
+                      label={`${Math.round(mlAnalysis.confidence * 100)}% confident`}
                       sx={{ ml: 'auto' }}
                       color={
-                        errorLogs[0].ml_analysis.confidence > 0.7
+                        mlAnalysis.confidence > 0.7
                           ? 'success'
-                          : errorLogs[0].ml_analysis.confidence > 0.4
+                          : mlAnalysis.confidence > 0.4
                           ? 'warning'
                           : 'default'
                       }
@@ -272,26 +275,26 @@ export default function ErrorDetailDrawer({
                   {/* Severity Assessment */}
                   <Alert
                     severity={
-                      errorLogs[0].ml_analysis.severity_assessment === 'critical'
+                      mlAnalysis.severity_assessment === 'critical'
                         ? 'error'
-                        : errorLogs[0].ml_analysis.severity_assessment === 'high'
+                        : mlAnalysis.severity_assessment === 'high'
                         ? 'warning'
                         : 'info'
                     }
                     sx={{ mb: 2 }}
                   >
-                    Severity: {errorLogs[0].ml_analysis.severity_assessment.toUpperCase()}
+                    Severity: {mlAnalysis.severity_assessment.toUpperCase()}
                   </Alert>
 
                   {/* Error Patterns */}
-                  {errorLogs[0].ml_analysis.error_patterns.length > 0 && (
+                  {mlAnalysis.error_patterns.length > 0 && (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                         <WarningIcon sx={{ fontSize: 16, mr: 0.5 }} />
                         Detected Patterns
                       </Typography>
                       <Stack spacing={1}>
-                        {errorLogs[0].ml_analysis.error_patterns.map((pattern, idx) => (
+                        {mlAnalysis.error_patterns.map((pattern, idx) => (
                           <Box
                             key={idx}
                             sx={{
@@ -332,14 +335,14 @@ export default function ErrorDetailDrawer({
                   )}
 
                   {/* Likely Causes */}
-                  {errorLogs[0].ml_analysis.likely_causes.length > 0 && (
+                  {mlAnalysis.likely_causes.length > 0 && (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                         <ErrorIcon sx={{ fontSize: 16, mr: 0.5 }} />
                         Likely Root Causes
                       </Typography>
                       <Stack spacing={1}>
-                        {errorLogs[0].ml_analysis.likely_causes.map((cause, idx) => (
+                        {mlAnalysis.likely_causes.map((cause, idx) => (
                           <Accordion key={idx}>
                             <AccordionSummary expandIcon={<ExpandMore />}>
                               <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
@@ -374,14 +377,14 @@ export default function ErrorDetailDrawer({
                   )}
 
                   {/* Recommendations */}
-                  {errorLogs[0].ml_analysis.recommendations.length > 0 && (
+                  {mlAnalysis.recommendations.length > 0 && (
                     <Box>
                       <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                         <LightbulbIcon sx={{ fontSize: 16, mr: 0.5, color: 'warning.main' }} />
                         Recommended Actions
                       </Typography>
                       <List dense>
-                        {errorLogs[0].ml_analysis.recommendations.map((rec, idx) => (
+                        {mlAnalysis.recommendations.map((rec, idx) => (
                           <ListItem
                             key={idx}
                             sx={{
