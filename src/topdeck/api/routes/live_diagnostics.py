@@ -128,17 +128,16 @@ def get_diagnostics_service() -> LiveDiagnosticsService:
         neo4j = get_neo4j_client()
         feature_extractor = FeatureExtractor(prometheus_collector=prometheus)
         predictor = Predictor(feature_extractor=feature_extractor)
-        
+
         # Initialize Loki collector if configured
         loki_url = settings.get("LOKI_URL")
         loki_collector = None
         if loki_url:
             from topdeck.monitoring.collectors.loki import LokiCollector
+
             loki_collector = LokiCollector(loki_url)
-        
-        _diagnostics_service = LiveDiagnosticsService(
-            prometheus, neo4j, predictor, loki_collector
-        )
+
+        _diagnostics_service = LiveDiagnosticsService(prometheus, neo4j, predictor, loki_collector)
     return _diagnostics_service
 
 
@@ -272,9 +271,7 @@ async def get_service_health(
 
     except Exception as e:
         logger.error("get_service_health_failed", resource_id=resource_id, exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get service health: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}")
 
 
 @router.get("/anomalies", response_model=list[AnomalyAlertResponse])
@@ -406,9 +403,7 @@ async def get_traffic_patterns(
 
     except Exception as e:
         logger.error("get_traffic_patterns_failed", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get traffic patterns: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get traffic patterns: {str(e)}")
 
 
 @router.get("/failing-dependencies", response_model=list[FailingDependencyResponse])
@@ -433,9 +428,7 @@ async def get_failing_dependencies() -> list[FailingDependencyResponse]:
 
     except Exception as e:
         logger.error("get_failing_dependencies_failed", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get failing dependencies: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get failing dependencies: {str(e)}")
 
 
 @router.get("/health")
@@ -528,9 +521,7 @@ async def get_service_error_logs(
     try:
         service = get_diagnostics_service()
         error_logs = await service.get_recent_error_logs(
-            resource_id=resource_id,
-            limit=limit,
-            duration_hours=duration_hours
+            resource_id=resource_id, limit=limit, duration_hours=duration_hours
         )
 
         return {
@@ -544,6 +535,4 @@ async def get_service_error_logs(
 
     except Exception as e:
         logger.error("get_service_error_logs_failed", resource_id=resource_id, exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get error logs: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}")
