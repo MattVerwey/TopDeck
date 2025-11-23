@@ -471,7 +471,7 @@ async def health_check() -> dict[str, Any]:
 
         return {
             "status": overall_status,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "components": {
                 "prometheus": prometheus_health,
                 "neo4j": neo4j_health,
@@ -482,6 +482,6 @@ async def health_check() -> dict[str, Any]:
         logger.error("health_check_failed", exc_info=True)
         return {
             "status": "unhealthy",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "error": str(e),
         }

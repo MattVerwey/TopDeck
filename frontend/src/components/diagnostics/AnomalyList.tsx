@@ -67,7 +67,11 @@ export default function AnomalyList({ anomalies, onAnomalyClick }: AnomalyListPr
     <Paper>
       <List>
         {anomalies.map((anomaly) => (
-          <ListItem key={anomaly.alert_id} button onClick={() => onAnomalyClick(anomaly)}>
+          <ListItem 
+            key={anomaly.alert_id} 
+            component="button"
+            onClick={() => onAnomalyClick(anomaly)}
+          >
             <ListItemIcon>{getSeverityIcon(anomaly.severity)}</ListItemIcon>
             <ListItemText
               primary={

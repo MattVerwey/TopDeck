@@ -298,24 +298,41 @@ class LiveDiagnosticsService:
             source_id = dep["source"]
             target_id = dep["target"]
 
+            # Sanitize input for Prometheus queries
+            # Only allow alphanumeric, dash, underscore, and dot characters
+            import re
+            if not re.match(r'^[a-zA-Z0-9\-_.]+$', source_id) or not re.match(r'^[a-zA-Z0-9\-_.]+$', target_id):
+                logger.warning(
+                    "invalid_resource_id_for_prometheus",
+                    source_id=source_id,
+                    target_id=target_id,
+                )
+                continue
+
             # Query Prometheus for traffic metrics
             end_time = datetime.now(UTC)
             start_time = end_time - timedelta(hours=duration_hours)
 
-            # Request rate
-            request_rate_query = f'rate(http_requests_total{{source="{source_id}",target="{target_id}"}}[5m])'
+            # Request rate - use safe string formatting
+            request_rate_query = 'rate(http_requests_total{{source="{source}",target="{target}"}}[5m])'.format(
+                source=source_id, target=target_id
+            )
             request_rate_results = await self.prometheus.query_range(
                 request_rate_query, start_time, end_time, "1m"
             )
 
-            # Error rate
-            error_rate_query = f'rate(http_requests_total{{source="{source_id}",target="{target_id}",status=~"5.."}}[5m]) / rate(http_requests_total{{source="{source_id}",target="{target_id}"}}[5m])'
+            # Error rate - use safe string formatting
+            error_rate_query = 'rate(http_requests_total{{source="{source}",target="{target}",status=~"5.."}}[5m]) / rate(http_requests_total{{source="{source}",target="{target}"}}[5m])'.format(
+                source=source_id, target=target_id
+            )
             error_rate_results = await self.prometheus.query_range(
                 error_rate_query, start_time, end_time, "1m"
             )
 
-            # Latency
-            latency_query = f'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{{source="{source_id}",target="{target_id}"}}[5m]))'
+            # Latency - use safe string formatting
+            latency_query = 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{{source="{source}",target="{target}"}}[5m]))'.format(
+                source=source_id, target=target_id
+            )
             latency_results = await self.prometheus.query_range(
                 latency_query, start_time, end_time, "1m"
             )
