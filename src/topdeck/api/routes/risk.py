@@ -193,13 +193,10 @@ router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 
 
 def get_risk_analyzer() -> RiskAnalyzer:
-    """Get risk analyzer instance."""
-    neo4j_client = Neo4jClient(
-        uri=settings.neo4j_uri,
-        username=settings.neo4j_username,
-        password=settings.neo4j_password,
-    )
-    neo4j_client.connect()
+    """Get risk analyzer instance with shared Neo4j client."""
+    from topdeck.storage import get_neo4j_client
+
+    neo4j_client = get_neo4j_client()
     return RiskAnalyzer(neo4j_client)
 
 
