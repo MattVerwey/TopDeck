@@ -11,7 +11,7 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -478,7 +478,7 @@ class TestCompleteRCAFlow:
     @pytest.mark.asyncio
     async def test_perform_rca(self, rca_analyzer):
         """Test performing a complete RCA."""
-        result = await rca_analyzer.perform_analysis(
+        result = await rca_analyzer.analyze_failure(
             resource_id="service-1",
             failure_time=datetime.now(UTC),
             lookback_hours=2,
@@ -493,7 +493,7 @@ class TestCompleteRCAFlow:
     @pytest.mark.asyncio
     async def test_rca_with_custom_lookback(self, rca_analyzer):
         """Test RCA with custom lookback period."""
-        result = await rca_analyzer.perform_analysis(
+        result = await rca_analyzer.analyze_failure(
             resource_id="service-1",
             failure_time=datetime.now(UTC),
             lookback_hours=4,
@@ -507,7 +507,7 @@ class TestCompleteRCAFlow:
         # Mock no anomalies
         mock_diagnostics_service.get_anomalies = AsyncMock(return_value=[])
         
-        result = await rca_analyzer.perform_analysis(
+        result = await rca_analyzer.analyze_failure(
             resource_id="service-1",
             failure_time=datetime.now(UTC),
             lookback_hours=2,
@@ -541,11 +541,12 @@ class TestConfigurableDepth:
         
         mock_neo4j_client.get_dependency_chain = mock_get_deps
         
-        # Perform RCA with custom depth (if supported)
-        result = await rca_analyzer.perform_analysis(
+        # Perform RCA with custom depth
+        result = await rca_analyzer.analyze_failure(
             resource_id="service-1",
             failure_time=datetime.now(UTC),
             lookback_hours=2,
+            dependency_depth=10,
         )
         
         assert isinstance(result, RootCauseAnalysis)

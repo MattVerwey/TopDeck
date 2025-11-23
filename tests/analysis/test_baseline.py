@@ -11,7 +11,7 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -22,7 +22,6 @@ from topdeck.analysis.baseline import (
     ComparisonPeriod,
     HistoricalComparison,
     MetricComparison,
-    MetricType,
 )
 
 

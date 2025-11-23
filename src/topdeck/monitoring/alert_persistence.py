@@ -7,7 +7,7 @@ Neo4j storage, addressing a key limitation of Phase 7.
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Optional
 
 from topdeck.monitoring.alerting import (

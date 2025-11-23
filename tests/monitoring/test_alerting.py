@@ -11,9 +11,8 @@ Tests cover:
 - Alert acknowledgment and resolution
 """
 
-import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -72,7 +71,8 @@ def alerting_engine(mock_diagnostics_service):
 class TestAlertRuleManagement:
     """Test alert rule CRUD operations."""
     
-    def test_add_rule(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_add_rule(self, alerting_engine):
         """Test adding an alert rule."""
         rule = AlertRule(
             id="rule-1",
@@ -82,12 +82,13 @@ class TestAlertRuleManagement:
             severity=AlertSeverity.WARNING,
         )
         
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         assert "rule-1" in alerting_engine.rules
         assert alerting_engine.rules["rule-1"].name == "Test Rule"
     
-    def test_update_rule(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_update_rule(self, alerting_engine):
         """Test updating an existing alert rule."""
         rule = AlertRule(
             id="rule-1",
@@ -95,7 +96,7 @@ class TestAlertRuleManagement:
             trigger_type=TriggerType.HEALTH_SCORE_DROP,
             threshold=50.0,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         # Update the rule
         updated_rule = AlertRule(
@@ -104,34 +105,37 @@ class TestAlertRuleManagement:
             trigger_type=TriggerType.HEALTH_SCORE_DROP,
             threshold=40.0,
         )
-        alerting_engine.add_rule(updated_rule)
+        await alerting_engine.add_rule(updated_rule)
         
         assert alerting_engine.rules["rule-1"].name == "Updated Rule"
         assert alerting_engine.rules["rule-1"].threshold == 40.0
     
-    def test_remove_rule(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_remove_rule(self, alerting_engine):
         """Test removing an alert rule."""
         rule = AlertRule(
             id="rule-1",
             name="Test Rule",
             trigger_type=TriggerType.HEALTH_SCORE_DROP,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
-        alerting_engine.remove_rule("rule-1")
+        await alerting_engine.remove_rule("rule-1")
         
         assert "rule-1" not in alerting_engine.rules
     
-    def test_remove_nonexistent_rule(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_remove_nonexistent_rule(self, alerting_engine):
         """Test removing a rule that doesn't exist."""
         # Should not raise an error
-        alerting_engine.remove_rule("nonexistent-rule")
+        await alerting_engine.remove_rule("nonexistent-rule")
 
 
 class TestAlertDestinationManagement:
     """Test alert destination CRUD operations."""
     
-    def test_add_destination(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_add_destination(self, alerting_engine):
         """Test adding an alert destination."""
         destination = AlertDestination(
             id="dest-1",
@@ -140,12 +144,13 @@ class TestAlertDestinationManagement:
             config={"recipients": ["admin@example.com"]},
         )
         
-        alerting_engine.add_destination(destination)
+        await alerting_engine.add_destination(destination)
         
         assert "dest-1" in alerting_engine.destinations
         assert alerting_engine.destinations["dest-1"].name == "Email Destination"
     
-    def test_update_destination(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_update_destination(self, alerting_engine):
         """Test updating an existing destination."""
         destination = AlertDestination(
             id="dest-1",
@@ -153,7 +158,7 @@ class TestAlertDestinationManagement:
             type=AlertDestinationType.EMAIL,
             config={"recipients": ["admin@example.com"]},
         )
-        alerting_engine.add_destination(destination)
+        await alerting_engine.add_destination(destination)
         
         # Update the destination
         updated_destination = AlertDestination(
@@ -162,21 +167,22 @@ class TestAlertDestinationManagement:
             type=AlertDestinationType.EMAIL,
             config={"recipients": ["admin@example.com", "ops@example.com"]},
         )
-        alerting_engine.add_destination(updated_destination)
+        await alerting_engine.add_destination(updated_destination)
         
         assert alerting_engine.destinations["dest-1"].name == "Updated Email"
         assert len(alerting_engine.destinations["dest-1"].config["recipients"]) == 2
     
-    def test_remove_destination(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_remove_destination(self, alerting_engine):
         """Test removing an alert destination."""
         destination = AlertDestination(
             id="dest-1",
             name="Email Destination",
             type=AlertDestinationType.EMAIL,
         )
-        alerting_engine.add_destination(destination)
+        await alerting_engine.add_destination(destination)
         
-        alerting_engine.remove_destination("dest-1")
+        await alerting_engine.remove_destination("dest-1")
         
         assert "dest-1" not in alerting_engine.destinations
 
@@ -207,7 +213,7 @@ class TestRuleEvaluation:
             threshold=50.0,
             severity=AlertSeverity.WARNING,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         alerts = await alerting_engine.evaluate_rules(duration_hours=1)
         
@@ -237,7 +243,7 @@ class TestRuleEvaluation:
             trigger_type=TriggerType.HEALTH_SCORE_DROP,
             threshold=50.0,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         alerts = await alerting_engine.evaluate_rules(duration_hours=1)
         
@@ -266,7 +272,7 @@ class TestRuleEvaluation:
             trigger_type=TriggerType.CRITICAL_ANOMALY,
             severity=AlertSeverity.CRITICAL,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         alerts = await alerting_engine.evaluate_rules(duration_hours=1)
         
@@ -295,7 +301,7 @@ class TestRuleEvaluation:
             threshold=50.0,
             enabled=False,  # Disabled
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         alerts = await alerting_engine.evaluate_rules(duration_hours=1)
         
@@ -327,7 +333,7 @@ class TestAlertDeduplication:
             threshold=50.0,
             duration_minutes=5,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         # First evaluation - should trigger
         alerts1 = await alerting_engine.evaluate_rules(duration_hours=1)
@@ -359,7 +365,7 @@ class TestAlertDeduplication:
             threshold=50.0,
             duration_minutes=5,
         )
-        alerting_engine.add_rule(rule)
+        await alerting_engine.add_rule(rule)
         
         # First evaluation - should trigger
         alerts1 = await alerting_engine.evaluate_rules(duration_hours=1)
@@ -378,7 +384,8 @@ class TestAlertDeduplication:
 class TestAlertAcknowledgment:
     """Test alert acknowledgment and resolution."""
     
-    def test_acknowledge_alert(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_acknowledge_alert(self, alerting_engine):
         """Test acknowledging an alert."""
         alert = Alert(
             id="alert-1",
@@ -392,14 +399,15 @@ class TestAlertAcknowledgment:
         alerting_engine.alerts[alert.id] = alert
         alerting_engine.active_alerts[alert.id] = alert
         
-        acknowledged = alerting_engine.acknowledge_alert("alert-1", "admin")
+        acknowledged = await alerting_engine.acknowledge_alert("alert-1", "admin")
         
         assert acknowledged is not None
         assert acknowledged.status == AlertStatus.ACKNOWLEDGED
         assert acknowledged.acknowledged_by == "admin"
         assert acknowledged.acknowledged_at is not None
     
-    def test_resolve_alert(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_resolve_alert(self, alerting_engine):
         """Test resolving an alert."""
         alert = Alert(
             id="alert-1",
@@ -413,29 +421,32 @@ class TestAlertAcknowledgment:
         alerting_engine.alerts[alert.id] = alert
         alerting_engine.active_alerts[alert.id] = alert
         
-        resolved = alerting_engine.resolve_alert("alert-1")
+        resolved = await alerting_engine.resolve_alert("alert-1")
         
         assert resolved is not None
         assert resolved.status == AlertStatus.RESOLVED
         assert resolved.resolved_at is not None
         assert "alert-1" not in alerting_engine.active_alerts
     
-    def test_acknowledge_nonexistent_alert(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_acknowledge_nonexistent_alert(self, alerting_engine):
         """Test acknowledging an alert that doesn't exist."""
-        result = alerting_engine.acknowledge_alert("nonexistent", "admin")
+        result = await alerting_engine.acknowledge_alert("nonexistent", "admin")
         assert result is None
     
-    def test_resolve_nonexistent_alert(self, alerting_engine):
+    @pytest.mark.asyncio
+    async def test_resolve_nonexistent_alert(self, alerting_engine):
         """Test resolving an alert that doesn't exist."""
-        result = alerting_engine.resolve_alert("nonexistent")
+        result = await alerting_engine.resolve_alert("nonexistent")
         assert result is None
 
 
 class TestAlertHistory:
     """Test alert history tracking."""
     
-    def test_get_alert_history(self, alerting_engine):
-        """Test retrieving alert history."""
+    @pytest.mark.asyncio
+    async def test_get_alerts(self, alerting_engine):
+        """Test retrieving alerts."""
         alert1 = Alert(
             id="alert-1",
             rule_id="rule-1",
@@ -444,6 +455,7 @@ class TestAlertHistory:
             status=AlertStatus.RESOLVED,
             title="Test Alert 1",
             message="Test message 1",
+            resource_id="service-1",
             triggered_at=datetime.now(UTC) - timedelta(hours=2),
         )
         alert2 = Alert(
@@ -454,21 +466,23 @@ class TestAlertHistory:
             status=AlertStatus.ACTIVE,
             title="Test Alert 2",
             message="Test message 2",
+            resource_id="service-1",
             triggered_at=datetime.now(UTC) - timedelta(hours=1),
         )
         
         alerting_engine.alerts[alert1.id] = alert1
         alerting_engine.alerts[alert2.id] = alert2
         
-        history = alerting_engine.get_alert_history(hours=24)
+        alerts = await alerting_engine.get_alerts(hours=24)
         
-        assert len(history) == 2
+        assert len(alerts) == 2
         # Should be sorted by time (newest first)
-        assert history[0].id == "alert-2"
-        assert history[1].id == "alert-1"
+        assert alerts[0].id == "alert-2"
+        assert alerts[1].id == "alert-1"
     
-    def test_get_alert_history_filtered_by_severity(self, alerting_engine):
-        """Test retrieving alert history filtered by severity."""
+    @pytest.mark.asyncio
+    async def test_get_alerts_filtered_by_severity(self, alerting_engine):
+        """Test retrieving alerts filtered by severity."""
         alert1 = Alert(
             id="alert-1",
             rule_id="rule-1",
@@ -477,6 +491,7 @@ class TestAlertHistory:
             status=AlertStatus.RESOLVED,
             title="Warning Alert",
             message="Warning message",
+            resource_id="service-1",
         )
         alert2 = Alert(
             id="alert-2",
@@ -486,17 +501,18 @@ class TestAlertHistory:
             status=AlertStatus.ACTIVE,
             title="Critical Alert",
             message="Critical message",
+            resource_id="service-2",
         )
         
         alerting_engine.alerts[alert1.id] = alert1
         alerting_engine.alerts[alert2.id] = alert2
         
-        history = alerting_engine.get_alert_history(
+        alerts = await alerting_engine.get_alerts(
             hours=24,
             severity=AlertSeverity.CRITICAL,
         )
         
-        assert len(history) == 1
+        assert len(alerts) == 1
         assert history[0].severity == AlertSeverity.CRITICAL
 
 
