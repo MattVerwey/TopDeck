@@ -76,9 +76,11 @@ TopDeck provides that answer by:
 
 ### Live Diagnostics & Monitoring (NEW!)
 - **[Live Diagnostics Guide](docs/LIVE_DIAGNOSTICS_GUIDE.md)** - ✨ NEW! Real-time service health monitoring with ML-based anomaly detection
+- **[Live Diagnostics WebSocket Implementation](docs/LIVE_DIAGNOSTICS_WEBSOCKET.md)** - ✨ NEW! Real-time WebSocket updates (Phase 6 Complete)
 - **[Live Diagnostics Quick Reference](docs/LIVE_DIAGNOSTICS_QUICK_REF.md)** - Quick commands and API reference
 - **[Live Diagnostics Architecture](docs/LIVE_DIAGNOSTICS_ARCHITECTURE.md)** - System architecture and data flow
-- **[Live Diagnostics Remaining Work](LIVE_DIAGNOSTICS_REMAINING_WORK.md)** - Phases 6-8 work items and timeline
+- **[Live Diagnostics Remaining Work](LIVE_DIAGNOSTICS_REMAINING_WORK.md)** - Phases 7-8 work items and timeline
+- **[Phase 6 Completion Summary](PHASE_6_COMPLETION_SUMMARY.md)** - ✨ NEW! WebSocket implementation summary
 
 ### Project Status
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
