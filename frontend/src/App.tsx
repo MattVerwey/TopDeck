@@ -12,6 +12,7 @@ import ChangeImpact from './pages/ChangeImpact';
 import SLAManagement from './pages/SLAManagement';
 import Integrations from './pages/Integrations';
 import Settings from './pages/Settings';
+import LiveDiagnostics from './pages/LiveDiagnostics';
 
 const theme = createTheme({
   palette: {
@@ -46,6 +47,7 @@ function App() {
             <Route path="/sla" element={<SLAManagement />} />
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/live-diagnostics" element={<LiveDiagnostics />} />
           </Routes>
         </Layout>
       </Router>

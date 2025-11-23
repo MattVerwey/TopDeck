@@ -32,6 +32,7 @@ import {
   Description as DescriptionIcon,
   Api as ApiIcon,
   Speed as SpeedIcon,
+  Troubleshoot as TroubleshootIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -44,6 +45,7 @@ interface LayoutProps {
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Topology', icon: <TopologyIcon />, path: '/topology' },
+  { text: 'Live Diagnostics', icon: <TroubleshootIcon />, path: '/live-diagnostics' },
   { text: 'Risk Analysis', icon: <RiskIcon />, path: '/risk' },
   { text: 'Change Impact', icon: <ImpactIcon />, path: '/impact' },
   { text: 'SLA/SLO', icon: <SpeedIcon />, path: '/sla' },
