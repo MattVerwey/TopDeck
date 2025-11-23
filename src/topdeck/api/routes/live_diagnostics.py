@@ -684,3 +684,227 @@ async def analyze_root_cause(
             status_code=500,
             detail=f"Failed to perform root cause analysis: {str(e)}",
         )
+
+
+# Historical Comparison endpoints
+
+class BaselineMetricResponse(BaseModel):
+    """Response model for baseline metric."""
+    
+    metric_name: str
+    mean: float
+    median: float
+    std_dev: float
+    min_value: float
+    max_value: float
+    percentile_95: float
+    percentile_99: float
+    sample_count: int
+    calculation_period: str
+    calculated_at: datetime
+
+
+class BaselineResponse(BaseModel):
+    """Response model for baseline."""
+    
+    resource_id: str
+    resource_name: str
+    metrics: dict[str, dict[str, Any]]
+    calculated_at: datetime
+    valid_until: datetime
+    metadata: dict[str, Any]
+
+
+class MetricComparisonResponse(BaseModel):
+    """Response model for metric comparison."""
+    
+    metric_name: str
+    current_value: float
+    historical_value: float
+    percent_change: float
+    absolute_change: float
+    is_anomalous: bool
+    deviation_from_baseline: float
+    trend: str
+
+
+class HistoricalComparisonResponse(BaseModel):
+    """Response model for historical comparison."""
+    
+    resource_id: str
+    resource_name: str
+    comparison_period: str
+    current_time: datetime
+    historical_time: datetime
+    metrics: list[MetricComparisonResponse]
+    overall_trend: str
+    anomaly_count: int
+    metadata: dict[str, Any]
+
+
+_baseline_analyzer: "BaselineAnalyzer | None" = None
+
+
+def get_baseline_analyzer():
+    """Get or create baseline analyzer instance."""
+    global _baseline_analyzer
+    
+    if _baseline_analyzer is None:
+        from topdeck.analysis.baseline import BaselineAnalyzer
+        
+        prometheus = get_prometheus_collector()
+        neo4j = get_neo4j_client()
+        
+        _baseline_analyzer = BaselineAnalyzer(
+            prometheus_collector=prometheus,
+            neo4j_client=neo4j,
+            baseline_period_days=7,
+            anomaly_threshold_stdev=2.0,
+        )
+    
+    return _baseline_analyzer
+
+
+@router.get("/services/{resource_id}/baseline", response_model=BaselineResponse)
+async def get_service_baseline(
+    resource_id: str,
+    force_recalculate: bool = Query(
+        False,
+        description="Force recalculation even if cached",
+    ),
+) -> BaselineResponse:
+    """
+    Get baseline for a service.
+    
+    Calculates baseline metrics for normal service behavior based on
+    historical data (default 7 days).
+    
+    Args:
+        resource_id: ID of the resource
+        force_recalculate: Force recalculation even if cached
+        
+    Returns:
+        Baseline metrics with statistics
+        
+    Example:
+        GET /api/v1/live-diagnostics/services/web-app-001/baseline
+    """
+    try:
+        analyzer = get_baseline_analyzer()
+        
+        baseline = await analyzer.calculate_baseline(
+            resource_id=resource_id,
+            force_recalculate=force_recalculate,
+        )
+        
+        # Convert metrics to response format
+        metrics_data = {}
+        for metric_name, metric in baseline.metrics.items():
+            metrics_data[metric_name] = {
+                "mean": metric.mean,
+                "median": metric.median,
+                "std_dev": metric.std_dev,
+                "min_value": metric.min_value,
+                "max_value": metric.max_value,
+                "percentile_95": metric.percentile_95,
+                "percentile_99": metric.percentile_99,
+                "sample_count": metric.sample_count,
+                "calculation_period": metric.calculation_period,
+                "calculated_at": metric.calculated_at.isoformat(),
+            }
+        
+        return BaselineResponse(
+            resource_id=baseline.resource_id,
+            resource_name=baseline.resource_name,
+            metrics=metrics_data,
+            calculated_at=baseline.calculated_at,
+            valid_until=baseline.valid_until,
+            metadata=baseline.metadata,
+        )
+        
+    except Exception as e:
+        logger.error("get_baseline_failed", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to calculate baseline: {str(e)}",
+        )
+
+
+@router.get("/services/{resource_id}/historical-comparison", response_model=HistoricalComparisonResponse)
+async def compare_with_historical(
+    resource_id: str,
+    comparison_period: str = Query(
+        "previous_hour",
+        description="Period to compare with (previous_hour, previous_day, previous_week, same_hour_yesterday, same_day_last_week)",
+    ),
+) -> HistoricalComparisonResponse:
+    """
+    Compare current metrics with historical period.
+    
+    Compares current service metrics with a historical period to identify
+    changes, trends, and anomalies.
+    
+    Args:
+        resource_id: ID of the resource
+        comparison_period: Which historical period to compare with
+        
+    Returns:
+        Historical comparison with trend analysis
+        
+    Example:
+        GET /api/v1/live-diagnostics/services/web-app-001/historical-comparison?comparison_period=previous_day
+    """
+    try:
+        from topdeck.analysis.baseline import ComparisonPeriod
+        
+        analyzer = get_baseline_analyzer()
+        
+        # Convert string to enum
+        try:
+            period = ComparisonPeriod(comparison_period)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid comparison period: {comparison_period}",
+            )
+        
+        comparison = await analyzer.compare_with_historical(
+            resource_id=resource_id,
+            comparison_period=period,
+        )
+        
+        # Convert to response format
+        metrics_data = [
+            MetricComparisonResponse(
+                metric_name=m.metric_name,
+                current_value=m.current_value,
+                historical_value=m.historical_value,
+                percent_change=m.percent_change,
+                absolute_change=m.absolute_change,
+                is_anomalous=m.is_anomalous,
+                deviation_from_baseline=m.deviation_from_baseline,
+                trend=m.trend,
+            )
+            for m in comparison.metrics
+        ]
+        
+        return HistoricalComparisonResponse(
+            resource_id=comparison.resource_id,
+            resource_name=comparison.resource_name,
+            comparison_period=comparison.comparison_period.value,
+            current_time=comparison.current_time,
+            historical_time=comparison.historical_time,
+            metrics=metrics_data,
+            overall_trend=comparison.overall_trend,
+            anomaly_count=comparison.anomaly_count,
+            metadata=comparison.metadata,
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("historical_comparison_failed", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to perform historical comparison: {str(e)}",
+        )
