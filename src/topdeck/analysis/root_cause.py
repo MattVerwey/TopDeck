@@ -100,6 +100,12 @@ class RootCauseAnalyzer:
     2. Correlation analysis
     3. Dependency chain analysis
     4. Failure propagation detection
+    
+    Enhanced features:
+    - Configurable dependency traversal depth
+    - Data sufficiency validation
+    - Improved confidence scoring
+    - Timestamp accuracy improvements
     """
     
     def __init__(
@@ -107,6 +113,8 @@ class RootCauseAnalyzer:
         neo4j_client: Neo4jClient,
         prometheus_collector: PrometheusCollector,
         diagnostics_service: LiveDiagnosticsService,
+        max_dependency_depth: int = 5,
+        min_data_points: int = 10,
     ):
         """
         Initialize RCA analyzer.
@@ -115,16 +123,21 @@ class RootCauseAnalyzer:
             neo4j_client: Neo4j client for topology queries
             prometheus_collector: Prometheus collector for metrics
             diagnostics_service: Live diagnostics service
+            max_dependency_depth: Maximum depth for dependency traversal (default: 5)
+            min_data_points: Minimum data points required for analysis (default: 10)
         """
         self.neo4j = neo4j_client
         self.prometheus = prometheus_collector
         self.diagnostics = diagnostics_service
+        self.max_dependency_depth = max_dependency_depth
+        self.min_data_points = min_data_points
     
     async def analyze_failure(
         self,
         resource_id: str,
         failure_time: Optional[datetime] = None,
         lookback_hours: int = 2,
+        dependency_depth: Optional[int] = None,
     ) -> RootCauseAnalysis:
         """
         Perform root cause analysis for a failure.
@@ -133,6 +146,7 @@ class RootCauseAnalyzer:
             resource_id: ID of the failed resource
             failure_time: When the failure occurred (defaults to now)
             lookback_hours: How far back to analyze
+            dependency_depth: Override default dependency traversal depth
             
         Returns:
             Complete root cause analysis
@@ -140,7 +154,10 @@ class RootCauseAnalyzer:
         if failure_time is None:
             failure_time = datetime.now(UTC)
         
-        logger.info(f"Starting RCA for {resource_id} at {failure_time}")
+        # Use custom depth or default
+        depth = dependency_depth if dependency_depth is not None else self.max_dependency_depth
+        
+        logger.info(f"Starting RCA for {resource_id} at {failure_time} (depth: {depth})")
         
         # Get resource info
         resource = await self._get_resource_info(resource_id)
@@ -155,16 +172,24 @@ class RootCauseAnalyzer:
             lookback_hours,
         )
         
-        # Analyze dependency chain
-        propagation = await self._analyze_propagation(resource_id, failure_time)
+        # Analyze dependency chain with configurable depth
+        propagation = await self._analyze_propagation(
+            resource_id,
+            failure_time,
+            max_depth=depth,
+        )
         
-        # Determine root cause
+        # Validate data sufficiency
+        warnings = self._validate_data_sufficiency(timeline, anomalies, propagation)
+        
+        # Determine root cause (with warnings affecting confidence)
         root_cause_type, primary_cause, contributing_factors, confidence = (
             await self._determine_root_cause(
                 resource_id,
                 timeline,
                 anomalies,
                 propagation,
+                warnings=warnings,
             )
         )
         
@@ -190,13 +215,16 @@ class RootCauseAnalyzer:
             recommendations=recommendations,
             metadata={
                 "lookback_hours": lookback_hours,
+                "dependency_depth": depth,
                 "analyzed_at": datetime.now(UTC).isoformat(),
+                "warnings": warnings,
+                "data_quality": self._assess_data_quality(timeline, anomalies),
             },
         )
         
         logger.info(
             f"RCA complete for {resource_id}: {root_cause_type.value} "
-            f"(confidence: {confidence:.2f})"
+            f"(confidence: {confidence:.2f}, warnings: {len(warnings)})"
         )
         
         return analysis
@@ -442,11 +470,19 @@ class RootCauseAnalyzer:
         self,
         resource_id: str,
         failure_time: datetime,
+        max_depth: int = 5,
     ) -> Optional[FailurePropagation]:
-        """Analyze how the failure propagated through dependencies."""
-        # Get dependency chain
-        query = """
-        MATCH path = (r:Resource {id: $resource_id})-[:DEPENDS_ON*1..5]->(dep:Resource)
+        """
+        Analyze how the failure propagated through dependencies.
+        
+        Args:
+            resource_id: Failed resource ID
+            failure_time: When failure occurred
+            max_depth: Maximum dependency depth to traverse
+        """
+        # Get dependency chain with configurable depth
+        query = f"""
+        MATCH path = (r:Resource {{id: $resource_id}})-[:DEPENDS_ON*1..{max_depth}]->(dep:Resource)
         WITH dep, length(path) as depth
         ORDER BY depth
         RETURN dep.id as dep_id, dep.name as dep_name, depth
@@ -456,6 +492,7 @@ class RootCauseAnalyzer:
         result = await self.neo4j.execute_query(query, {"resource_id": resource_id})
         
         if not result:
+            logger.info(f"No dependencies found for {resource_id} (depth: {max_depth})")
             return None
         
         # Check if any upstream dependency failed first
@@ -475,6 +512,7 @@ class RootCauseAnalyzer:
                     metadata={
                         "dependency_depth": row["depth"],
                         "upstream_service": row["dep_name"],
+                        "max_depth_searched": max_depth,
                     },
                 )
         
@@ -486,14 +524,26 @@ class RootCauseAnalyzer:
         timeline: list[TimelineEvent],
         anomalies: list[CorrelatedAnomaly],
         propagation: Optional[FailurePropagation],
+        warnings: Optional[list[str]] = None,
     ) -> tuple[RootCauseType, str, list[str], float]:
         """
         Determine the root cause based on analysis.
+        
+        Args:
+            resource_id: Failed resource ID
+            timeline: Event timeline
+            anomalies: Correlated anomalies
+            propagation: Failure propagation info
+            warnings: Data quality warnings (affects confidence)
         
         Returns:
             (root_cause_type, primary_cause, contributing_factors, confidence)
         """
         contributing_factors = []
+        warnings = warnings or []
+        
+        # Base confidence penalty for warnings
+        confidence_penalty = min(len(warnings) * 0.05, 0.25)  # Up to 25% reduction
         
         # Check for propagation from dependency
         if propagation:
@@ -502,7 +552,7 @@ class RootCauseAnalyzer:
                 f"Failure cascaded from upstream dependency: "
                 f"{propagation.metadata.get('upstream_service', 'unknown')}"
             )
-            confidence = 0.8
+            confidence = max(0.8 - confidence_penalty, 0.3)
             contributing_factors.append("Dependency failure detected")
             return root_cause_type, primary_cause, contributing_factors, confidence
         
@@ -517,7 +567,7 @@ class RootCauseAnalyzer:
                 primary_cause = (
                     f"Recent deployment: {deployment.metadata.get('version', 'unknown')}"
                 )
-                confidence = 0.7
+                confidence = max(0.7 - confidence_penalty, 0.3)
                 contributing_factors.append(
                     f"Deployment occurred {int(time_diff/60)} minutes before failure"
                 )
@@ -535,7 +585,7 @@ class RootCauseAnalyzer:
             anomaly = resource_anomalies[0]
             root_cause_type = RootCauseType.RESOURCE_EXHAUSTION
             primary_cause = f"Resource exhaustion: {anomaly.metric_name}"
-            confidence = anomaly.correlation_score
+            confidence = max(anomaly.correlation_score - confidence_penalty, 0.3)
             contributing_factors.append(
                 f"Deviation of {anomaly.deviation:.2f} detected in {anomaly.metric_name}"
             )
@@ -553,7 +603,7 @@ class RootCauseAnalyzer:
             anomaly = network_anomalies[0]
             root_cause_type = RootCauseType.NETWORK_ISSUE
             primary_cause = f"Network issue: {anomaly.metric_name}"
-            confidence = anomaly.correlation_score
+            confidence = max(anomaly.correlation_score - confidence_penalty, 0.3)
             contributing_factors.append(
                 f"Network anomaly detected: {anomaly.metric_name}"
             )
@@ -562,7 +612,7 @@ class RootCauseAnalyzer:
         # Default to unknown
         root_cause_type = RootCauseType.UNKNOWN
         primary_cause = "Unable to determine root cause with available data"
-        confidence = 0.3
+        confidence = max(0.3 - confidence_penalty, 0.1)  # Even lower confidence for unknown
         
         if anomalies:
             contributing_factors.append(
@@ -572,6 +622,12 @@ class RootCauseAnalyzer:
         if timeline:
             contributing_factors.append(
                 f"{len(timeline)} events in timeline"
+            )
+        
+        # Add data quality warning if confidence is very low
+        if len(warnings) > 0:
+            contributing_factors.append(
+                f"Data quality warnings: {len(warnings)} (see metadata for details)"
             )
         
         return root_cause_type, primary_cause, contributing_factors, confidence
@@ -629,3 +685,114 @@ class RootCauseAnalyzer:
             ])
         
         return recommendations
+    
+    def _validate_data_sufficiency(
+        self,
+        timeline: list[TimelineEvent],
+        anomalies: list[CorrelatedAnomaly],
+        propagation: Optional[FailurePropagation],
+    ) -> list[str]:
+        """
+        Validate that we have sufficient data for accurate RCA.
+        
+        Args:
+            timeline: Event timeline
+            anomalies: Correlated anomalies
+            propagation: Failure propagation info
+            
+        Returns:
+            List of warning messages about data quality
+        """
+        warnings = []
+        
+        # Check timeline data
+        if len(timeline) < self.min_data_points:
+            warnings.append(
+                f"Limited timeline data: {len(timeline)} events "
+                f"(minimum recommended: {self.min_data_points})"
+            )
+        
+        # Check for recent deployment data
+        recent_deployments = [
+            e for e in timeline
+            if e.event_type == "deployment"
+            and (datetime.now(UTC) - e.timestamp).total_seconds() < 7200  # 2 hours
+        ]
+        if not recent_deployments and len(timeline) > 0:
+            warnings.append(
+                "No recent deployment events found. Consider increasing lookback window."
+            )
+        
+        # Check anomaly data
+        if len(anomalies) == 0:
+            warnings.append(
+                "No correlated anomalies found. Analysis may be less accurate."
+            )
+        elif len(anomalies) < 3:
+            warnings.append(
+                f"Limited anomaly data: {len(anomalies)} anomalies found. "
+                "More data would improve confidence."
+            )
+        
+        # Check propagation data
+        if propagation is None:
+            warnings.append(
+                "No failure propagation detected. Service may be isolated or dependency data incomplete."
+            )
+        elif len(propagation.propagation_path) == 1:
+            warnings.append(
+                "Shallow propagation path. Consider increasing dependency depth for more accurate analysis."
+            )
+        
+        # Check for timestamp accuracy issues
+        if timeline:
+            # Check if events have similar timestamps (may indicate inaccurate timestamps)
+            timestamps = [e.timestamp for e in timeline]
+            unique_timestamps = set(t.replace(microsecond=0) for t in timestamps)
+            if len(unique_timestamps) < len(timestamps) / 2:
+                warnings.append(
+                    "Many events have similar timestamps. Timestamp accuracy may be limited."
+                )
+        
+        return warnings
+    
+    def _assess_data_quality(
+        self,
+        timeline: list[TimelineEvent],
+        anomalies: list[CorrelatedAnomaly],
+    ) -> str:
+        """
+        Assess overall data quality for RCA.
+        
+        Args:
+            timeline: Event timeline
+            anomalies: Correlated anomalies
+            
+        Returns:
+            Quality assessment: "high", "medium", "low"
+        """
+        score = 0
+        
+        # Timeline quality
+        if len(timeline) >= self.min_data_points * 2:
+            score += 3
+        elif len(timeline) >= self.min_data_points:
+            score += 2
+        elif len(timeline) >= self.min_data_points // 2:
+            score += 1
+        
+        # Anomaly quality
+        if len(anomalies) >= 5:
+            score += 3
+        elif len(anomalies) >= 3:
+            score += 2
+        elif len(anomalies) >= 1:
+            score += 1
+        
+        # Determine overall quality
+        if score >= 5:
+            return "high"
+        elif score >= 3:
+            return "medium"
+        else:
+            return "low"
