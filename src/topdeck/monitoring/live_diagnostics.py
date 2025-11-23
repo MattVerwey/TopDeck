@@ -408,7 +408,7 @@ class LiveDiagnosticsService:
         self, resource_id: str, limit: int = 10, duration_hours: int = 1
     ) -> list[dict[str, Any]]:
         """
-        Get recent error logs for a specific resource.
+        Get recent error logs for a specific resource with ML-based analysis.
 
         Args:
             resource_id: Resource identifier
@@ -416,7 +416,7 @@ class LiveDiagnosticsService:
             duration_hours: Time window for log search (default: 1 hour)
 
         Returns:
-            List of error log entries with timestamp, message, and level
+            List of error log entries with timestamp, message, level, and ML analysis
         """
         if not self.loki:
             logger.warning("loki_collector_not_configured")
@@ -443,7 +443,24 @@ class LiveDiagnosticsService:
 
             # Sort by timestamp (most recent first) and limit
             error_entries.sort(key=lambda e: e["timestamp"], reverse=True)
-            return error_entries[:limit]
+            limited_entries = error_entries[:limit]
+
+            # Use ML to analyze error patterns and provide insights
+            if limited_entries:
+                resource_info = await self._get_resource_info(resource_id)
+                resource_type = resource_info.get("type", "service")
+
+                ml_analysis = self.predictor.analyze_error_logs(
+                    error_logs=limited_entries,
+                    resource_id=resource_id,
+                    resource_type=resource_type,
+                )
+
+                # Add ML analysis to response
+                for entry in limited_entries:
+                    entry["ml_analysis"] = ml_analysis
+
+            return limited_entries
 
         except Exception as e:
             logger.error("get_recent_error_logs_failed", resource_id=resource_id, error=str(e))

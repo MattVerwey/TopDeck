@@ -552,3 +552,294 @@ class Predictor:
             recommendations.append("Performance within acceptable range")
 
         return recommendations
+
+    def analyze_error_logs(
+        self, error_logs: list[dict], resource_id: str, resource_type: str
+    ) -> dict:
+        """
+        Analyze error logs using ML pattern recognition to identify root causes.
+
+        Args:
+            error_logs: List of error log entries with timestamp, message, level
+            resource_id: Resource identifier
+            resource_type: Type of resource
+
+        Returns:
+            Dictionary with analysis results including likely causes and recommendations
+        """
+        logger.info(
+            "analyze_error_logs",
+            resource_id=resource_id,
+            error_count=len(error_logs),
+        )
+
+        if not error_logs:
+            return {
+                "likely_causes": [],
+                "recommendations": [],
+                "error_patterns": [],
+                "severity_assessment": "none",
+                "confidence": 0.0,
+            }
+
+        # Extract patterns from error messages
+        error_patterns = self._extract_error_patterns(error_logs)
+
+        # Identify likely causes based on patterns
+        likely_causes = self._identify_error_causes(error_patterns, resource_type)
+
+        # Generate actionable recommendations
+        recommendations = self._generate_error_recommendations(
+            error_patterns, likely_causes, resource_type
+        )
+
+        # Assess overall severity
+        severity_assessment = self._assess_error_severity(error_logs, error_patterns)
+
+        # Calculate confidence based on pattern clarity and data quality
+        confidence = self._calculate_error_analysis_confidence(error_logs, error_patterns)
+
+        return {
+            "likely_causes": likely_causes,
+            "recommendations": recommendations,
+            "error_patterns": error_patterns,
+            "severity_assessment": severity_assessment,
+            "confidence": confidence,
+        }
+
+    def _extract_error_patterns(self, error_logs: list[dict]) -> list[dict]:
+        """Extract common patterns from error logs."""
+        patterns = []
+
+        # Common error patterns to look for
+        pattern_signatures = {
+            "connection_timeout": [
+                "timeout",
+                "connection timed out",
+                "connect timeout",
+                "connection refused",
+            ],
+            "database_error": [
+                "database",
+                "sql",
+                "deadlock",
+                "connection pool",
+                "query timeout",
+            ],
+            "out_of_memory": ["out of memory", "oom", "memory exceeded", "heap space"],
+            "authentication_failure": [
+                "authentication failed",
+                "unauthorized",
+                "403",
+                "401",
+                "access denied",
+            ],
+            "network_error": [
+                "network",
+                "socket",
+                "connection reset",
+                "host unreachable",
+            ],
+            "configuration_error": [
+                "configuration",
+                "config",
+                "invalid parameter",
+                "missing required",
+            ],
+            "resource_exhaustion": [
+                "too many",
+                "limit exceeded",
+                "quota",
+                "throttle",
+                "rate limit",
+            ],
+        }
+
+        # Count occurrences of each pattern
+        pattern_counts = {}
+        for pattern_name, keywords in pattern_signatures.items():
+            count = 0
+            examples = []
+            for log in error_logs:
+                message_lower = log.get("message", "").lower()
+                if any(keyword in message_lower for keyword in keywords):
+                    count += 1
+                    if len(examples) < 2:  # Keep up to 2 examples
+                        examples.append(log.get("message", "")[:200])
+
+            if count > 0:
+                pattern_counts[pattern_name] = count
+                patterns.append(
+                    {
+                        "pattern": pattern_name,
+                        "count": count,
+                        "percentage": round(count / len(error_logs) * 100, 1),
+                        "examples": examples,
+                    }
+                )
+
+        # Sort by frequency
+        patterns.sort(key=lambda p: p["count"], reverse=True)
+
+        return patterns
+
+    def _identify_error_causes(self, error_patterns: list[dict], resource_type: str) -> list[dict]:
+        """Identify likely root causes based on error patterns."""
+        causes = []
+
+        # Map patterns to likely causes
+        cause_mapping = {
+            "connection_timeout": {
+                "cause": "Network connectivity or service unavailability",
+                "details": "Services may be down, overloaded, or network issues between components",
+                "priority": "high",
+            },
+            "database_error": {
+                "cause": "Database performance or configuration issues",
+                "details": "Database may be under heavy load, poorly optimized queries, or connection pool exhaustion",
+                "priority": "high",
+            },
+            "out_of_memory": {
+                "cause": "Memory leak or insufficient resource allocation",
+                "details": "Application may have memory leaks or resource limits set too low",
+                "priority": "critical",
+            },
+            "authentication_failure": {
+                "cause": "Authentication/authorization misconfiguration",
+                "details": "Credentials may be expired, incorrect, or permissions not properly set",
+                "priority": "medium",
+            },
+            "network_error": {
+                "cause": "Network infrastructure issues",
+                "details": "Network connectivity problems, DNS issues, or firewall rules blocking traffic",
+                "priority": "high",
+            },
+            "configuration_error": {
+                "cause": "Service misconfiguration",
+                "details": "Required configuration parameters missing or set incorrectly",
+                "priority": "medium",
+            },
+            "resource_exhaustion": {
+                "cause": "Resource limits exceeded",
+                "details": "Service hitting rate limits, quotas, or running out of available connections",
+                "priority": "high",
+            },
+        }
+
+        for pattern in error_patterns:
+            pattern_name = pattern["pattern"]
+            if pattern_name in cause_mapping:
+                cause_info = cause_mapping[pattern_name].copy()
+                cause_info["evidence"] = (
+                    f"{pattern['count']} occurrences ({pattern['percentage']}%)"
+                )
+                cause_info["pattern"] = pattern_name
+                causes.append(cause_info)
+
+        return causes
+
+    def _generate_error_recommendations(
+        self, error_patterns: list[dict], likely_causes: list[dict], resource_type: str
+    ) -> list[str]:
+        """Generate actionable recommendations based on error analysis."""
+        recommendations = []
+
+        # Generate recommendations based on top patterns
+        for pattern in error_patterns[:3]:  # Top 3 patterns
+            pattern_name = pattern["pattern"]
+
+            if pattern_name == "connection_timeout":
+                recommendations.append(
+                    "Check target service health and increase connection timeout settings"
+                )
+                recommendations.append("Verify network connectivity and DNS resolution")
+                recommendations.append("Review service load and consider scaling if overloaded")
+
+            elif pattern_name == "database_error":
+                recommendations.append("Analyze slow queries and add appropriate indexes")
+                recommendations.append("Review database connection pool configuration")
+                recommendations.append("Check database server resources (CPU, memory, I/O)")
+
+            elif pattern_name == "out_of_memory":
+                recommendations.append("Investigate memory leaks in application code")
+                recommendations.append("Increase memory limits for the service")
+                recommendations.append("Review object lifecycle and garbage collection settings")
+
+            elif pattern_name == "authentication_failure":
+                recommendations.append("Verify credentials and certificate expiration dates")
+                recommendations.append("Check service account permissions and roles")
+                recommendations.append(
+                    "Review authentication configuration and token refresh logic"
+                )
+
+            elif pattern_name == "network_error":
+                recommendations.append("Check network connectivity between services")
+                recommendations.append("Verify firewall rules and security groups")
+                recommendations.append("Review DNS configuration and service discovery")
+
+            elif pattern_name == "configuration_error":
+                recommendations.append("Review service configuration files for missing parameters")
+                recommendations.append("Validate configuration against schema or documentation")
+                recommendations.append("Check environment variables and secrets are properly set")
+
+            elif pattern_name == "resource_exhaustion":
+                recommendations.append("Review and adjust rate limits and quotas")
+                recommendations.append("Implement connection pooling and resource reuse")
+                recommendations.append("Scale service to handle increased load")
+
+        # Add generic recommendations if specific patterns not found
+        if not recommendations:
+            recommendations.append("Review recent deployments or configuration changes")
+            recommendations.append("Check service dependencies and their health status")
+            recommendations.append("Enable detailed logging for further investigation")
+
+        # Deduplicate and limit recommendations
+        seen = set()
+        unique_recommendations = []
+        for rec in recommendations:
+            if rec not in seen:
+                seen.add(rec)
+                unique_recommendations.append(rec)
+
+        return unique_recommendations[:5]  # Top 5 recommendations
+
+    def _assess_error_severity(self, error_logs: list[dict], error_patterns: list[dict]) -> str:
+        """Assess overall severity of errors."""
+        if not error_logs:
+            return "none"
+
+        # Check for critical patterns
+        critical_patterns = ["out_of_memory", "database_error"]
+        for pattern in error_patterns:
+            if pattern["pattern"] in critical_patterns and pattern["percentage"] > 20:
+                return "critical"
+
+        # High severity if many errors or high error rate
+        if len(error_logs) >= 10:
+            return "high"
+        elif len(error_logs) >= 5:
+            return "medium"
+        else:
+            return "low"
+
+    def _calculate_error_analysis_confidence(
+        self, error_logs: list[dict], error_patterns: list[dict]
+    ) -> float:
+        """Calculate confidence in error analysis."""
+        if not error_logs:
+            return 0.0
+
+        # More logs = higher confidence
+        data_confidence = min(len(error_logs) / 10.0, 1.0)
+
+        # Clear patterns = higher confidence
+        pattern_confidence = 0.0
+        if error_patterns:
+            # If top pattern covers >50% of errors, high confidence
+            top_pattern_pct = error_patterns[0]["percentage"]
+            pattern_confidence = min(top_pattern_pct / 50.0, 1.0)
+
+        # Combine confidences
+        overall_confidence = (data_confidence * 0.4) + (pattern_confidence * 0.6)
+
+        return round(overall_confidence, 2)

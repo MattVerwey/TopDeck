@@ -2,7 +2,7 @@
  * Error Detail Drawer Component
  * 
  * Displays detailed error information for a selected resource,
- * including recent error logs from Loki.
+ * including recent error logs with ML-based root cause analysis.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -25,7 +25,14 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { Close, ExpandMore, Error as ErrorIcon } from '@mui/icons-material';
+import {
+  Close,
+  ExpandMore,
+  Error as ErrorIcon,
+  Lightbulb as LightbulbIcon,
+  Warning as WarningIcon,
+  Psychology as PsychologyIcon,
+} from '@mui/icons-material';
 import type { LiveDiagnosticsSnapshot } from '../../types/diagnostics';
 
 interface ErrorDetailDrawerProps {
@@ -40,6 +47,24 @@ interface ErrorLog {
   message: string;
   level: string;
   labels: Record<string, string>;
+  ml_analysis?: {
+    likely_causes: Array<{
+      cause: string;
+      details: string;
+      priority: string;
+      evidence: string;
+      pattern: string;
+    }>;
+    recommendations: string[];
+    error_patterns: Array<{
+      pattern: string;
+      count: number;
+      percentage: number;
+      examples: string[];
+    }>;
+    severity_assessment: string;
+    confidence: number;
+  };
 }
 
 export default function ErrorDetailDrawer({
@@ -220,6 +245,166 @@ export default function ErrorDetailDrawer({
                 )}
               </CardContent>
             </Card>
+
+            {/* ML Analysis Section */}
+            {!loadingLogs && errorLogs.length > 0 && errorLogs[0]?.ml_analysis && (
+              <Card sx={{ mb: 2, backgroundColor: 'rgba(33, 150, 243, 0.05)' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <PsychologyIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="h6">
+                      ML-Powered Root Cause Analysis
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${Math.round(errorLogs[0].ml_analysis.confidence * 100)}% confident`}
+                      sx={{ ml: 'auto' }}
+                      color={
+                        errorLogs[0].ml_analysis.confidence > 0.7
+                          ? 'success'
+                          : errorLogs[0].ml_analysis.confidence > 0.4
+                          ? 'warning'
+                          : 'default'
+                      }
+                    />
+                  </Box>
+
+                  {/* Severity Assessment */}
+                  <Alert
+                    severity={
+                      errorLogs[0].ml_analysis.severity_assessment === 'critical'
+                        ? 'error'
+                        : errorLogs[0].ml_analysis.severity_assessment === 'high'
+                        ? 'warning'
+                        : 'info'
+                    }
+                    sx={{ mb: 2 }}
+                  >
+                    Severity: {errorLogs[0].ml_analysis.severity_assessment.toUpperCase()}
+                  </Alert>
+
+                  {/* Error Patterns */}
+                  {errorLogs[0].ml_analysis.error_patterns.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                        <WarningIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        Detected Patterns
+                      </Typography>
+                      <Stack spacing={1}>
+                        {errorLogs[0].ml_analysis.error_patterns.map((pattern, idx) => (
+                          <Box
+                            key={idx}
+                            sx={{
+                              p: 1,
+                              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                              borderRadius: 1,
+                              borderLeft: 3,
+                              borderColor: 'warning.main',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                {pattern.pattern.replace(/_/g, ' ').toUpperCase()}
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={`${pattern.percentage}% (${pattern.count} errors)`}
+                                color="warning"
+                              />
+                            </Box>
+                            {pattern.examples.length > 0 && (
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  display: 'block',
+                                  mt: 0.5,
+                                  fontFamily: 'monospace',
+                                  color: 'text.secondary',
+                                }}
+                              >
+                                Example: {pattern.examples[0]}
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Likely Causes */}
+                  {errorLogs[0].ml_analysis.likely_causes.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                        <ErrorIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        Likely Root Causes
+                      </Typography>
+                      <Stack spacing={1}>
+                        {errorLogs[0].ml_analysis.likely_causes.map((cause, idx) => (
+                          <Accordion key={idx}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                                <Chip
+                                  size="small"
+                                  label={cause.priority.toUpperCase()}
+                                  color={
+                                    cause.priority === 'critical'
+                                      ? 'error'
+                                      : cause.priority === 'high'
+                                      ? 'warning'
+                                      : 'default'
+                                  }
+                                />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {cause.cause}
+                                </Typography>
+                              </Stack>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Typography variant="body2" color="text.secondary" paragraph>
+                                {cause.details}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Evidence: {cause.evidence}
+                              </Typography>
+                            </AccordionDetails>
+                          </Accordion>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Recommendations */}
+                  {errorLogs[0].ml_analysis.recommendations.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                        <LightbulbIcon sx={{ fontSize: 16, mr: 0.5, color: 'warning.main' }} />
+                        Recommended Actions
+                      </Typography>
+                      <List dense>
+                        {errorLogs[0].ml_analysis.recommendations.map((rec, idx) => (
+                          <ListItem
+                            key={idx}
+                            sx={{
+                              backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                              borderRadius: 1,
+                              mb: 0.5,
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography variant="body2">
+                                  {idx + 1}. {rec}
+                                </Typography>
+                              }
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Metrics */}
             <Card sx={{ mb: 2 }}>
