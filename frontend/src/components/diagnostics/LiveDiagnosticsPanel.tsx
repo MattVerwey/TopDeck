@@ -3,9 +3,11 @@
  * 
  * Real-time diagnostics panel with ML-based anomaly detection and service health monitoring.
  * Displays topology with visual highlighting of failed/degraded services.
+ * 
+ * Now supports WebSocket for real-time updates with automatic fallback to polling.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -37,8 +39,10 @@ import {
   NetworkCheck,
   BugReport,
   Info,
+  Wifi,
+  WifiOff,
+  CloudQueue,
 } from '@mui/icons-material';
-import apiClient from '../../services/api';
 import type {
   LiveDiagnosticsSnapshot,
 } from '../../types/diagnostics';
@@ -46,6 +50,7 @@ import LiveTopologyGraph from './LiveTopologyGraph';
 import AnomalyList from './AnomalyList';
 import TrafficPatternChart from './TrafficPatternChart';
 import ErrorDetailDrawer from './ErrorDetailDrawer';
+import { useLiveDiagnosticsWebSocket } from '../../hooks/useLiveDiagnosticsWebSocket';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -70,38 +75,24 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function LiveDiagnosticsPanel() {
-  const [snapshot, setSnapshot] = useState<LiveDiagnosticsSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval] = useState(30000); // 30 seconds
   const [tabValue, setTabValue] = useState(0);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const loadSnapshot = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiClient.getLiveDiagnosticsSnapshot(1); // 1 hour window
-      setSnapshot(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load diagnostics data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSnapshot();
-  }, [loadSnapshot]);
-
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(loadSnapshot, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh, refreshInterval, loadSnapshot]);
+  // Use WebSocket hook for real-time updates
+  const {
+    snapshot,
+    connectionStatus,
+    error,
+    requestSnapshot,
+  } = useLiveDiagnosticsWebSocket({
+    updateInterval: 10, // 10 seconds for WebSocket
+    autoReconnect: true,
+    maxReconnectAttempts: 5,
+    reconnectDelay: 3000,
+    fallbackToPolling: true,
+    pollingInterval: 30000, // 30 seconds for polling fallback
+  });
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -138,6 +129,28 @@ export default function LiveDiagnosticsPanel() {
     }
   };
 
+  const getConnectionIcon = () => {
+    switch (connectionStatus.connectionType) {
+      case 'websocket':
+        return <Wifi color="success" />;
+      case 'polling':
+        return <CloudQueue color="warning" />;
+      default:
+        return <WifiOff color="error" />;
+    }
+  };
+
+  const getConnectionLabel = () => {
+    switch (connectionStatus.connectionType) {
+      case 'websocket':
+        return 'WebSocket (Real-time)';
+      case 'polling':
+        return 'Polling (Fallback)';
+      default:
+        return 'Disconnected';
+    }
+  };
+
   if (error) {
     return (
       <Alert severity="error" sx={{ m: 2 }}>
@@ -159,27 +172,32 @@ export default function LiveDiagnosticsPanel() {
             label={`System: ${snapshot?.overall_health || 'Loading...'}`}
             color={getStatusColor(snapshot?.overall_health || 'unknown') as any}
           />
-          <Tooltip title={autoRefresh ? 'Auto-refresh enabled' : 'Auto-refresh disabled'}>
-            <Button
-              variant="outlined"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              color={autoRefresh ? 'primary' : 'inherit'}
-            >
-              {autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}
-            </Button>
+          <Tooltip title={`Connection: ${getConnectionLabel()}`}>
+            <Chip
+              icon={getConnectionIcon()}
+              label={getConnectionLabel()}
+              color={
+                connectionStatus.connectionType === 'websocket'
+                  ? 'success'
+                  : connectionStatus.connectionType === 'polling'
+                  ? 'warning'
+                  : 'default'
+              }
+              size="small"
+            />
           </Tooltip>
           <Button
             variant="contained"
             startIcon={<Refresh />}
-            onClick={loadSnapshot}
-            disabled={loading}
+            onClick={requestSnapshot}
+            disabled={!connectionStatus.connected}
           >
             Refresh
           </Button>
         </Stack>
       </Box>
 
-      {loading && !snapshot && (
+      {!connectionStatus.connected && !snapshot && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
         </Box>

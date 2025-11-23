@@ -14,6 +14,7 @@ from topdeck.api.routes import (
     error_replay,
     integrations,
     live_diagnostics,
+    live_diagnostics_ws,
     load_detection,
     monitoring,
     prediction,
@@ -195,6 +196,7 @@ app.include_router(reporting.router)
 app.include_router(settings_router.router)
 app.include_router(load_detection.router)
 app.include_router(live_diagnostics.router)
+app.include_router(live_diagnostics_ws.router)
 app.include_router(alerts.router)
 
 
