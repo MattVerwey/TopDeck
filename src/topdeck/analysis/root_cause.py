@@ -9,6 +9,7 @@ Analyzes failures and anomalies to identify root causes through:
 """
 
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -174,7 +175,6 @@ class RootCauseAnalyzer:
             contributing_factors,
         )
         
-        import uuid
         analysis = RootCauseAnalysis(
             analysis_id=str(uuid.uuid4()),
             resource_id=resource_id,
@@ -281,9 +281,15 @@ class RootCauseAnalyzer:
         
         events = []
         for row in result:
+            # Parse timestamp and ensure it's UTC-aware
+            timestamp_str = row["timestamp"]
+            timestamp = datetime.fromisoformat(timestamp_str)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=UTC)
+            
             events.append(
                 TimelineEvent(
-                    timestamp=datetime.fromisoformat(row["timestamp"]),
+                    timestamp=timestamp,
                     event_type="deployment",
                     resource_id=resource_id,
                     resource_name=resource_id,

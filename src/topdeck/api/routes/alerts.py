@@ -5,7 +5,8 @@ Endpoints for creating alert rules, managing destinations, and viewing alert his
 """
 
 import logging
-from datetime import datetime
+import uuid
+from datetime import UTC, datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -203,7 +204,6 @@ async def create_alert_rule(rule: AlertRuleCreate) -> AlertRuleResponse:
     engine = get_alerting_engine()
     
     # Generate unique ID
-    import uuid
     rule_id = str(uuid.uuid4())
     
     alert_rule = AlertRule(
@@ -370,7 +370,6 @@ async def create_alert_destination(
     engine = get_alerting_engine()
     
     # Generate unique ID
-    import uuid
     dest_id = str(uuid.uuid4())
     
     alert_dest = AlertDestination(
@@ -518,7 +517,7 @@ async def evaluate_alert_rules(
     new_alerts = await engine.evaluate_rules(duration_hours)
     
     return {
-        "evaluated_at": datetime.utcnow().isoformat(),
+        "evaluated_at": datetime.now(UTC).isoformat(),
         "duration_hours": duration_hours,
         "new_alerts_count": len(new_alerts),
         "alerts": [
