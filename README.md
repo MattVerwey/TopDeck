@@ -74,6 +74,12 @@ TopDeck provides that answer by:
 - **[Load Change Detection](docs/LOAD_CHANGE_DETECTION.md)** - ✨ NEW! Detect scaling events and predict load impact using Prometheus
 - **[Load Detection Quick Reference](docs/LOAD_CHANGE_DETECTION_QUICK_REF.md)** - Quick commands for load monitoring
 
+### Live Diagnostics & Monitoring (NEW!)
+- **[Live Diagnostics Guide](docs/LIVE_DIAGNOSTICS_GUIDE.md)** - ✨ NEW! Real-time service health monitoring with ML-based anomaly detection
+- **[Live Diagnostics Quick Reference](docs/LIVE_DIAGNOSTICS_QUICK_REF.md)** - Quick commands and API reference
+- **[Live Diagnostics Architecture](docs/LIVE_DIAGNOSTICS_ARCHITECTURE.md)** - System architecture and data flow
+- **[Live Diagnostics Remaining Work](LIVE_DIAGNOSTICS_REMAINING_WORK.md)** - Phases 6-8 work items and timeline
+
 ### Project Status
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
 - **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks

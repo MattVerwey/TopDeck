@@ -24,6 +24,13 @@ import type {
   FeatureFlags,
   SPOFResource,
 } from '../types';
+import type {
+  LiveDiagnosticsSnapshot,
+  ServiceHealthStatus,
+  AnomalyAlert,
+  TrafficPattern,
+  FailingDependency,
+} from '../types/diagnostics';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -631,6 +638,97 @@ class ApiClient {
   async checkHealth() {
     const { data } = await this.client.get('/health');
     return data;
+  }
+
+  // Live Diagnostics API
+  async getLiveDiagnosticsSnapshot(durationHours: number = 1): Promise<LiveDiagnosticsSnapshot> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get<LiveDiagnosticsSnapshot>(
+        '/api/v1/live-diagnostics/snapshot',
+        {
+          params: { duration_hours: durationHours },
+        }
+      );
+      return data;
+    });
+  }
+
+  async getServiceHealth(
+    resourceId: string,
+    resourceType: string = 'service',
+    durationHours: number = 1
+  ): Promise<ServiceHealthStatus> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get<ServiceHealthStatus>(
+        `/api/v1/live-diagnostics/services/${resourceId}/health`,
+        {
+          params: {
+            resource_type: resourceType,
+            duration_hours: durationHours,
+          },
+        }
+      );
+      return data;
+    });
+  }
+
+  async getAnomalies(
+    severity?: string,
+    durationHours: number = 1,
+    limit: number = 50
+  ): Promise<AnomalyAlert[]> {
+    return this.requestWithRetry(async () => {
+      const params: Record<string, any> = {
+        duration_hours: durationHours,
+        limit,
+      };
+      if (severity) {
+        params.severity = severity;
+      }
+      const { data } = await this.client.get<AnomalyAlert[]>(
+        '/api/v1/live-diagnostics/anomalies',
+        { params }
+      );
+      return data;
+    });
+  }
+
+  async getTrafficPatterns(
+    durationHours: number = 1,
+    abnormalOnly: boolean = false
+  ): Promise<TrafficPattern[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get<TrafficPattern[]>(
+        '/api/v1/live-diagnostics/traffic-patterns',
+        {
+          params: {
+            duration_hours: durationHours,
+            abnormal_only: abnormalOnly,
+          },
+        }
+      );
+      return data;
+    });
+  }
+
+  async getFailingDependencies(): Promise<FailingDependency[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get<FailingDependency[]>(
+        '/api/v1/live-diagnostics/failing-dependencies'
+      );
+      return data;
+    });
+  }
+
+  async checkLiveDiagnosticsHealth(): Promise<{
+    status: string;
+    timestamp: string;
+    components: Record<string, string>;
+  }> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/live-diagnostics/health');
+      return data;
+    });
   }
 }
 
