@@ -527,7 +527,7 @@ async def create_dashboard_from_template(
         templates = await list_dashboard_templates()
         template = next((t for t in templates if t.id == template_id), None)
         
-        if not template is None:
+        if template is None:
             raise HTTPException(status_code=404, detail="Template not found")
         
         # Create dashboard from template

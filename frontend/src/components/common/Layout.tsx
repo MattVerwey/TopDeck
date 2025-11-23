@@ -46,6 +46,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Topology', icon: <TopologyIcon />, path: '/topology' },
   { text: 'Live Diagnostics', icon: <TroubleshootIcon />, path: '/live-diagnostics' },
+  { text: 'Custom Dashboards', icon: <LayersIcon />, path: '/custom-dashboards' },
   { text: 'Risk Analysis', icon: <RiskIcon />, path: '/risk' },
   { text: 'Change Impact', icon: <ImpactIcon />, path: '/impact' },
   { text: 'SLA/SLO', icon: <SpeedIcon />, path: '/sla' },

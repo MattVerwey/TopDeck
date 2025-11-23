@@ -730,6 +730,80 @@ class ApiClient {
       return data;
     });
   }
+
+  // Dashboard Management
+  async listDashboards(owner = 'default', includeDefaults = true): Promise<any[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/dashboards', {
+        params: { owner, include_defaults: includeDefaults },
+      });
+      return data;
+    });
+  }
+
+  async getDashboard(dashboardId: string): Promise<any> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get(`/api/v1/dashboards/${dashboardId}`);
+      return data;
+    });
+  }
+
+  async createDashboard(dashboard: {
+    name: string;
+    description?: string;
+    is_default?: boolean;
+    widgets: any[];
+    layout_config?: Record<string, any>;
+  }, owner = 'default'): Promise<any> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post(
+        '/api/v1/dashboards',
+        dashboard,
+        { params: { owner } }
+      );
+      return data;
+    });
+  }
+
+  async updateDashboard(dashboardId: string, updates: {
+    name?: string;
+    description?: string;
+    is_default?: boolean;
+    widgets?: any[];
+    layout_config?: Record<string, any>;
+  }): Promise<any> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.put(
+        `/api/v1/dashboards/${dashboardId}`,
+        updates
+      );
+      return data;
+    });
+  }
+
+  async deleteDashboard(dashboardId: string): Promise<void> {
+    return this.requestWithRetry(async () => {
+      await this.client.delete(`/api/v1/dashboards/${dashboardId}`);
+    });
+  }
+
+  async listDashboardTemplates(): Promise<any[]> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.get('/api/v1/dashboards/templates/list');
+      return data;
+    });
+  }
+
+  async createDashboardFromTemplate(templateId: string, owner = 'default'): Promise<any> {
+    return this.requestWithRetry(async () => {
+      const { data } = await this.client.post(
+        `/api/v1/dashboards/templates/${templateId}/create`,
+        {},
+        { params: { owner } }
+      );
+      return data;
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
