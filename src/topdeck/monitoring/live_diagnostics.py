@@ -5,16 +5,17 @@ Integrates ML-based anomaly detection with network topology to identify
 failing services and abnormal traffic patterns in real-time.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
-import re
 
+import numpy as np
 import structlog
 from sklearn.ensemble import IsolationForest
-import numpy as np
 
 from topdeck.analysis.prediction.predictor import Predictor
+from topdeck.monitoring.collectors.loki import LokiCollector
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -96,6 +97,7 @@ class LiveDiagnosticsService:
         prometheus_collector: PrometheusCollector,
         neo4j_client: Neo4jClient,
         predictor: Predictor,
+        loki_collector: LokiCollector | None = None,
     ):
         """
         Initialize live diagnostics service.
@@ -104,10 +106,12 @@ class LiveDiagnosticsService:
             prometheus_collector: Prometheus metrics collector
             neo4j_client: Neo4j database client
             predictor: ML predictor for anomaly detection
+            loki_collector: Optional Loki log collector for error logs
         """
         self.prometheus = prometheus_collector
         self.neo4j = neo4j_client
         self.predictor = predictor
+        self.loki = loki_collector
 
         # Initialize anomaly detection model
         self.anomaly_detector = IsolationForest(
@@ -118,9 +122,7 @@ class LiveDiagnosticsService:
         self.is_trained = False
         self.baseline_data: dict[str, list[float]] = {}
 
-    async def get_live_snapshot(
-        self, duration_hours: int = 1
-    ) -> LiveDiagnosticsSnapshot:
+    async def get_live_snapshot(self, duration_hours: int = 1) -> LiveDiagnosticsSnapshot:
         """
         Get complete live diagnostics snapshot.
 
@@ -138,15 +140,11 @@ class LiveDiagnosticsService:
         # Get health status for each resource
         services = []
         for resource in resources:
-            health = await self.get_service_health(
-                resource["id"], resource["type"], duration_hours
-            )
+            health = await self.get_service_health(resource["id"], resource["type"], duration_hours)
             services.append(health)
 
         # Detect anomalies
-        anomalies = await self.detect_anomalies(
-            [s.resource_id for s in services], duration_hours
-        )
+        anomalies = await self.detect_anomalies([s.resource_id for s in services], duration_hours)
 
         # Analyze traffic patterns
         traffic_patterns = await self.analyze_traffic_patterns(duration_hours)
@@ -276,9 +274,7 @@ class LiveDiagnosticsService:
 
         return alerts
 
-    async def analyze_traffic_patterns(
-        self, duration_hours: int = 1
-    ) -> list[TrafficPattern]:
+    async def analyze_traffic_patterns(self, duration_hours: int = 1) -> list[TrafficPattern]:
         """
         Analyze traffic patterns between services.
 
@@ -299,7 +295,9 @@ class LiveDiagnosticsService:
 
             # Sanitize input for Prometheus queries
             # Only allow alphanumeric, dash, underscore, and dot characters
-            if not re.match(r'^[a-zA-Z0-9\-_.]+$', source_id) or not re.match(r'^[a-zA-Z0-9\-_.]+$', target_id):
+            if not re.match(r"^[a-zA-Z0-9\-_.]+$", source_id) or not re.match(
+                r"^[a-zA-Z0-9\-_.]+$", target_id
+            ):
                 logger.warning(
                     "invalid_resource_id_for_prometheus",
                     source_id=source_id,
@@ -312,25 +310,21 @@ class LiveDiagnosticsService:
             start_time = end_time - timedelta(hours=duration_hours)
 
             # Request rate - use safe string formatting
-            request_rate_query = 'rate(http_requests_total{{source="{source}",target="{target}"}}[5m])'.format(
-                source=source_id, target=target_id
+            request_rate_query = (
+                f'rate(http_requests_total{{source="{source_id}",target="{target_id}"}}[5m])'
             )
             request_rate_results = await self.prometheus.query_range(
                 request_rate_query, start_time, end_time, "1m"
             )
 
             # Error rate - use safe string formatting
-            error_rate_query = 'rate(http_requests_total{{source="{source}",target="{target}",status=~"5.."}}[5m]) / rate(http_requests_total{{source="{source}",target="{target}"}}[5m])'.format(
-                source=source_id, target=target_id
-            )
+            error_rate_query = f'rate(http_requests_total{{source="{source_id}",target="{target_id}",status=~"5.."}}[5m]) / rate(http_requests_total{{source="{source_id}",target="{target_id}"}}[5m])'
             error_rate_results = await self.prometheus.query_range(
                 error_rate_query, start_time, end_time, "1m"
             )
 
             # Latency - use safe string formatting
-            latency_query = 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{{source="{source}",target="{target}"}}[5m]))'.format(
-                source=source_id, target=target_id
-            )
+            latency_query = f'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{{source="{source_id}",target="{target_id}"}}[5m]))'
             latency_results = await self.prometheus.query_range(
                 latency_query, start_time, end_time, "1m"
             )
@@ -374,7 +368,7 @@ class LiveDiagnosticsService:
         # Query topology for all dependencies
         query = """
         MATCH (source)-[r:DEPENDS_ON]->(target)
-        RETURN source.id as source_id, 
+        RETURN source.id as source_id,
                source.name as source_name,
                target.id as target_id,
                target.name as target_name,
@@ -401,9 +395,7 @@ class LiveDiagnosticsService:
                             "status": target_health.status,
                             "health_score": target_health.health_score,
                             "anomalies": target_health.anomalies,
-                            "error_details": self._extract_error_details(
-                                target_health
-                            ),
+                            "error_details": self._extract_error_details(target_health),
                         }
                     )
 
@@ -411,6 +403,66 @@ class LiveDiagnosticsService:
             logger.error("get_failing_dependencies_failed", error=str(e))
 
         return failing_deps
+
+    async def get_recent_error_logs(
+        self, resource_id: str, limit: int = 10, duration_hours: int = 1
+    ) -> dict[str, Any]:
+        """
+        Get recent error logs for a specific resource with ML-based analysis.
+
+        Args:
+            resource_id: Resource identifier
+            limit: Maximum number of error logs to return (default: 10)
+            duration_hours: Time window for log search (default: 1 hour)
+
+        Returns:
+            Dictionary with 'logs' (list of error entries) and 'ml_analysis' (analysis results)
+        """
+        if not self.loki:
+            logger.warning("loki_collector_not_configured")
+            return {"logs": [], "ml_analysis": None}
+
+        try:
+            # Get error logs from Loki
+            error_streams = await self.loki.get_error_logs(
+                resource_id=resource_id, duration=timedelta(hours=duration_hours)
+            )
+
+            # Collect all error entries
+            error_entries = []
+            for stream in error_streams:
+                for entry in stream.entries:
+                    error_entries.append(
+                        {
+                            "timestamp": entry.timestamp.isoformat(),
+                            "message": entry.message,
+                            "level": entry.level,
+                            "labels": entry.labels,
+                        }
+                    )
+
+            # Sort by timestamp (most recent first) and limit
+            error_entries.sort(key=lambda e: e["timestamp"], reverse=True)
+            limited_entries = error_entries[:limit]
+
+            # Use ML to analyze error patterns and provide insights
+            # Analysis is done once and returned separately to avoid duplication
+            ml_analysis = None
+            if limited_entries:
+                resource_info = await self._get_resource_info(resource_id)
+                resource_type = resource_info.get("type", "service")
+
+                ml_analysis = self.predictor.analyze_error_logs(
+                    error_logs=limited_entries,
+                    resource_id=resource_id,
+                    resource_type=resource_type,
+                )
+
+            return {"logs": limited_entries, "ml_analysis": ml_analysis}
+
+        except Exception as e:
+            logger.error("get_recent_error_logs_failed", resource_id=resource_id, error=str(e))
+            return {"logs": [], "ml_analysis": None}
 
     def _calculate_overall_health(self, services: list[ServiceHealthStatus]) -> str:
         """Calculate overall system health from service statuses."""
