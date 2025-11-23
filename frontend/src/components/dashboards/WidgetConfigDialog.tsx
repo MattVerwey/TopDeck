@@ -4,7 +4,7 @@
  * Provides a configuration UI for customizing individual dashboard widgets.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -36,6 +36,11 @@ export default function WidgetConfigDialog({
   onSave,
 }: WidgetConfigDialogProps) {
   const [config, setConfig] = useState(widget.config);
+
+  // Reset config when widget changes
+  useEffect(() => {
+    setConfig(widget.config);
+  }, [widget]);
 
   const handleSave = () => {
     onSave(config);
@@ -73,7 +78,10 @@ export default function WidgetConfigDialog({
               type="number"
               fullWidth
               value={config.hours || 24}
-              onChange={(e) => setConfig({ ...config, hours: parseInt(e.target.value) })}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value, 10);
+                setConfig({ ...config, hours: isNaN(parsed) ? (config.hours || 24) : parsed });
+              }}
               InputProps={{ inputProps: { min: 1, max: 168 } }}
               sx={{ mb: 2 }}
             />
@@ -117,7 +125,10 @@ export default function WidgetConfigDialog({
               type="number"
               fullWidth
               value={config.time_range || 24}
-              onChange={(e) => setConfig({ ...config, time_range: parseInt(e.target.value) })}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value, 10);
+                setConfig({ ...config, time_range: isNaN(parsed) ? (config.time_range || 24) : parsed });
+              }}
               InputProps={{ inputProps: { min: 1, max: 168 } }}
             />
           </>

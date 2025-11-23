@@ -113,6 +113,7 @@ export default function HealthGaugeWidget({
     let totalErrors = 0;
     let servicesWithMetrics = 0;
     let totalUptime = 0;
+    let totalErrorRate = 0;
 
     services.forEach((service) => {
       if (service.metrics) {
@@ -127,11 +128,16 @@ export default function HealthGaugeWidget({
         totalRequests += requests;
         totalErrors += errors;
         totalUptime += uptime;
+        
+        // Calculate error rate per service and average them
+        const serviceErrorRate = requests > 0 ? errors / requests : 0;
+        totalErrorRate += serviceErrorRate;
       }
     });
 
     const avgLatency = servicesWithMetrics > 0 ? totalLatency / servicesWithMetrics : 0;
-    const avgErrorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
+    // Average error rate across services (not total errors / total requests)
+    const avgErrorRate = servicesWithMetrics > 0 ? totalErrorRate / servicesWithMetrics : 0;
     const avgUptime = servicesWithMetrics > 0 ? totalUptime / servicesWithMetrics : DEFAULT_UPTIME_PERCENTAGE;
 
     return {

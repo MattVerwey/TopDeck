@@ -26,8 +26,6 @@ import {
   ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
 import type { WidgetConfig } from './BaseWidget';
 import {
   HealthGaugeWidget,
@@ -214,6 +212,19 @@ export default function DashboardBuilder({
     });
   };
 
+  // Helper to generate layout for a breakpoint
+  const generateLayoutForBreakpoint = () => {
+    return dashboard.widgets.map(w => ({
+      i: w.id,
+      x: w.position.x,
+      y: w.position.y,
+      w: w.position.width,
+      h: w.position.height,
+      minW: 2,
+      minH: 1,
+    }));
+  };
+
   const handleSaveDashboard = async () => {
     try {
       setLoading(true);
@@ -302,20 +313,19 @@ export default function DashboardBuilder({
         {dashboard.widgets.length > 0 ? (
           <ResponsiveGridLayout
             className="layout"
-            layouts={{ lg: dashboard.widgets.map(w => ({
-              i: w.id,
-              x: w.position.x,
-              y: w.position.y,
-              w: w.position.width,
-              h: w.position.height,
-              minW: 2,
-              minH: 1,
-            })) }}
+            layouts={{
+              lg: generateLayoutForBreakpoint(),
+              md: generateLayoutForBreakpoint(),
+              sm: generateLayoutForBreakpoint(),
+              xs: generateLayoutForBreakpoint(),
+              xxs: generateLayoutForBreakpoint(),
+            }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={dashboard.layout_config.rowHeight || 80}
             margin={dashboard.layout_config.margin || [10, 10]}
-            onLayoutChange={handleLayoutChange}
+            onDragStop={handleLayoutChange}
+            onResizeStop={handleLayoutChange}
             isDraggable={!loading}
             isResizable={!loading}
             draggableHandle=".drag-handle"
