@@ -20,7 +20,7 @@ import {
   Typography,
   Slider,
 } from '@mui/material';
-import { WidgetConfig } from './BaseWidget';
+import type { WidgetConfig } from './BaseWidget';
 
 interface WidgetConfigDialogProps {
   open: boolean;
@@ -129,12 +129,12 @@ export default function WidgetConfigDialog({
             <FormControl fullWidth>
               <InputLabel>Show Errors</InputLabel>
               <Select
-                value={config.show_errors !== false}
+                value={config.show_errors !== false ? 'yes' : 'no'}
                 label="Show Errors"
-                onChange={(e) => setConfig({ ...config, show_errors: e.target.value as boolean })}
+                onChange={(e) => setConfig({ ...config, show_errors: e.target.value === 'yes' })}
               >
-                <MenuItem value={true as any}>Yes</MenuItem>
-                <MenuItem value={false as any}>No</MenuItem>
+                <MenuItem value="yes">Yes</MenuItem>
+                <MenuItem value="no">No</MenuItem>
               </Select>
             </FormControl>
           </>

@@ -25,8 +25,10 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
+import type { LiveDiagnosticsSnapshot } from '../../../types/diagnostics';
 
 interface HealthScoreData {
   score: number;
@@ -48,7 +50,7 @@ export default function HealthGaugeWidget({
   onConfigure,
 }: HealthGaugeWidgetProps) {
   const [healthData, setHealthData] = useState<HealthScoreData | null>(null);
-  const [snapshot, setSnapshot] = useState<any | null>(null);
+  const [snapshot, setSnapshot] = useState<LiveDiagnosticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -90,6 +92,50 @@ export default function HealthGaugeWidget({
   useEffect(() => {
     fetchHealthScore();
   }, [fetchHealthScore]);
+
+  // Calculate aggregated metrics from services
+  const getAggregatedMetrics = () => {
+    if (!snapshot || !snapshot.services) {
+      return {
+        avgLatency: 0,
+        totalRequests: 0,
+        avgErrorRate: 0,
+        uptimePercentage: 99.9,
+      };
+    }
+
+    const services = snapshot.services;
+    let totalLatency = 0;
+    let totalRequests = 0;
+    let totalErrors = 0;
+    let servicesWithMetrics = 0;
+
+    services.forEach((service) => {
+      if (service.metrics) {
+        servicesWithMetrics++;
+        // Extract metrics from the service's metrics Record
+        const latency = service.metrics['latency_p95'] || service.metrics['latency'] || 0;
+        const requests = service.metrics['request_count'] || service.metrics['requests'] || 0;
+        const errors = service.metrics['error_count'] || service.metrics['errors'] || 0;
+
+        totalLatency += latency;
+        totalRequests += requests;
+        totalErrors += errors;
+      }
+    });
+
+    const avgLatency = servicesWithMetrics > 0 ? totalLatency / servicesWithMetrics : 0;
+    const avgErrorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
+
+    return {
+      avgLatency,
+      totalRequests,
+      avgErrorRate,
+      uptimePercentage: 99.9, // This would come from service uptime metrics if available
+    };
+  };
+
+  const aggregatedMetrics = getAggregatedMetrics();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -268,30 +314,31 @@ export default function HealthGaugeWidget({
                   Health Metrics Breakdown
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  {/* Real metrics from API snapshot */}
+                  {/* Real aggregated metrics from API snapshot */}
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">Average Response Time</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {snapshot?.metrics?.avg_latency_ms ? `${snapshot.metrics.avg_latency_ms.toFixed(0)}ms` : 'N/A'}
+                        {aggregatedMetrics.avgLatency > 0 ? `${aggregatedMetrics.avgLatency.toFixed(0)}ms` : 'N/A'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={snapshot?.metrics?.avg_latency_ms ? Math.min((snapshot.metrics.avg_latency_ms / 1000) * 100, 100) : 0} 
+                      value={Math.min((aggregatedMetrics.avgLatency / 500) * 100, 100)} 
                       sx={{ height: 6, borderRadius: 3 }}
+                      color={aggregatedMetrics.avgLatency > 300 ? 'error' : 'primary'}
                     />
                   </Box>
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">Request Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {snapshot?.metrics?.request_count || 0} req/min
+                        {aggregatedMetrics.totalRequests || 0} req/min
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={snapshot?.metrics?.request_count ? Math.min((snapshot.metrics.request_count / 100) * 100, 100) : 0} 
+                      value={Math.min((aggregatedMetrics.totalRequests / 1000) * 100, 100)} 
                       color="warning"
                       sx={{ height: 6, borderRadius: 3 }}
                     />
@@ -300,13 +347,13 @@ export default function HealthGaugeWidget({
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">Error Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {snapshot?.metrics?.error_rate ? `${(snapshot.metrics.error_rate * 100).toFixed(1)}%` : '0.0%'}
+                        {aggregatedMetrics.avgErrorRate > 0 ? `${(aggregatedMetrics.avgErrorRate * 100).toFixed(1)}%` : '0.0%'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={snapshot?.metrics?.error_rate ? snapshot.metrics.error_rate * 100 : 0} 
-                      color={snapshot?.metrics?.error_rate && snapshot.metrics.error_rate > 0.05 ? 'error' : 'success'}
+                      value={aggregatedMetrics.avgErrorRate * 100} 
+                      color={aggregatedMetrics.avgErrorRate > 0.05 ? 'error' : 'success'}
                       sx={{ height: 6, borderRadius: 3 }}
                     />
                   </Box>
@@ -324,7 +371,9 @@ export default function HealthGaugeWidget({
                       }}
                     >
                       <TrendingUpIcon fontSize="small" />
-                      <Typography variant="caption">Uptime 99.9%</Typography>
+                      <Typography variant="caption">
+                        Uptime {aggregatedMetrics.uptimePercentage.toFixed(1)}%
+                      </Typography>
                     </Box>
                     <Box
                       sx={{
@@ -338,7 +387,9 @@ export default function HealthGaugeWidget({
                       }}
                     >
                       <TrendingDownIcon fontSize="small" />
-                      <Typography variant="caption">Latency -15%</Typography>
+                      <Typography variant="caption">
+                        Latency {aggregatedMetrics.avgLatency > 0 ? `${aggregatedMetrics.avgLatency.toFixed(0)}ms` : 'N/A'}
+                      </Typography>
                     </Box>
                   </Stack>
                 </Stack>

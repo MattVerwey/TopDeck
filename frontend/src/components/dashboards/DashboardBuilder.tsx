@@ -28,7 +28,7 @@ import {
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { WidgetConfig } from './BaseWidget';
+import type { WidgetConfig } from './BaseWidget';
 import {
   HealthGaugeWidget,
   TopFailingServicesWidget,
