@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from pydantic import BaseModel
 
 from topdeck.analysis.prediction.feature_extractor import FeatureExtractor
 from topdeck.analysis.prediction.predictor import Predictor
@@ -41,11 +40,12 @@ class ConnectionManager:
         await websocket.accept()
         async with self._lock:
             self.active_connections.append(websocket)
+            conn_count = len(self.active_connections)
         logger.info(
             "WebSocket connected",
             extra={
                 "client": websocket.client,
-                "total_connections": len(self.active_connections),
+                "total_connections": conn_count,
             },
         )
 
@@ -54,11 +54,12 @@ class ConnectionManager:
         async with self._lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
+            conn_count = len(self.active_connections)
         logger.info(
             "WebSocket disconnected",
             extra={
                 "client": websocket.client,
-                "total_connections": len(self.active_connections),
+                "total_connections": conn_count,
             },
         )
 
@@ -127,25 +128,28 @@ class DiagnosticsUpdatePublisher:
                 username=settings.neo4j_username,
                 password=settings.neo4j_password,
             )
-            self._prometheus = PrometheusCollector(url=settings.prometheus_url)
-            self._predictor = Predictor(
-                prometheus=self._prometheus,
-                feature_extractor=FeatureExtractor(prometheus=self._prometheus),
-            )
+            self._prometheus = PrometheusCollector(settings.prometheus_url)
+            self._predictor = Predictor()
             self._service = LiveDiagnosticsService(
+                prometheus_collector=self._prometheus,
                 neo4j_client=self._neo4j_client,
-                prometheus=self._prometheus,
                 predictor=self._predictor,
             )
 
-    def _cleanup_services(self):
+    async def _cleanup_services(self):
         """Clean up service instances."""
+        if self._prometheus and hasattr(self._prometheus, 'close'):
+            await self._prometheus.close()
         if self._neo4j_client:
             self._neo4j_client.close()
-            self._neo4j_client = None
-            self._prometheus = None
-            self._predictor = None
-            self._service = None
+        self._neo4j_client = None
+        self._prometheus = None
+        self._predictor = None
+        self._service = None
+
+    def is_running(self) -> bool:
+        """Check if publisher is currently running."""
+        return self._running
 
     async def start(self, update_interval: int = 10):
         """Start publishing updates at regular intervals."""
@@ -169,6 +173,7 @@ class DiagnosticsUpdatePublisher:
             try:
                 await self._task
             except asyncio.CancelledError:
+                # Task cancellation is expected when stopping the publisher; ignore this exception.
                 pass
         self._cleanup_services()
         logger.info("Stopped diagnostics update publisher")
@@ -320,6 +325,10 @@ class DiagnosticsUpdatePublisher:
         }
         await self.manager.broadcast(message)
 
+    async def request_snapshot(self):
+        """Request an immediate snapshot update (public method)."""
+        await self._publish_update()
+
 
 # Global publisher instance
 publisher = DiagnosticsUpdatePublisher(manager)
@@ -357,8 +366,8 @@ async def websocket_live_diagnostics(
     await manager.connect(websocket)
     
     try:
-        # Start publisher if not already running
-        if not publisher._running:
+        # Start publisher if not already running (using public method)
+        if not publisher.is_running():
             await publisher.start(update_interval)
         
         # Send initial welcome message
@@ -392,8 +401,8 @@ async def websocket_live_diagnostics(
                     )
                 
                 elif message_type == "get_snapshot":
-                    # Send immediate snapshot
-                    await publisher._publish_update()
+                    # Send immediate snapshot using public method
+                    await publisher.request_snapshot()
                 
                 elif message_type == "subscribe":
                     # Future: Implement resource-specific subscriptions
@@ -491,6 +500,6 @@ async def websocket_health():
     return {
         "status": "healthy",
         "active_connections": await manager.get_connection_count(),
-        "publisher_running": publisher._running,
+        "publisher_running": publisher.is_running(),
         "timestamp": datetime.now(UTC).isoformat(),
     }

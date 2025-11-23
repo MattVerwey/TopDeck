@@ -41,7 +41,7 @@ export interface ConnectionStatus {
 
 export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
   const {
-    url = `ws://${window.location.hostname}:8000/api/v1/ws/live-diagnostics`,
+    url = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/v1/ws/live-diagnostics`,
     updateInterval = 10,
     autoReconnect = true,
     maxReconnectAttempts = 5,
@@ -68,7 +68,7 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
   const pollSnapshot = useCallback(async () => {
     try {
       const response = await fetch(
-        `http://${window.location.hostname}:8000/api/v1/live-diagnostics/snapshot?duration_hours=1`
+        `${window.location.protocol}//${window.location.hostname}:8000/api/v1/live-diagnostics/snapshot?duration_hours=1`
       );
       
       if (!response.ok) {
@@ -112,7 +112,29 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     }
   }, []);
 
-  // Handle WebSocket messages
+  // Store config values in refs for stable access
+  const configRef = useRef({
+    url,
+    updateInterval,
+    autoReconnect,
+    maxReconnectAttempts,
+    reconnectDelay,
+    fallbackToPolling,
+  });
+
+  // Update config ref when values change
+  useEffect(() => {
+    configRef.current = {
+      url,
+      updateInterval,
+      autoReconnect,
+      maxReconnectAttempts,
+      reconnectDelay,
+      fallbackToPolling,
+    };
+  }, [url, updateInterval, autoReconnect, maxReconnectAttempts, reconnectDelay, fallbackToPolling]);
+
+  // Handle WebSocket messages - using functional setState to avoid stale closure
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const message: WebSocketMessage = JSON.parse(event.data);
@@ -126,27 +148,29 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
           break;
         
         case 'health_change':
-          // Update specific service in snapshot
+          // Update specific service in snapshot using functional setState
           if (message.data) {
             const { resource_id, new_status, health_score } = message.data;
             
-            // Update snapshot if it exists
-            if (snapshot) {
-              const updatedServices = snapshot.services.map(service =>
+            setSnapshot(prev => {
+              if (!prev) {
+                // Log health change even if no snapshot yet
+                console.log('Health change (no snapshot):', message.data);
+                return prev;
+              }
+              
+              const updatedServices = prev.services.map(service =>
                 service.resource_id === resource_id
                   ? { ...service, status: new_status, health_score }
                   : service
               );
-              setSnapshot({ ...snapshot, services: updatedServices });
-            }
-            
-            // Log health change even if no snapshot yet
-            console.log('Health change:', message.data);
+              return { ...prev, services: updatedServices };
+            });
           }
           break;
         
         case 'anomaly_detected':
-          // Add new anomaly to snapshot
+          // Add new anomaly to snapshot using functional setState
           if (message.data) {
             // Use crypto.randomUUID() for better ID generation
             const newAnomaly = {
@@ -155,15 +179,18 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
               timestamp: message.timestamp,
             };
             
-            if (snapshot) {
-              setSnapshot({
-                ...snapshot,
-                anomalies: [newAnomaly, ...snapshot.anomalies],
-              });
-            } else {
-              // Log anomaly even if no snapshot yet
-              console.log('Anomaly detected:', newAnomaly);
-            }
+            setSnapshot(prev => {
+              if (!prev) {
+                // Log anomaly even if no snapshot yet
+                console.log('Anomaly detected (no snapshot):', newAnomaly);
+                return prev;
+              }
+              
+              return {
+                ...prev,
+                anomalies: [newAnomaly, ...prev.anomalies],
+              };
+            });
           }
           break;
         
@@ -191,9 +218,9 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     } catch (err) {
       console.error('Error parsing WebSocket message:', err);
     }
-  }, [snapshot]);
+  }, []); // Empty dependencies - using functional setState
 
-  // Connect to WebSocket
+  // Connect to WebSocket - stable function using refs
   const connect = useCallback(() => {
     // Don't connect if already connected
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -205,7 +232,8 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
       stopPolling();
 
       // Build WebSocket URL with parameters
-      const wsUrl = `${url}?update_interval=${updateInterval}`;
+      const config = configRef.current;
+      const wsUrl = `${config.url}?update_interval=${config.updateInterval}`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
@@ -237,17 +265,21 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
 
         // Only attempt reconnection if not intentionally closed
         if (!isIntentionalCloseRef.current) {
-          if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          const config = configRef.current;
+          if (config.autoReconnect && reconnectAttemptsRef.current < config.maxReconnectAttempts) {
             reconnectAttemptsRef.current += 1;
             
+            // Exponential backoff: delay = reconnectDelay * 2^(attempts - 1)
+            const exponentialDelay = config.reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
+            
             console.log(
-              `Attempting to reconnect... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
+              `Attempting to reconnect... (${reconnectAttemptsRef.current}/${config.maxReconnectAttempts}) in ${exponentialDelay}ms`
             );
             
             reconnectTimeoutRef.current = setTimeout(() => {
               connect();
-            }, reconnectDelay);
-          } else if (fallbackToPolling) {
+            }, exponentialDelay);
+          } else if (config.fallbackToPolling) {
             console.log('Max reconnect attempts reached, falling back to polling');
             startPolling();
           }
@@ -259,21 +291,11 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
       console.error('Error creating WebSocket:', err);
       setError(err instanceof Error ? err.message : 'Failed to create WebSocket');
       
-      if (fallbackToPolling) {
+      if (configRef.current.fallbackToPolling) {
         startPolling();
       }
     }
-  }, [
-    url,
-    updateInterval,
-    autoReconnect,
-    maxReconnectAttempts,
-    reconnectDelay,
-    fallbackToPolling,
-    handleMessage,
-    startPolling,
-    stopPolling,
-  ]);
+  }, [handleMessage, stopPolling, startPolling]); // Stable dependencies only
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -322,12 +344,7 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     sendMessage({ type: 'unsubscribe', resource_ids: resourceIds });
   }, [sendMessage]);
 
-  // Send ping to keep connection alive
-  const ping = useCallback(() => {
-    sendMessage({ type: 'ping' });
-  }, [sendMessage]);
-
-  // Effect: Connect on mount, disconnect on unmount
+  // Effect: Connect on mount, disconnect on unmount - stable dependencies
   useEffect(() => {
     isIntentionalCloseRef.current = false;
     connect();
@@ -335,7 +352,7 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, []); // Empty deps - connect/disconnect are stable via refs
 
   // Effect: Set up ping interval to keep connection alive
   useEffect(() => {

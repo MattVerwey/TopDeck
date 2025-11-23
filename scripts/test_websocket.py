@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test script for Live Diagnostics WebSocket endpoint.
 
@@ -11,7 +10,6 @@ Tests:
 
 import asyncio
 import json
-from datetime import UTC, datetime
 
 import websockets
 
