@@ -128,7 +128,17 @@ def get_diagnostics_service() -> LiveDiagnosticsService:
         neo4j = get_neo4j_client()
         feature_extractor = FeatureExtractor(prometheus_collector=prometheus)
         predictor = Predictor(feature_extractor=feature_extractor)
-        _diagnostics_service = LiveDiagnosticsService(prometheus, neo4j, predictor)
+        
+        # Initialize Loki collector if configured
+        loki_url = settings.get("LOKI_URL")
+        loki_collector = None
+        if loki_url:
+            from topdeck.monitoring.collectors.loki import LokiCollector
+            loki_collector = LokiCollector(loki_url)
+        
+        _diagnostics_service = LiveDiagnosticsService(
+            prometheus, neo4j, predictor, loki_collector
+        )
     return _diagnostics_service
 
 
@@ -480,3 +490,60 @@ async def health_check() -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat(),
             "error": str(e),
         }
+
+
+@router.get("/services/{resource_id}/error-logs")
+async def get_service_error_logs(
+    resource_id: str,
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of error logs to return",
+    ),
+    duration_hours: int = Query(
+        default=1,
+        ge=1,
+        le=24,
+        description="Time window for log search in hours",
+    ),
+) -> dict[str, Any]:
+    """
+    Get recent error logs for a specific service.
+
+    Returns the most recent error logs to help with diagnostics and troubleshooting.
+    This endpoint queries Loki for error-level logs related to the specified resource.
+
+    Args:
+        resource_id: Resource identifier
+        limit: Maximum number of error logs to return (1-100)
+        duration_hours: Time window for log search (1-24 hours)
+
+    Returns:
+        Dictionary with error logs and metadata
+
+    Example:
+        GET /api/v1/live-diagnostics/services/api-gateway/error-logs?limit=10&duration_hours=1
+    """
+    try:
+        service = get_diagnostics_service()
+        error_logs = await service.get_recent_error_logs(
+            resource_id=resource_id,
+            limit=limit,
+            duration_hours=duration_hours
+        )
+
+        return {
+            "resource_id": resource_id,
+            "count": len(error_logs),
+            "limit": limit,
+            "duration_hours": duration_hours,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "error_logs": error_logs,
+        }
+
+    except Exception as e:
+        logger.error("get_service_error_logs_failed", resource_id=resource_id, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get error logs: {str(e)}"
+        )

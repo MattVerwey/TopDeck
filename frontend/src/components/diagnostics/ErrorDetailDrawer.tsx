@@ -1,7 +1,8 @@
 /**
  * Error Detail Drawer Component
  * 
- * Displays detailed error information for a selected resource
+ * Displays detailed error information for a selected resource,
+ * including recent error logs from Loki.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -20,8 +21,11 @@ import {
   ListItemText,
   CircularProgress,
   Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import { Close, ExpandMore, Error as ErrorIcon } from '@mui/icons-material';
 import type { LiveDiagnosticsSnapshot } from '../../types/diagnostics';
 
 interface ErrorDetailDrawerProps {
@@ -31,19 +35,61 @@ interface ErrorDetailDrawerProps {
   snapshot: LiveDiagnosticsSnapshot | null;
 }
 
+interface ErrorLog {
+  timestamp: string;
+  message: string;
+  level: string;
+  labels: Record<string, string>;
+}
+
 export default function ErrorDetailDrawer({
   open,
   onClose,
   resourceId,
   snapshot,
 }: ErrorDetailDrawerProps) {
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+
   // Get service from snapshot
   const service = snapshot?.services.find((s) => s.resource_id === resourceId);
   const serviceAnomalies = snapshot?.anomalies.filter((a) => a.resource_id === resourceId) || [];
 
+  // Fetch error logs when drawer opens
+  useEffect(() => {
+    if (open && resourceId) {
+      fetchErrorLogs();
+    }
+  }, [open, resourceId]);
+
+  const fetchErrorLogs = useCallback(async () => {
+    setLoadingLogs(true);
+    setLogsError(null);
+    
+    try {
+      const response = await fetch(
+        `/api/v1/live-diagnostics/services/${resourceId}/error-logs?limit=10&duration_hours=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch error logs: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setErrorLogs(data.error_logs || []);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+      setLogsError(error instanceof Error ? error.message : 'Failed to fetch error logs');
+      setErrorLogs([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, [resourceId]);
+
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: 500, p: 3 }}>
+      <Box sx={{ width: 550, p: 3, maxHeight: '100vh', overflowY: 'auto' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h5">Service Details</Typography>
           <IconButton onClick={onClose}>
@@ -87,6 +133,91 @@ export default function ErrorDetailDrawer({
                 <Typography variant="caption" color="textSecondary">
                   Last Updated: {new Date(service.last_updated).toLocaleString()}
                 </Typography>
+              </CardContent>
+            </Card>
+
+            {/* Recent Error Logs */}
+            <Card sx={{ mb: 2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <ErrorIcon sx={{ mr: 1, color: 'error.main' }} />
+                  <Typography variant="h6">
+                    Recent Error Logs (Last 10)
+                  </Typography>
+                </Box>
+                
+                {loadingLogs && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
+                
+                {logsError && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    {logsError}
+                  </Alert>
+                )}
+                
+                {!loadingLogs && !logsError && errorLogs.length === 0 && (
+                  <Alert severity="info">
+                    No error logs found in the last hour
+                  </Alert>
+                )}
+                
+                {!loadingLogs && errorLogs.length > 0 && (
+                  <List dense>
+                    {errorLogs.map((log, index) => (
+                      <Accordion key={index} sx={{ mb: 1 }}>
+                        <AccordionSummary expandIcon={<ExpandMore />}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Chip
+                              size="small"
+                              label={log.level.toUpperCase()}
+                              color="error"
+                              sx={{ minWidth: 60 }}
+                            />
+                            <Typography variant="caption" color="textSecondary">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </Typography>
+                          </Stack>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontFamily: 'monospace',
+                              fontSize: '0.75rem',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              p: 1,
+                              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                              borderRadius: 1,
+                            }}
+                          >
+                            {log.message}
+                          </Typography>
+                          {Object.keys(log.labels).length > 0 && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" color="textSecondary">
+                                Labels:
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {Object.entries(log.labels).map(([key, value]) => (
+                                  <Chip
+                                    key={key}
+                                    size="small"
+                                    label={`${key}: ${value}`}
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                        </AccordionDetails>
+                      </Accordion>
+                    ))}
+                  </List>
+                )}
               </CardContent>
             </Card>
 

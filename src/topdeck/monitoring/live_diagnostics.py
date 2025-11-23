@@ -16,6 +16,7 @@ import numpy as np
 
 from topdeck.analysis.prediction.predictor import Predictor
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
+from topdeck.monitoring.collectors.loki import LokiCollector, LogEntry
 from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = structlog.get_logger(__name__)
@@ -96,6 +97,7 @@ class LiveDiagnosticsService:
         prometheus_collector: PrometheusCollector,
         neo4j_client: Neo4jClient,
         predictor: Predictor,
+        loki_collector: LokiCollector | None = None,
     ):
         """
         Initialize live diagnostics service.
@@ -104,10 +106,12 @@ class LiveDiagnosticsService:
             prometheus_collector: Prometheus metrics collector
             neo4j_client: Neo4j database client
             predictor: ML predictor for anomaly detection
+            loki_collector: Optional Loki log collector for error logs
         """
         self.prometheus = prometheus_collector
         self.neo4j = neo4j_client
         self.predictor = predictor
+        self.loki = loki_collector
 
         # Initialize anomaly detection model
         self.anomaly_detector = IsolationForest(
@@ -411,6 +415,54 @@ class LiveDiagnosticsService:
             logger.error("get_failing_dependencies_failed", error=str(e))
 
         return failing_deps
+
+    async def get_recent_error_logs(
+        self, resource_id: str, limit: int = 10, duration_hours: int = 1
+    ) -> list[dict[str, Any]]:
+        """
+        Get recent error logs for a specific resource.
+
+        Args:
+            resource_id: Resource identifier
+            limit: Maximum number of error logs to return (default: 10)
+            duration_hours: Time window for log search (default: 1 hour)
+
+        Returns:
+            List of error log entries with timestamp, message, and level
+        """
+        if not self.loki:
+            logger.warning("loki_collector_not_configured")
+            return []
+
+        try:
+            # Get error logs from Loki
+            error_streams = await self.loki.get_error_logs(
+                resource_id=resource_id,
+                duration=timedelta(hours=duration_hours)
+            )
+
+            # Collect all error entries
+            error_entries = []
+            for stream in error_streams:
+                for entry in stream.entries:
+                    error_entries.append({
+                        "timestamp": entry.timestamp.isoformat(),
+                        "message": entry.message,
+                        "level": entry.level,
+                        "labels": entry.labels,
+                    })
+
+            # Sort by timestamp (most recent first) and limit
+            error_entries.sort(key=lambda e: e["timestamp"], reverse=True)
+            return error_entries[:limit]
+
+        except Exception as e:
+            logger.error(
+                "get_recent_error_logs_failed",
+                resource_id=resource_id,
+                error=str(e)
+            )
+            return []
 
     def _calculate_overall_health(self, services: list[ServiceHealthStatus]) -> str:
         """Calculate overall system health from service statuses."""
