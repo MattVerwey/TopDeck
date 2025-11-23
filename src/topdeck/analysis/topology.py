@@ -349,14 +349,18 @@ class TopologyService:
 
             # Get upstream dependencies (what this resource depends on)
             if direction in ("upstream", "both"):
+                # Limit depth to 5 for performance, add result limit
                 upstream_query = f"""
-                MATCH path = (r:Resource {{id: $id}})-[*1..{depth}]->(dep:Resource)
-                RETURN DISTINCT dep.id as id,
+                MATCH path = (r:Resource {{id: $id}})-[*1..{min(depth, 5)}]->(dep:Resource)
+                WITH DISTINCT dep, min(length(path)) as shortest_path
+                RETURN dep.id as id,
                        dep.resource_type as resource_type,
                        dep.name as name,
                        dep.cloud_provider as cloud_provider,
                        dep.region as region,
                        dep as properties
+                ORDER BY shortest_path
+                LIMIT 1000
                 """
 
                 result = session.run(upstream_query, id=resource_id)
@@ -377,14 +381,18 @@ class TopologyService:
 
             # Get downstream dependencies (what depends on this resource)
             if direction in ("downstream", "both"):
+                # Limit depth to 5 for performance, add result limit
                 downstream_query = f"""
-                MATCH path = (dep:Resource)-[*1..{depth}]->(r:Resource {{id: $id}})
-                RETURN DISTINCT dep.id as id,
+                MATCH path = (dep:Resource)-[*1..{min(depth, 5)}]->(r:Resource {{id: $id}})
+                WITH DISTINCT dep, min(length(path)) as shortest_path
+                RETURN dep.id as id,
                        dep.resource_type as resource_type,
                        dep.name as name,
                        dep.cloud_provider as cloud_provider,
                        dep.region as region,
                        dep as properties
+                ORDER BY shortest_path
+                LIMIT 1000
                 """
 
                 result = session.run(downstream_query, id=resource_id)

@@ -118,13 +118,10 @@ router = APIRouter(prefix="/api/v1/topology", tags=["topology"])
 
 
 def get_topology_service() -> TopologyService:
-    """Get topology service instance."""
-    neo4j_client = Neo4jClient(
-        uri=settings.neo4j_uri,
-        username=settings.neo4j_username,
-        password=settings.neo4j_password,
-    )
-    neo4j_client.connect()
+    """Get topology service instance with shared Neo4j client."""
+    from topdeck.storage import get_neo4j_client
+
+    neo4j_client = get_neo4j_client()
     return TopologyService(neo4j_client)
 
 

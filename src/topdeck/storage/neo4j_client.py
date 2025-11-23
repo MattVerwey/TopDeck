@@ -3,6 +3,7 @@ Neo4j Client for TopDeck.
 
 Handles connection and operations with Neo4j graph database.
 Supports encrypted connections using bolt+s:// or neo4j+s:// schemes.
+Implements connection pooling for improved performance.
 """
 
 from contextlib import contextmanager
@@ -20,9 +21,19 @@ class Neo4jClient:
     - bolt+s://   - Encrypted with TLS
     - neo4j://    - Unencrypted routing
     - neo4j+s://  - Encrypted routing with TLS
+    
+    Uses connection pooling for improved performance.
     """
 
-    def __init__(self, uri: str, username: str, password: str, encrypted: bool = False):
+    def __init__(
+        self,
+        uri: str,
+        username: str,
+        password: str,
+        encrypted: bool = False,
+        max_connection_pool_size: int = 50,
+        connection_acquisition_timeout: float = 60.0,
+    ):
         """
         Initialize Neo4j client.
 
@@ -31,11 +42,15 @@ class Neo4jClient:
             username: Neo4j username
             password: Neo4j password
             encrypted: If True and URI doesn't specify encryption, upgrades to encrypted connection
+            max_connection_pool_size: Maximum number of connections in the pool (default: 50)
+            connection_acquisition_timeout: Timeout in seconds for acquiring a connection (default: 60.0)
         """
         self.uri = uri
         self.username = username
         self.password = password
         self.encrypted = encrypted
+        self.max_connection_pool_size = max_connection_pool_size
+        self.connection_acquisition_timeout = connection_acquisition_timeout
         self.driver: Driver | None = None
 
         # Auto-upgrade to encrypted connection if requested and not already encrypted
@@ -52,11 +67,13 @@ class Neo4jClient:
         return "+s://" in uri or "+ssc://" in uri
 
     def connect(self) -> None:
-        """Establish connection to Neo4j with optional TLS encryption."""
+        """Establish connection to Neo4j with optional TLS encryption and connection pooling."""
         self.driver = GraphDatabase.driver(
             self.uri,
             auth=(self.username, self.password),
             encrypted=self.encrypted or self._is_encrypted_uri(self.uri),
+            max_connection_pool_size=self.max_connection_pool_size,
+            connection_acquisition_timeout=self.connection_acquisition_timeout,
         )
 
     def close(self) -> None:
@@ -686,3 +703,191 @@ class Neo4jClient:
 
             record = result.single()
             return record["count"] if record else 0
+
+    def batch_create_resources(self, resources: list[dict[str, Any]]) -> int:
+        """
+        Create multiple resource nodes in a single transaction using UNWIND.
+        
+        This is much more efficient than creating resources one at a time.
+
+        Args:
+            resources: List of resource property dictionaries (each must include 'id')
+
+        Returns:
+            Number of resources created
+        """
+        if not resources:
+            return 0
+
+        # Validate all resources have an ID
+        for resource in resources:
+            if "id" not in resource:
+                raise ValueError("All resources must include 'id'")
+
+        with self.session() as session:
+            result = session.run(
+                """
+                UNWIND $resources as resource
+                CREATE (r:Resource)
+                SET r = resource
+                RETURN count(r) as count
+                """,
+                resources=resources,
+            )
+
+            record = result.single()
+            return record["count"] if record else 0
+
+    def batch_upsert_resources(self, resources: list[dict[str, Any]]) -> int:
+        """
+        Create or update multiple resource nodes in a single transaction using UNWIND.
+        
+        This is much more efficient than upserting resources one at a time.
+
+        Args:
+            resources: List of resource property dictionaries (each must include 'id')
+
+        Returns:
+            Number of resources upserted
+        """
+        if not resources:
+            return 0
+
+        # Validate all resources have an ID
+        for resource in resources:
+            if "id" not in resource:
+                raise ValueError("All resources must include 'id'")
+
+        with self.session() as session:
+            result = session.run(
+                """
+                UNWIND $resources as resource
+                MERGE (r:Resource {id: resource.id})
+                SET r += resource
+                RETURN count(r) as count
+                """,
+                resources=resources,
+            )
+
+            record = result.single()
+            return record["count"] if record else 0
+
+    def batch_create_dependencies(
+        self, dependencies: list[dict[str, Any]]
+    ) -> int:
+        """
+        Create multiple DEPENDS_ON relationships in a single transaction using UNWIND.
+        
+        This is much more efficient than creating dependencies one at a time.
+
+        Args:
+            dependencies: List of dependency dictionaries, each with:
+                - source_id: Source resource ID
+                - target_id: Target resource ID
+                - properties: Relationship properties (optional)
+
+        Returns:
+            Number of dependencies created
+        """
+        if not dependencies:
+            return 0
+
+        # Validate all dependencies have required fields
+        for dep in dependencies:
+            if "source_id" not in dep or "target_id" not in dep:
+                raise ValueError("All dependencies must include 'source_id' and 'target_id'")
+
+        with self.session() as session:
+            result = session.run(
+                """
+                UNWIND $dependencies as dep
+                MATCH (source:Resource {id: dep.source_id})
+                MATCH (target:Resource {id: dep.target_id})
+                CREATE (source)-[r:DEPENDS_ON]->(target)
+                SET r = COALESCE(dep.properties, {})
+                RETURN count(r) as count
+                """,
+                dependencies=dependencies,
+            )
+
+            record = result.single()
+            return record["count"] if record else 0
+
+    def initialize_schema(self) -> dict[str, Any]:
+        """
+        Initialize database schema by creating indexes and constraints.
+        
+        This should be called on application startup to ensure optimal query performance.
+        Uses IF NOT EXISTS to avoid errors on subsequent calls.
+
+        Returns:
+            Dictionary with counts of constraints and indexes created
+        """
+        constraints_created = 0
+        indexes_created = 0
+        errors = []
+
+        with self.session() as session:
+            # Create uniqueness constraints
+            constraint_queries = [
+                "CREATE CONSTRAINT resource_id_unique IF NOT EXISTS FOR (r:Resource) REQUIRE r.id IS UNIQUE",
+                "CREATE CONSTRAINT application_id_unique IF NOT EXISTS FOR (a:Application) REQUIRE a.id IS UNIQUE",
+                "CREATE CONSTRAINT repository_id_unique IF NOT EXISTS FOR (r:Repository) REQUIRE r.id IS UNIQUE",
+                "CREATE CONSTRAINT deployment_id_unique IF NOT EXISTS FOR (d:Deployment) REQUIRE d.id IS UNIQUE",
+                "CREATE CONSTRAINT namespace_id_unique IF NOT EXISTS FOR (n:Namespace) REQUIRE n.id IS UNIQUE",
+                "CREATE CONSTRAINT pod_id_unique IF NOT EXISTS FOR (p:Pod) REQUIRE p.id IS UNIQUE",
+                "CREATE CONSTRAINT managed_identity_id_unique IF NOT EXISTS FOR (mi:ManagedIdentity) REQUIRE mi.id IS UNIQUE",
+                "CREATE CONSTRAINT service_principal_id_unique IF NOT EXISTS FOR (sp:ServicePrincipal) REQUIRE sp.id IS UNIQUE",
+                "CREATE CONSTRAINT app_registration_id_unique IF NOT EXISTS FOR (ar:AppRegistration) REQUIRE ar.id IS UNIQUE",
+            ]
+
+            for query in constraint_queries:
+                try:
+                    session.run(query)
+                    constraints_created += 1
+                except Exception as e:
+                    # Constraint might already exist or be an enterprise feature
+                    if "already exists" not in str(e).lower():
+                        errors.append(f"Constraint error: {str(e)}")
+
+            # Create indexes for common query patterns
+            index_queries = [
+                # Resource indexes
+                "CREATE INDEX resource_id IF NOT EXISTS FOR (r:Resource) ON (r.id)",
+                "CREATE INDEX resource_type IF NOT EXISTS FOR (r:Resource) ON (r.resource_type)",
+                "CREATE INDEX resource_cloud_provider IF NOT EXISTS FOR (r:Resource) ON (r.cloud_provider)",
+                "CREATE INDEX resource_name IF NOT EXISTS FOR (r:Resource) ON (r.name)",
+                "CREATE INDEX resource_region IF NOT EXISTS FOR (r:Resource) ON (r.region)",
+                "CREATE INDEX resource_status IF NOT EXISTS FOR (r:Resource) ON (r.status)",
+                "CREATE INDEX resource_environment IF NOT EXISTS FOR (r:Resource) ON (r.environment)",
+                # Composite indexes for common query patterns
+                "CREATE INDEX resource_type_provider IF NOT EXISTS FOR (r:Resource) ON (r.resource_type, r.cloud_provider)",
+                "CREATE INDEX resource_region_type IF NOT EXISTS FOR (r:Resource) ON (r.region, r.resource_type)",
+                # Application indexes
+                "CREATE INDEX application_id IF NOT EXISTS FOR (a:Application) ON (a.id)",
+                "CREATE INDEX application_name IF NOT EXISTS FOR (a:Application) ON (a.name)",
+                # Deployment indexes
+                "CREATE INDEX deployment_id IF NOT EXISTS FOR (d:Deployment) ON (d.id)",
+                "CREATE INDEX deployment_status IF NOT EXISTS FOR (d:Deployment) ON (d.status)",
+                # Namespace indexes
+                "CREATE INDEX namespace_id IF NOT EXISTS FOR (n:Namespace) ON (n.id)",
+                "CREATE INDEX namespace_name IF NOT EXISTS FOR (n:Namespace) ON (n.name)",
+                # Pod indexes
+                "CREATE INDEX pod_id IF NOT EXISTS FOR (p:Pod) ON (p.id)",
+                "CREATE INDEX pod_name IF NOT EXISTS FOR (p:Pod) ON (p.name)",
+            ]
+
+            for query in index_queries:
+                try:
+                    session.run(query)
+                    indexes_created += 1
+                except Exception as e:
+                    # Index might already exist
+                    if "already exists" not in str(e).lower():
+                        errors.append(f"Index error: {str(e)}")
+
+        return {
+            "constraints_created": constraints_created,
+            "indexes_created": indexes_created,
+            "errors": errors,
+        }

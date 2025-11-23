@@ -56,6 +56,24 @@ async def lifespan(app: FastAPI):
     # Startup
     print("DEBUG: Starting application lifespan...")
     
+    # Initialize Neo4j connection manager with connection pooling
+    try:
+        from topdeck.storage import initialize_neo4j, close_neo4j
+        
+        print("DEBUG: Initializing Neo4j connection manager...")
+        initialize_neo4j(
+            uri=settings.neo4j_uri,
+            username=settings.neo4j_username,
+            password=settings.neo4j_password,
+            encrypted=settings.neo4j_encrypted if hasattr(settings, 'neo4j_encrypted') else False,
+            max_connection_pool_size=50,
+            connection_acquisition_timeout=60.0,
+            auto_create_schema=True,
+        )
+        print("DEBUG: Neo4j initialized with connection pooling and schema")
+    except Exception as e:
+        print(f"Warning: Failed to initialize Neo4j: {e}")
+    
     # Initialize Redis client for rate limiting if enabled
     redis_client = None
     if settings.rate_limit_enabled:
@@ -88,6 +106,15 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("DEBUG: Shutting down application...")
+    
+    # Close Neo4j connection
+    try:
+        from topdeck.storage import close_neo4j
+        close_neo4j()
+        print("DEBUG: Neo4j connection closed")
+    except Exception as e:
+        print(f"Warning: Failed to close Neo4j: {e}")
+    
     stop_scheduler()
     print("DEBUG: Scheduler stopped")
     
