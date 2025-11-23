@@ -5,7 +5,7 @@ Provides a single shared Neo4j driver instance across the application
 for optimal connection pooling and resource management.
 """
 
-from typing import Any
+import threading
 
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -20,11 +20,14 @@ class Neo4jManager:
 
     _instance: "Neo4jManager | None" = None
     _client: Neo4jClient | None = None
+    _lock = threading.Lock()
 
     def __new__(cls) -> "Neo4jManager":
         """Ensure only one instance exists."""
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:  # Double-checked locking
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def initialize(
@@ -50,26 +53,28 @@ class Neo4jManager:
             auto_create_schema: Whether to automatically create schema on initialization
         """
         if self._client is None:
-            self._client = Neo4jClient(
-                uri=uri,
-                username=username,
-                password=password,
-                encrypted=encrypted,
-                max_connection_pool_size=max_connection_pool_size,
-                connection_acquisition_timeout=connection_acquisition_timeout,
-            )
-            self._client.connect()
+            with self._lock:
+                if self._client is None:  # Double-checked locking
+                    self._client = Neo4jClient(
+                        uri=uri,
+                        username=username,
+                        password=password,
+                        encrypted=encrypted,
+                        max_connection_pool_size=max_connection_pool_size,
+                        connection_acquisition_timeout=connection_acquisition_timeout,
+                    )
+                    self._client.connect()
 
-            # Automatically create schema if requested
-            if auto_create_schema:
-                schema_result = self._client.initialize_schema()
-                print(
-                    f"Neo4j schema initialized: "
-                    f"{schema_result['constraints_created']} constraints, "
-                    f"{schema_result['indexes_created']} indexes"
-                )
-                if schema_result["errors"]:
-                    print(f"Schema initialization warnings: {schema_result['errors']}")
+                    # Automatically create schema if requested
+                    if auto_create_schema:
+                        schema_result = self._client.initialize_schema()
+                        print(
+                            f"Neo4j schema initialized: "
+                            f"{schema_result['constraints_created']} constraints, "
+                            f"{schema_result['indexes_created']} indexes"
+                        )
+                        if schema_result["errors"]:
+                            print(f"Schema initialization warnings: {schema_result['errors']}")
 
     def get_client(self) -> Neo4jClient:
         """

@@ -718,6 +718,11 @@ class Neo4jClient:
         Create multiple resource nodes in a single transaction using UNWIND.
         
         This is much more efficient than creating resources one at a time.
+        
+        Note: This method uses CREATE (not MERGE) and requires pre-defined IDs.
+        It will fail if resources with these IDs already exist. Use this when you
+        know the resources are new. For updates or when existence is uncertain,
+        use batch_upsert_resources() instead.
 
         Args:
             resources: List of resource property dictionaries (each must include 'id')
@@ -788,6 +793,9 @@ class Neo4jClient:
         Create multiple DEPENDS_ON relationships in a single transaction using UNWIND.
         
         This is much more efficient than creating dependencies one at a time.
+        
+        Note: Uses MERGE to ensure both source and target resources exist. If either
+        resource doesn't exist, it will be created with just the ID property.
 
         Args:
             dependencies: List of dependency dictionaries, each with:
@@ -817,8 +825,8 @@ class Neo4jClient:
             result = session.run(
                 """
                 UNWIND $dependencies as dep
-                MATCH (source:Resource {id: dep.source_id})
-                MATCH (target:Resource {id: dep.target_id})
+                MERGE (source:Resource {id: dep.source_id})
+                MERGE (target:Resource {id: dep.target_id})
                 CREATE (source)-[r:DEPENDS_ON]->(target)
                 SET r = COALESCE(dep.properties, {})
                 RETURN count(r) as count

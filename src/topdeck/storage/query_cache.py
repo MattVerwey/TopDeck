@@ -7,6 +7,7 @@ to reduce database load and improve response times.
 
 import hashlib
 import json
+import threading
 import time
 from collections import OrderedDict
 from threading import Lock
@@ -47,7 +48,11 @@ class QueryCache:
             Cache key
         """
         # Create a deterministic key from query + sorted params
-        params_str = json.dumps(params or {}, sort_keys=True)
+        try:
+            params_str = json.dumps(params or {}, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            # Fallback to repr for non-serializable objects
+            params_str = repr(sorted((params or {}).items()))
         combined = f"{query}:{params_str}"
         return hashlib.sha256(combined.encode()).hexdigest()
 
@@ -180,6 +185,7 @@ class QueryCache:
 
 # Global cache instance
 _query_cache: QueryCache | None = None
+_cache_lock = threading.Lock()
 
 
 def get_query_cache() -> QueryCache:
@@ -191,7 +197,9 @@ def get_query_cache() -> QueryCache:
     """
     global _query_cache
     if _query_cache is None:
-        _query_cache = QueryCache()
+        with _cache_lock:
+            if _query_cache is None:  # Double-checked locking
+                _query_cache = QueryCache()
     return _query_cache
 
 
