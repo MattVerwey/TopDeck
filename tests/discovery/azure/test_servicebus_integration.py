@@ -12,7 +12,6 @@ import pytest
 from topdeck.discovery.azure.mapper import AzureResourceMapper
 from topdeck.discovery.models import (
     CloudProvider,
-    DependencyCategory,
     DiscoveredResource,
     ResourceStatus,
 )
