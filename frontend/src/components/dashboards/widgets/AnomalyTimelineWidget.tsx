@@ -4,7 +4,7 @@
  * Displays recent anomalies in a timeline view.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Timeline,
   TimelineItem,
@@ -54,7 +54,7 @@ export default function AnomalyTimelineWidget({
   const hours = config.config?.hours || 24;
   const severityFilter = config.config?.severity_filter || 'all';
 
-  const fetchAnomalies = async () => {
+  const fetchAnomalies = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -72,11 +72,11 @@ export default function AnomalyTimelineWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, [hours, severityFilter]);
 
   useEffect(() => {
     fetchAnomalies();
-  }, [hours, severityFilter]);
+  }, [fetchAnomalies]);
 
   const getSeverityIcon = (severity: string) => {
     switch (severity.toLowerCase()) {

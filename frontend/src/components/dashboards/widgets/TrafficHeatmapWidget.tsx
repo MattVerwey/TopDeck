@@ -4,7 +4,7 @@
  * Displays service-to-service traffic patterns in a heatmap view.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -56,7 +56,7 @@ export default function TrafficHeatmapWidget({
 
   const showErrors = config.config?.show_errors !== false;
 
-  const fetchTrafficPatterns = async () => {
+  const fetchTrafficPatterns = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -68,11 +68,11 @@ export default function TrafficHeatmapWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, [showErrors]);
 
   useEffect(() => {
     fetchTrafficPatterns();
-  }, [showErrors]);
+  }, [fetchTrafficPatterns]);
 
   const getErrorRateColor = (errorRate: number) => {
     if (errorRate < 1) return '#4caf50';

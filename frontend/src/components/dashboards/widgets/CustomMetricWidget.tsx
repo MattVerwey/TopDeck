@@ -4,7 +4,7 @@
  * Displays a custom metric in a chart (line, area, or bar).
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Chip, Stack } from '@mui/material';
 import {
   LineChart,
@@ -21,7 +21,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import BaseWidget, { WidgetConfig } from '../BaseWidget';
-import apiClient from '../../../services/api';
 
 interface MetricDataPoint {
   timestamp: string;
@@ -47,7 +46,7 @@ export default function CustomMetricWidget({
   const chartType = config.config?.chart_type || 'line';
   const resourceId = config.config?.resource_id;
 
-  const fetchMetricData = async () => {
+  const fetchMetricData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -69,11 +68,11 @@ export default function CustomMetricWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, [metric, resourceId]);
 
   useEffect(() => {
     fetchMetricData();
-  }, [metric, resourceId]);
+  }, [fetchMetricData]);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);

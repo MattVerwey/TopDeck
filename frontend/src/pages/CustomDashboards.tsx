@@ -30,7 +30,6 @@ import {
   Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 import DashboardBuilder from '../components/dashboards/DashboardBuilder';
-import apiClient from '../services/api';
 
 interface DashboardSummary {
   id: string;
@@ -46,7 +45,6 @@ export default function CustomDashboards() {
   const [selectedDashboard, setSelectedDashboard] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboards();
@@ -54,7 +52,6 @@ export default function CustomDashboards() {
 
   const loadDashboards = async () => {
     try {
-      setLoading(true);
       // const dashboardList = await apiClient.listDashboards();
       // setDashboards(dashboardList);
       
@@ -71,8 +68,6 @@ export default function CustomDashboards() {
       ]);
     } catch (error) {
       console.error('Failed to load dashboards:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

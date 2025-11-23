@@ -14,10 +14,7 @@ import {
   DialogActions,
   TextField,
   Grid,
-  Card,
-  CardContent,
   Typography,
-  IconButton,
   Fab,
   Menu,
   MenuItem,
@@ -29,7 +26,7 @@ import {
   Save as SaveIcon,
   ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
-import { WidgetConfig, WidgetPosition } from './BaseWidget';
+import { WidgetConfig } from './BaseWidget';
 import {
   HealthGaugeWidget,
   TopFailingServicesWidget,
@@ -37,7 +34,6 @@ import {
   TrafficHeatmapWidget,
   CustomMetricWidget,
 } from './widgets';
-import apiClient from '../../services/api';
 
 interface Dashboard {
   id?: string;
@@ -137,14 +133,6 @@ export default function DashboardBuilder({
   };
 
   const handleAddWidget = (widgetType: typeof WIDGET_TYPES[0]) => {
-    // Find next available position
-    const usedPositions = dashboard.widgets.map(w => ({
-      x: w.position.x,
-      y: w.position.y,
-      width: w.position.width,
-      height: w.position.height,
-    }));
-
     // Simple positioning: place widgets in a grid
     const newY = dashboard.widgets.length > 0
       ? Math.max(...dashboard.widgets.map(w => w.position.y + w.position.height))

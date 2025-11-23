@@ -56,7 +56,7 @@ export default function BaseWidget({
   error = null,
   children,
 }: BaseWidgetProps) {
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh] = useState(true);
 
   // Auto-refresh functionality
   useEffect(() => {

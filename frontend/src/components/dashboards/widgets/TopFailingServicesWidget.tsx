@@ -4,7 +4,7 @@
  * Displays a list of services with the most errors or lowest health scores.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   List,
   ListItem,
@@ -58,7 +58,7 @@ export default function TopFailingServicesWidget({
   const limit = config.config?.limit || 5;
   const sortBy = config.config?.sort_by || 'health_score';
 
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -90,11 +90,11 @@ export default function TopFailingServicesWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, sortBy]);
 
   useEffect(() => {
     fetchServices();
-  }, [limit, sortBy]);
+  }, [fetchServices]);
 
   const getStatusIcon = (healthScore: number) => {
     if (healthScore >= 70) {

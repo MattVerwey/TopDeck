@@ -4,7 +4,7 @@
  * Displays overall system health score as a circular gauge.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -52,7 +52,7 @@ export default function HealthGaugeWidget({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const fetchHealthScore = async () => {
+  const fetchHealthScore = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -83,11 +83,11 @@ export default function HealthGaugeWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHealthScore();
-  }, []);
+  }, [fetchHealthScore]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
