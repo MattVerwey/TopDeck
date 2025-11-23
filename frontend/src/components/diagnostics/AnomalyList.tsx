@@ -68,9 +68,9 @@ export default function AnomalyList({ anomalies, onAnomalyClick }: AnomalyListPr
       <List>
         {anomalies.map((anomaly) => (
           <ListItem 
-            key={anomaly.alert_id} 
-            component="button"
+            key={anomaly.alert_id}
             onClick={() => onAnomalyClick(anomaly)}
+            sx={{ cursor: 'pointer' }}
           >
             <ListItemIcon>{getSeverityIcon(anomaly.severity)}</ListItemIcon>
             <ListItemText

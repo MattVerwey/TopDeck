@@ -8,6 +8,7 @@ failing services and abnormal traffic patterns in real-time.
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+import re
 
 import structlog
 from sklearn.ensemble import IsolationForest
@@ -187,9 +188,7 @@ class LiveDiagnosticsService:
         )
 
         # Determine status based on health score and anomalies
-        if metrics_result.health_score >= self.HEALTH_EXCELLENT_THRESHOLD:
-            status = "healthy"
-        elif metrics_result.health_score >= self.HEALTH_GOOD_THRESHOLD:
+        if metrics_result.health_score >= self.HEALTH_GOOD_THRESHOLD:
             status = "healthy"
         elif metrics_result.health_score >= self.HEALTH_DEGRADED_THRESHOLD:
             status = "degraded"
@@ -268,7 +267,7 @@ class LiveDiagnosticsService:
                     error=str(e),
                 )
 
-        # Sort by severity and timestamp
+        # Sort by severity (critical first) and timestamp (newest first)
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         alerts.sort(
             key=lambda a: (severity_order.get(a.severity, 4), a.detected_at),
@@ -300,7 +299,6 @@ class LiveDiagnosticsService:
 
             # Sanitize input for Prometheus queries
             # Only allow alphanumeric, dash, underscore, and dot characters
-            import re
             if not re.match(r'^[a-zA-Z0-9\-_.]+$', source_id) or not re.match(r'^[a-zA-Z0-9\-_.]+$', target_id):
                 logger.warning(
                     "invalid_resource_id_for_prometheus",
@@ -571,8 +569,8 @@ class LiveDiagnosticsService:
             results = await self.neo4j.execute_query(query, {"resource_id": resource_id})
             if results:
                 return results[0].get("name", resource_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("get_resource_name_failed", error=str(e))
 
         return resource_id
 
@@ -591,7 +589,7 @@ class LiveDiagnosticsService:
                     "type": results[0].get("type", "unknown"),
                     "label": results[0].get("label", "unknown"),
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("get_resource_info_failed", error=str(e), resource_id=resource_id)
 
         return {"name": resource_id, "type": "unknown", "label": "unknown"}

@@ -6,22 +6,18 @@ anomaly detection and service health monitoring.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from topdeck.analysis.prediction.feature_extractor import FeatureExtractor
 from topdeck.analysis.prediction.predictor import Predictor
 from topdeck.common.config import settings
 from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.monitoring.live_diagnostics import (
-    AnomalyAlert,
     LiveDiagnosticsService,
-    LiveDiagnosticsSnapshot,
-    ServiceHealthStatus,
-    TrafficPattern,
 )
 from topdeck.storage.neo4j_client import Neo4jClient
 
@@ -446,7 +442,6 @@ async def health_check() -> dict[str, Any]:
     try:
         # Check Prometheus connectivity
         prometheus = get_prometheus_collector()
-        prometheus_health = "unknown"
         try:
             # Simple query to check connectivity
             await prometheus.query("up")

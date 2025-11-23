@@ -35,6 +35,12 @@ export default function LiveTopologyGraph({
     if (!containerRef.current || services.length === 0) return;
 
     try {
+      // Cleanup existing instance if any
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
+
       // Create node-to-status map
       const statusMap = new Map<string, ServiceHealthStatus>();
       services.forEach((service) => {

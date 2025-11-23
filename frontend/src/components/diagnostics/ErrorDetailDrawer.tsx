@@ -4,7 +4,7 @@
  * Displays detailed error information for a selected resource
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Drawer,
   Box,
@@ -21,9 +21,8 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { Close, TrendingUp, TrendingDown, Remove } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
 import type { LiveDiagnosticsSnapshot } from '../../types/diagnostics';
-import apiClient from '../../services/api';
 
 interface ErrorDetailDrawerProps {
   open: boolean;
@@ -38,43 +37,9 @@ export default function ErrorDetailDrawer({
   resourceId,
   snapshot,
 }: ErrorDetailDrawerProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [healthData, setHealthData] = useState<any>(null);
-
-  useEffect(() => {
-    if (open && resourceId) {
-      loadHealthData();
-    }
-  }, [open, resourceId]);
-
-  const loadHealthData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiClient.getServiceHealth(resourceId);
-      setHealthData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load health data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get service from snapshot
   const service = snapshot?.services.find((s) => s.resource_id === resourceId);
   const serviceAnomalies = snapshot?.anomalies.filter((a) => a.resource_id === resourceId) || [];
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'increasing':
-        return <TrendingUp color="error" />;
-      case 'decreasing':
-        return <TrendingDown color="success" />;
-      default:
-        return <Remove color="action" />;
-    }
-  };
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
@@ -87,18 +52,6 @@ export default function ErrorDetailDrawer({
         </Box>
 
         <Divider sx={{ mb: 2 }} />
-
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
 
         {service && (
           <>

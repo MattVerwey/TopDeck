@@ -53,7 +53,20 @@ export default function TrafficPatternChart({
         Traffic Patterns
       </Typography>
       <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={chartData} onClick={(data: any) => data && data.activePayload && onPatternClick(data.activePayload[0]?.payload?.pattern)}>
+        <BarChart
+          data={chartData}
+          onClick={(data: any) => {
+            if (
+              data &&
+              data.activePayload &&
+              Array.isArray(data.activePayload) &&
+              data.activePayload.length > 0 &&
+              data.activePayload[0]?.payload?.pattern
+            ) {
+              onPatternClick(data.activePayload[0].payload.pattern);
+            }
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
           <YAxis yAxisId="left" />

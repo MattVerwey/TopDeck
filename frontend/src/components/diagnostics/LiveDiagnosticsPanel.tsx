@@ -189,7 +189,7 @@ export default function LiveDiagnosticsPanel() {
         <>
           {/* Summary Cards */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
@@ -199,9 +199,11 @@ export default function LiveDiagnosticsPanel() {
                   <LinearProgress
                     variant="determinate"
                     value={
-                      (snapshot.services.filter((s) => s.status === 'healthy').length /
-                        snapshot.services.length) *
-                      100
+                      snapshot.services.length > 0
+                        ? (snapshot.services.filter((s) => s.status === 'healthy').length /
+                            snapshot.services.length) *
+                          100
+                        : 0
                     }
                     color="success"
                     sx={{ mt: 1 }}
@@ -317,6 +319,7 @@ export default function LiveDiagnosticsPanel() {
                     <ListItem
                       key={index}
                       onClick={() => handleResourceClick(dep.target_id)}
+                      sx={{ cursor: 'pointer' }}
                       secondaryAction={
                         <IconButton edge="end">
                           <Info />
