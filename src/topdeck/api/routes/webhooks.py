@@ -28,12 +28,10 @@ class WebhookResponse(BaseModel):
 
 
 def get_change_service() -> ChangeManagementService:
-    """Get change management service instance"""
-    neo4j_client = Neo4jClient(
-        uri=settings.neo4j_uri,
-        username=settings.neo4j_user,
-        password=settings.neo4j_password,
-    )
+    """Get change management service instance with shared Neo4j client."""
+    from topdeck.storage import get_neo4j_client
+
+    neo4j_client = get_neo4j_client()
     return ChangeManagementService(neo4j_client)
 
 

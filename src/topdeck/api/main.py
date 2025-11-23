@@ -296,3 +296,22 @@ async def info() -> dict[str, object]:
             "monitoring": settings.enable_monitoring,
         },
     }
+
+
+@app.get("/api/cache/stats")
+async def cache_stats() -> dict[str, Any]:
+    """
+    Get query cache statistics.
+    
+    Returns cache performance metrics including hit rate, size, etc.
+    """
+    try:
+        from topdeck.storage import get_neo4j_client
+
+        neo4j_client = get_neo4j_client()
+        return neo4j_client.get_cache_stats()
+    except Exception as e:
+        return {
+            "error": str(e),
+            "enabled": False,
+        }

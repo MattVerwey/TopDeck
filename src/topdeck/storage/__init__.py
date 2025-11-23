@@ -13,6 +13,11 @@ from topdeck.storage.neo4j_manager import (
     initialize_neo4j,
     is_neo4j_initialized,
 )
+from topdeck.storage.query_cache import (
+    QueryCache,
+    get_query_cache,
+    initialize_query_cache,
+)
 
 __all__ = [
     "Neo4jClient",
@@ -21,4 +26,7 @@ __all__ = [
     "initialize_neo4j",
     "close_neo4j",
     "is_neo4j_initialized",
+    "QueryCache",
+    "get_query_cache",
+    "initialize_query_cache",
 ]

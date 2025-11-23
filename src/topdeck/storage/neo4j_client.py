@@ -33,6 +33,7 @@ class Neo4jClient:
         encrypted: bool = False,
         max_connection_pool_size: int = 50,
         connection_acquisition_timeout: float = 60.0,
+        enable_query_cache: bool = True,
     ):
         """
         Initialize Neo4j client.
@@ -44,6 +45,7 @@ class Neo4jClient:
             encrypted: If True and URI doesn't specify encryption, upgrades to encrypted connection
             max_connection_pool_size: Maximum number of connections in the pool (default: 50)
             connection_acquisition_timeout: Timeout in seconds for acquiring a connection (default: 60.0)
+            enable_query_cache: Whether to enable query result caching (default: True)
         """
         self.uri = uri
         self.username = username
@@ -51,7 +53,9 @@ class Neo4jClient:
         self.encrypted = encrypted
         self.max_connection_pool_size = max_connection_pool_size
         self.connection_acquisition_timeout = connection_acquisition_timeout
+        self.enable_query_cache = enable_query_cache
         self.driver: Driver | None = None
+        self._query_cache = None
 
         # Auto-upgrade to encrypted connection if requested and not already encrypted
         if encrypted and not ("+s://" in uri or "+ssc://" in uri):
@@ -61,6 +65,11 @@ class Neo4jClient:
                 self.uri = "neo4j+s://" + uri[len("neo4j://") :]
             else:
                 self.uri = uri
+
+        # Initialize query cache if enabled
+        if enable_query_cache:
+            from topdeck.storage.query_cache import get_query_cache
+            self._query_cache = get_query_cache()
 
     def _is_encrypted_uri(self, uri: str) -> bool:
         """Check if a URI uses an encrypted protocol."""
@@ -891,3 +900,73 @@ class Neo4jClient:
             "indexes_created": indexes_created,
             "errors": errors,
         }
+
+    def run_cached_query(
+        self, query: str, params: dict[str, Any] | None = None, ttl: int | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        Run a query with caching enabled.
+        
+        Results are cached based on query + parameters. Use for read-only queries
+        that are frequently executed with the same parameters.
+        
+        WARNING: Do not use for queries that modify data (CREATE, MERGE, DELETE, SET).
+
+        Args:
+            query: Cypher query string
+            params: Query parameters
+            ttl: Cache TTL in seconds (uses cache default if None)
+
+        Returns:
+            List of result records as dictionaries
+        """
+        if not self.enable_query_cache or self._query_cache is None:
+            # Cache disabled, execute directly
+            with self.session() as session:
+                result = session.run(query, params or {})
+                return [dict(record) for record in result]
+
+        # Check cache first
+        cached_result = self._query_cache.get(query, params)
+        if cached_result is not None:
+            return cached_result
+
+        # Execute query and cache result
+        with self.session() as session:
+            result = session.run(query, params or {})
+            result_list = [dict(record) for record in result]
+            self._query_cache.set(query, result_list, params, ttl)
+            return result_list
+
+    def invalidate_cache(self, query: str | None = None, params: dict[str, Any] | None = None) -> None:
+        """
+        Invalidate cached query results.
+
+        Args:
+            query: Specific query to invalidate (None = clear all)
+            params: Query parameters (only used if query is specified)
+        """
+        if self._query_cache is None:
+            return
+
+        if query is None:
+            self._query_cache.clear()
+        else:
+            self._query_cache.invalidate(query, params)
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """
+        Get query cache statistics.
+
+        Returns:
+            Dictionary with cache stats or empty dict if caching disabled
+        """
+        if self._query_cache is None:
+            return {
+                "enabled": False,
+                "message": "Query caching is disabled"
+            }
+
+        stats = self._query_cache.get_stats()
+        stats["enabled"] = True
+        return stats
