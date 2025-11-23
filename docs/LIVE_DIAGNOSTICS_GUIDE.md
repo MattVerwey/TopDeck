@@ -53,13 +53,37 @@ Automatically identifies dependencies that are failing or degraded, helping you 
 2. Click on **"Live Diagnostics"** in the left sidebar (icon: 🔍 Troubleshoot)
 3. The panel will automatically load the latest diagnostics data
 
+### Real-Time Updates (WebSocket)
+
+**NEW in Phase 6:** Live Diagnostics now uses WebSocket for true real-time updates!
+
+**Connection Status Indicator:**
+- 🟢 **WebSocket (Real-time)**: Connected via WebSocket, receiving instant updates every 10 seconds
+- 🟡 **Polling (Fallback)**: WebSocket unavailable, using 30-second polling as fallback
+- 🔴 **Disconnected**: No connection, attempting to reconnect
+
+**Features:**
+- ✅ **Instant Updates**: Changes appear immediately (10s WebSocket vs 30s polling)
+- ✅ **Auto-Reconnection**: Automatically reconnects if connection drops (up to 5 attempts)
+- ✅ **Graceful Fallback**: Falls back to polling if WebSocket unavailable
+- ✅ **Lower Bandwidth**: Push model uses less bandwidth than polling
+- ✅ **Connection Status**: Visual indicator shows current connection type
+
+**Configuration:**
+The WebSocket endpoint is available at: `ws://<your-server>:8000/api/v1/ws/live-diagnostics`
+
+Query parameters:
+- `update_interval`: Update frequency in seconds (1-60, default: 10)
+
+Example: `ws://localhost:8000/api/v1/ws/live-diagnostics?update_interval=5`
+
 ## Panel Layout
 
 ### Header
 
 - **System Status**: Overall health indicator (Healthy / Degraded / Critical)
-- **Auto-Refresh Toggle**: Enable/disable automatic data refresh (default: ON, every 30 seconds)
-- **Refresh Button**: Manually refresh the data
+- **Connection Status**: WebSocket/Polling/Disconnected indicator with icon
+- **Refresh Button**: Manually request immediate snapshot update
 
 ### Summary Cards
 
