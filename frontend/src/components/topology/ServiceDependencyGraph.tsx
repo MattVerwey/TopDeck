@@ -33,10 +33,12 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
-import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment } from '../../types';
+import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment, TopologyFilterSettings } from '../../types';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import { getRiskLevelFromScore } from '../../utils/riskUtils';
+import { applyGroupingToElements, type NodeElement } from '../../utils/topologyGrouping';
+
 
 
 // Constants for node sizing and padding
@@ -51,6 +53,8 @@ const getNodeSize = (ele: cytoscape.NodeSingular): number => {
 
 interface ServiceDependencyGraphProps {
   data: TopologyGraphType;
+  onNodeExpand?: (nodeId: string) => void;
+  expandedNodeIds?: Set<string>;
 }
 
 // Risk-based color scheme - prioritizes risk level over service type
@@ -138,10 +142,10 @@ const relationshipLabels: Record<string, string> = {
   contains: 'contains',
 };
 
-export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphProps) {
+export default function ServiceDependencyGraph({ data, onNodeExpand, expandedNodeIds = new Set() }: ServiceDependencyGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const { setSelectedResource } = useStore();
+  const { setSelectedResource, filterSettings } = useStore();
   const [selectedNode, setSelectedNode] = useState<Resource | null>(null);
   const [graphStats, setGraphStats] = useState({
     nodes: 0,
@@ -270,6 +274,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             blastRadius: risk?.blast_radius,
             spof: risk?.single_point_of_failure || false,
           },
+          classes: expandedNodeIds.has(node.id) ? 'expanded-node' : undefined,
         };
       }),
       ...data.edges.map((edge, idx) => ({
@@ -282,13 +287,38 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           relType: edge.relationship_type,
         },
       })),
-    ];
+    ] as NodeElement[];
+
+    // Apply grouping if enabled
+    const finalElements = filterSettings.showGrouping && filterSettings.groupBy
+      ? applyGroupingToElements(elements, filterSettings.groupBy, data.nodes)
+      : elements;
 
     // Initialize Cytoscape with enhanced styling
     cyRef.current = cytoscape({
       container: containerRef.current,
-      elements,
+      elements: finalElements,
       style: [
+        // Group node styling
+        {
+          selector: '.group-node',
+          style: {
+            shape: 'roundrectangle',
+            'background-color': '#1e293b',
+            'background-opacity': 0.1,
+            'border-width': 2,
+            'border-color': '#475569',
+            'border-style': 'dashed',
+            label: 'data(label)',
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'text-margin-y': 10,
+            'font-size': '14px',
+            'font-weight': 700,
+            color: '#cbd5e1',
+            'padding': 20,
+          } as cytoscape.Css.Node,
+        },
         {
           selector: 'node',
           style: {
@@ -321,6 +351,20 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             'border-width': 5,
             'border-color': '#ff1744', // Bright red border for SPOF
             'border-style': 'double',
+          } as cytoscape.Css.Node,
+        },
+        {
+          selector: 'node.collapsed-child',
+          style: {
+            display: 'none',
+          } as cytoscape.Css.Node,
+        },
+        {
+          selector: 'node.expanded-node',
+          style: {
+            'border-width': 5,
+            'border-color': '#10b981', // Green border for expanded nodes
+            'border-style': 'solid',
           } as cytoscape.Css.Node,
         },
         {
@@ -399,7 +443,35 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     // Add event handlers
     cyRef.current.on('tap', 'node', (evt) => {
       const node = evt.target;
-      const nodeData = node.data() as Resource;
+      const nodeData = node.data() as Resource & { isGroup?: boolean };
+      
+      // Handle group node collapse/expand
+      if (nodeData.isGroup) {
+        const children = node.children();
+        if (children.length > 0) {
+          // Check if currently collapsed
+          const isCollapsed = children.some((child: cytoscape.NodeSingular) => child.hasClass('collapsed-child'));
+          
+          if (isCollapsed) {
+            // Expand: show all children
+            children.removeClass('collapsed-child');
+            children.removeStyle('display');
+          } else {
+            // Collapse: hide all children
+            children.addClass('collapsed-child');
+            children.style('display', 'none');
+          }
+          
+          // Re-layout after collapse/expand
+          cyRef.current?.layout({
+            name: 'cose',
+            animate: true,
+            animationDuration: 300,
+          }).run();
+        }
+        return; // Don't show details for group nodes
+      }
+      
       setSelectedNode(nodeData);
       setSelectedResource(nodeData);
       
@@ -410,6 +482,30 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       node.addClass('highlighted');
       node.connectedEdges().addClass('highlighted');
       node.connectedEdges().connectedNodes().addClass('highlighted');
+    });
+
+    // Add double-click handler to expand/collapse node dependencies
+    cyRef.current.on('dbltap', 'node', (evt) => {
+      const node = evt.target;
+      const nodeData = node.data() as Resource & { isGroup?: boolean };
+      
+      // Don't expand group nodes
+      if (nodeData.isGroup || !onNodeExpand) {
+        return;
+      }
+      
+      // Visual feedback for expanded state (check BEFORE toggling)
+      const isCurrentlyExpanded = expandedNodeIds.has(nodeData.id);
+      
+      // Toggle expand state
+      onNodeExpand(nodeData.id);
+      
+      // Update visual class based on previous state
+      if (isCurrentlyExpanded) {
+        node.removeClass('expanded-node');
+      } else {
+        node.addClass('expanded-node');
+      }
     });
 
     cyRef.current.on('tap', (evt) => {
@@ -426,7 +522,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     return () => {
       cyRef.current?.destroy();
     };
-  }, [data, setSelectedResource, riskAssessments]);
+  }, [data, setSelectedResource, riskAssessments, filterSettings, expandedNodeIds, onNodeExpand]);
 
   // Zoom controls
   const handleZoomIn = () => {

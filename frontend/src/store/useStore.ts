@@ -10,6 +10,7 @@ import type {
   ViewMode,
   Integration,
   RiskAssessment,
+  TopologyFilterSettings,
 } from '../types';
 
 interface AppState {
@@ -17,6 +18,7 @@ interface AppState {
   topology: TopologyGraph | null;
   selectedResource: Resource | null;
   filters: FilterOptions;
+  filterSettings: TopologyFilterSettings;
   viewMode: ViewMode;
 
   // Risk state
@@ -34,6 +36,7 @@ interface AppState {
   setTopology: (topology: TopologyGraph) => void;
   setSelectedResource: (resource: Resource | null) => void;
   setFilters: (filters: FilterOptions) => void;
+  setFilterSettings: (settings: TopologyFilterSettings) => void;
   setViewMode: (mode: ViewMode) => void;
   setRisks: (risks: RiskAssessment[]) => void;
   setIntegrations: (integrations: Integration[]) => void;
@@ -48,6 +51,10 @@ export const useStore = create<AppState>((set) => ({
   topology: null,
   selectedResource: null,
   filters: {},
+  filterSettings: {
+    mode: 'strict',
+    showGrouping: false,
+  },
   viewMode: 'service',
   risks: [],
   integrations: [],
@@ -59,6 +66,7 @@ export const useStore = create<AppState>((set) => ({
   setTopology: (topology) => set({ topology }),
   setSelectedResource: (resource) => set({ selectedResource: resource }),
   setFilters: (filters) => set({ filters }),
+  setFilterSettings: (settings) => set({ filterSettings: settings }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setRisks: (risks) => set({ risks }),
   setIntegrations: (integrations) => set({ integrations }),
