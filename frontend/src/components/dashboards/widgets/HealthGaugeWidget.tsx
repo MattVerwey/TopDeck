@@ -66,7 +66,7 @@ export default function HealthGaugeWidget({
       
       // Calculate overall health score
       const services = fetchedSnapshot.services || [];
-      const totalScore = services.reduce((sum: number, s: any) => sum + (s.health_score || 0), 0);
+      const totalScore = services.reduce((sum: number, s) => sum + (s.health_score || 0), 0);
       const avgScore = services.length > 0 ? totalScore / services.length : 100;
       
       // Determine status based on score
@@ -100,7 +100,7 @@ export default function HealthGaugeWidget({
         avgLatency: 0,
         totalRequests: 0,
         avgErrorRate: 0,
-        uptimePercentage: 99.9,
+        uptimePercentage: 0,
       };
     }
 
@@ -109,6 +109,7 @@ export default function HealthGaugeWidget({
     let totalRequests = 0;
     let totalErrors = 0;
     let servicesWithMetrics = 0;
+    let totalUptime = 0;
 
     services.forEach((service) => {
       if (service.metrics) {
@@ -117,21 +118,24 @@ export default function HealthGaugeWidget({
         const latency = service.metrics['latency_p95'] || service.metrics['latency'] || 0;
         const requests = service.metrics['request_count'] || service.metrics['requests'] || 0;
         const errors = service.metrics['error_count'] || service.metrics['errors'] || 0;
+        const uptime = service.metrics['uptime'] || 99.9; // Default to 99.9 if not provided
 
         totalLatency += latency;
         totalRequests += requests;
         totalErrors += errors;
+        totalUptime += uptime;
       }
     });
 
     const avgLatency = servicesWithMetrics > 0 ? totalLatency / servicesWithMetrics : 0;
     const avgErrorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
+    const avgUptime = servicesWithMetrics > 0 ? totalUptime / servicesWithMetrics : 99.9;
 
     return {
       avgLatency,
       totalRequests,
       avgErrorRate,
-      uptimePercentage: 99.9, // This would come from service uptime metrics if available
+      uptimePercentage: avgUptime,
     };
   };
 
