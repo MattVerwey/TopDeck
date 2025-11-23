@@ -269,8 +269,11 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
           if (config.autoReconnect && reconnectAttemptsRef.current < config.maxReconnectAttempts) {
             reconnectAttemptsRef.current += 1;
             
-            // Exponential backoff: delay = reconnectDelay * 2^(attempts - 1)
-            const exponentialDelay = config.reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
+            // Exponential backoff with maximum cap: delay = min(reconnectDelay * 2^(attempts - 1), 30000ms)
+            const exponentialDelay = Math.min(
+              config.reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1),
+              30000 // Cap at 30 seconds maximum
+            );
             
             console.log(
               `Attempting to reconnect... (${reconnectAttemptsRef.current}/${config.maxReconnectAttempts}) in ${exponentialDelay}ms`
@@ -344,7 +347,10 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     sendMessage({ type: 'unsubscribe', resource_ids: resourceIds });
   }, [sendMessage]);
 
-  // Effect: Connect on mount, disconnect on unmount - stable dependencies
+  // Effect: Connect on mount, disconnect on unmount
+  // Note: connect/disconnect have stable dependencies (handleMessage uses functional setState,
+  // stopPolling/startPolling use minimal deps) so they won't change on every render.
+  // Using empty deps array is safe here as we want to connect once on mount.
   useEffect(() => {
     isIntentionalCloseRef.current = false;
     connect();
@@ -352,7 +358,8 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
     return () => {
       disconnect();
     };
-  }, []); // Empty deps - connect/disconnect are stable via refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - connect only on mount, disconnect on unmount
 
   // Effect: Set up ping interval to keep connection alive
   useEffect(() => {

@@ -175,7 +175,7 @@ class DiagnosticsUpdatePublisher:
             except asyncio.CancelledError:
                 # Task cancellation is expected when stopping the publisher; ignore this exception.
                 pass
-        self._cleanup_services()
+        await self._cleanup_services()
         logger.info("Stopped diagnostics update publisher")
 
     async def _publish_loop(self, interval: int):
