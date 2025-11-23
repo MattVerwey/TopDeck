@@ -413,26 +413,12 @@ async def discover_messaging_resources(
                                     tags=namespace.tags,
                                     properties={
                                         "namespace": namespace.name,
-                                        "max_size_in_mb": (
-                                            topic.max_size_in_megabytes
-                                            if hasattr(topic, "max_size_in_megabytes")
-                                            else None
-                                        ),
-                                        "requires_duplicate_detection": (
-                                            topic.requires_duplicate_detection
-                                            if hasattr(topic, "requires_duplicate_detection")
-                                            else None
-                                        ),
-                                        "support_ordering": (
-                                            topic.support_ordering
-                                            if hasattr(topic, "support_ordering")
-                                            else None
-                                        ),
-                                        "status": topic.status if hasattr(topic, "status") else None,
+                                        "max_size_in_mb": topic_data["max_size_in_mb"],
+                                        "requires_duplicate_detection": topic_data["requires_duplicate_detection"],
+                                        "support_ordering": topic_data["support_ordering"],
+                                        "status": topic_data["status"],
                                     },
-                                    provisioning_state=(
-                                        topic.status if hasattr(topic, "status") else None
-                                    ),
+                                    provisioning_state=topic_data["status"],
                                 )
                                 resources.append(topic_resource)
                                 
@@ -477,11 +463,7 @@ async def discover_messaging_resources(
                                                 "requires_session": subscription_data["requires_session"],
                                                 "status": subscription_data["status"],
                                             },
-                                            provisioning_state=(
-                                                subscription.status
-                                                if hasattr(subscription, "status")
-                                                else None
-                                            ),
+                                            provisioning_state=subscription_data["status"],
                                         )
                                         resources.append(subscription_resource)
                                 except Exception as e:
@@ -548,9 +530,7 @@ async def discover_messaging_resources(
                                         "max_delivery_count": queue_data["max_delivery_count"],
                                         "status": queue_data["status"],
                                     },
-                                    provisioning_state=(
-                                        queue.status if hasattr(queue, "status") else None
-                                    ),
+                                    provisioning_state=queue_data["status"],
                                 )
                                 resources.append(queue_resource)
                             except Exception as e:
