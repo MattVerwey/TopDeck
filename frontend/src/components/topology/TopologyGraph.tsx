@@ -14,6 +14,8 @@ import { applyGroupingToElements, type NodeElement } from '../../utils/topologyG
 interface TopologyGraphProps {
   data: TopologyGraphType;
   viewMode: ViewMode;
+  onNodeExpand?: (nodeId: string) => void;
+  expandedNodeIds?: Set<string>;
 }
 
 const colorMap: Record<string, string> = {
@@ -37,7 +39,7 @@ const NODE_BORDER_WIDTH = 3;
 const NODE_TEXT_PADDING = 24;
 const NODE_TEXT_MAX_WIDTH = NODE_WIDTH - NODE_TEXT_PADDING;
 
-export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
+export default function TopologyGraph({ data, viewMode, onNodeExpand, expandedNodeIds = new Set() }: TopologyGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { setSelectedResource, filterSettings } = useStore();
@@ -57,6 +59,7 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
           type: node.resource_type,
           provider: node.cloud_provider,
         },
+        classes: expandedNodeIds.has(node.id) ? 'expanded-node' : undefined,
       })),
       ...data.edges.map((edge, idx) => ({
         data: {
@@ -125,6 +128,14 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
           selector: 'node.collapsed-child',
           style: {
             display: 'none',
+          } as cytoscape.Css.Node,
+        },
+        {
+          selector: 'node.expanded-node',
+          style: {
+            'border-width': 5,
+            'border-color': '#10b981', // Green border for expanded nodes
+            'border-style': 'solid',
           } as cytoscape.Css.Node,
         },
         {
@@ -219,13 +230,34 @@ export default function TopologyGraph({ data, viewMode }: TopologyGraphProps) {
       setSelectedResource(nodeData);
     });
 
+    // Add double-click handler to expand/collapse node dependencies
+    cyRef.current.on('dbltap', 'node', (evt) => {
+      const node = evt.target;
+      const nodeData = node.data();
+      
+      // Don't expand group nodes
+      if (nodeData.isGroup || !onNodeExpand) {
+        return;
+      }
+      
+      // Toggle expand state
+      onNodeExpand(nodeData.id);
+      
+      // Visual feedback for expanded state
+      if (expandedNodeIds.has(nodeData.id)) {
+        node.removeClass('expanded-node');
+      } else {
+        node.addClass('expanded-node');
+      }
+    });
+
     // Fit to view
     cyRef.current.fit(undefined, 50);
 
     return () => {
       cyRef.current?.destroy();
     };
-  }, [data, viewMode, filterSettings]);
+  }, [data, viewMode, filterSettings, expandedNodeIds, onNodeExpand]);
 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>

@@ -53,6 +53,8 @@ const getNodeSize = (ele: cytoscape.NodeSingular): number => {
 
 interface ServiceDependencyGraphProps {
   data: TopologyGraphType;
+  onNodeExpand?: (nodeId: string) => void;
+  expandedNodeIds?: Set<string>;
 }
 
 // Risk-based color scheme - prioritizes risk level over service type
@@ -140,7 +142,7 @@ const relationshipLabels: Record<string, string> = {
   contains: 'contains',
 };
 
-export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphProps) {
+export default function ServiceDependencyGraph({ data, onNodeExpand, expandedNodeIds = new Set() }: ServiceDependencyGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { setSelectedResource, filterSettings } = useStore();
@@ -272,6 +274,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
             blastRadius: risk?.blast_radius,
             spof: risk?.single_point_of_failure || false,
           },
+          classes: expandedNodeIds.has(node.id) ? 'expanded-node' : undefined,
         };
       }),
       ...data.edges.map((edge, idx) => ({
@@ -354,6 +357,14 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
           selector: 'node.collapsed-child',
           style: {
             display: 'none',
+          } as cytoscape.Css.Node,
+        },
+        {
+          selector: 'node.expanded-node',
+          style: {
+            'border-width': 5,
+            'border-color': '#10b981', // Green border for expanded nodes
+            'border-style': 'solid',
           } as cytoscape.Css.Node,
         },
         {
@@ -473,6 +484,27 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
       node.connectedEdges().connectedNodes().addClass('highlighted');
     });
 
+    // Add double-click handler to expand/collapse node dependencies
+    cyRef.current.on('dbltap', 'node', (evt) => {
+      const node = evt.target;
+      const nodeData = node.data() as Resource & { isGroup?: boolean };
+      
+      // Don't expand group nodes
+      if (nodeData.isGroup || !onNodeExpand) {
+        return;
+      }
+      
+      // Toggle expand state
+      onNodeExpand(nodeData.id);
+      
+      // Visual feedback for expanded state
+      if (expandedNodeIds.has(nodeData.id)) {
+        node.removeClass('expanded-node');
+      } else {
+        node.addClass('expanded-node');
+      }
+    });
+
     cyRef.current.on('tap', (evt) => {
       if (evt.target === cyRef.current) {
         // Clicked on background - clear selection
@@ -487,7 +519,7 @@ export default function ServiceDependencyGraph({ data }: ServiceDependencyGraphP
     return () => {
       cyRef.current?.destroy();
     };
-  }, [data, setSelectedResource, riskAssessments, filterSettings]);
+  }, [data, setSelectedResource, riskAssessments, filterSettings, expandedNodeIds, onNodeExpand]);
 
   // Zoom controls
   const handleZoomIn = () => {

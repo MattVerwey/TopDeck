@@ -62,6 +62,7 @@ export default function Topology() {
   const [useMockData, setUseMockData] = useState(false); // Start with live data from API
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
   const [filteredTopology, setFilteredTopology] = useState<TopologyGraphType | null>(null);
 
   const loadTopology = useCallback(async () => {
@@ -233,9 +234,22 @@ export default function Topology() {
       }
 
       // Apply filter mode to determine what to show
+      let nodesToShow = new Set(matchingNodeIds);
+      
       if (filterSettings.mode === 'strict') {
         // Show ONLY the matching nodes (no dependencies)
-        filtered = applyNodeFilter(topology, (n) => matchingNodeIds.has(n.id));
+        // But add expanded nodes' dependencies
+        if (expandedNodeIds.size > 0) {
+          topology.edges.forEach((edge) => {
+            if (expandedNodeIds.has(edge.source_id)) {
+              nodesToShow.add(edge.target_id);
+            }
+            if (expandedNodeIds.has(edge.target_id)) {
+              nodesToShow.add(edge.source_id);
+            }
+          });
+        }
+        filtered = applyNodeFilter(topology, (n) => nodesToShow.has(n.id));
       } else if (filterSettings.mode === 'with-dependencies') {
         // Show matching nodes and their DIRECT dependencies (1 level)
         const directlyRelatedIds = new Set(matchingNodeIds);
@@ -247,6 +261,13 @@ export default function Topology() {
             directlyRelatedIds.add(edge.source_id);
           }
         });
+        
+        // Add expanded nodes' full dependencies
+        if (expandedNodeIds.size > 0) {
+          const expandedDeps = resolveTransitiveDependencies(expandedNodeIds, topology);
+          expandedDeps.forEach(id => directlyRelatedIds.add(id));
+        }
+        
         filtered = applyNodeFilter(topology, (n) => directlyRelatedIds.has(n.id));
       } else {
         // 'full-graph': Show matching nodes and ALL their transitive dependencies
@@ -260,10 +281,11 @@ export default function Topology() {
       total_nodes: filtered.nodes.length,
       total_edges: filtered.edges.length,
       filter_mode: filterSettings.mode,
+      expanded_nodes: expandedNodeIds.size,
     };
 
     setFilteredTopology(filtered);
-  }, [topology, selectedResourceIds, filters, filterSettings, applyNodeFilter, resolveTransitiveDependencies]);
+  }, [topology, selectedResourceIds, filters, filterSettings, expandedNodeIds, applyNodeFilter, resolveTransitiveDependencies]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value || undefined } as typeof filters);
@@ -276,10 +298,25 @@ export default function Topology() {
   const clearFilters = () => {
     setFilters({});
     setSelectedResourceIds([]);
+    setExpandedNodeIds(new Set());
   };
 
   const handleResourceSelection = (resourceIds: string[]) => {
     setSelectedResourceIds(resourceIds);
+  };
+
+  const handleNodeExpand = (nodeId: string) => {
+    setExpandedNodeIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        // Collapse: remove from expanded set
+        newSet.delete(nodeId);
+      } else {
+        // Expand: add to expanded set
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
   };
 
   const activeFilterCount = Object.keys(filters).filter((k) => filters[k as keyof typeof filters]).length + 
@@ -562,6 +599,10 @@ export default function Topology() {
                 <Typography variant="caption">
                   Showing {filteredTopology.nodes.length} of {topology?.nodes.length || 0} total resources
                   {getFilterModeDescription(filterSettings.mode)}
+                  {expandedNodeIds.size > 0 && ` • ${expandedNodeIds.size} node(s) expanded`}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  💡 Tip: Double-click any node to expand/collapse its dependencies
                 </Typography>
                 {activeFilterCount > 0 && (
                   <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -578,9 +619,18 @@ export default function Topology() {
           
           <Paper sx={{ p: 0, height: 'calc(100vh - 400px)', minHeight: 500 }}>
             {graphView === 'dependency' ? (
-              <ServiceDependencyGraph data={filteredTopology} />
+              <ServiceDependencyGraph 
+                data={filteredTopology} 
+                onNodeExpand={handleNodeExpand}
+                expandedNodeIds={expandedNodeIds}
+              />
             ) : (
-              <TopologyGraph data={filteredTopology} viewMode={viewMode} />
+              <TopologyGraph 
+                data={filteredTopology} 
+                viewMode={viewMode}
+                onNodeExpand={handleNodeExpand}
+                expandedNodeIds={expandedNodeIds}
+              />
             )}
           </Paper>
         </>
