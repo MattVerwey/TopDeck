@@ -62,6 +62,16 @@ class ConnectionManager:
             },
         )
 
+    async def has_connections(self) -> bool:
+        """Check if there are any active connections (thread-safe)."""
+        async with self._lock:
+            return len(self.active_connections) > 0
+
+    async def get_connection_count(self) -> int:
+        """Get the number of active connections (thread-safe)."""
+        async with self._lock:
+            return len(self.active_connections)
+
     async def broadcast(self, message: dict[str, Any]):
         """Broadcast a message to all connected clients."""
         async with self._lock:
@@ -103,6 +113,39 @@ class DiagnosticsUpdatePublisher:
         self.manager = connection_manager
         self._running = False
         self._task: asyncio.Task | None = None
+        # Initialize service instances once for reuse
+        self._neo4j_client: Neo4jClient | None = None
+        self._prometheus: PrometheusCollector | None = None
+        self._predictor: Predictor | None = None
+        self._service: LiveDiagnosticsService | None = None
+
+    def _initialize_services(self):
+        """Initialize service instances for reuse."""
+        if self._service is None:
+            self._neo4j_client = Neo4jClient(
+                uri=settings.neo4j_uri,
+                username=settings.neo4j_username,
+                password=settings.neo4j_password,
+            )
+            self._prometheus = PrometheusCollector(url=settings.prometheus_url)
+            self._predictor = Predictor(
+                prometheus=self._prometheus,
+                feature_extractor=FeatureExtractor(prometheus=self._prometheus),
+            )
+            self._service = LiveDiagnosticsService(
+                neo4j_client=self._neo4j_client,
+                prometheus=self._prometheus,
+                predictor=self._predictor,
+            )
+
+    def _cleanup_services(self):
+        """Clean up service instances."""
+        if self._neo4j_client:
+            self._neo4j_client.close()
+            self._neo4j_client = None
+            self._prometheus = None
+            self._predictor = None
+            self._service = None
 
     async def start(self, update_interval: int = 10):
         """Start publishing updates at regular intervals."""
@@ -111,6 +154,7 @@ class DiagnosticsUpdatePublisher:
             return
 
         self._running = True
+        self._initialize_services()
         self._task = asyncio.create_task(self._publish_loop(update_interval))
         logger.info(
             "Started diagnostics update publisher",
@@ -126,6 +170,7 @@ class DiagnosticsUpdatePublisher:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        self._cleanup_services()
         logger.info("Stopped diagnostics update publisher")
 
     async def _publish_loop(self, interval: int):
@@ -133,7 +178,7 @@ class DiagnosticsUpdatePublisher:
         while self._running:
             try:
                 # Only publish if there are active connections
-                if len(self.manager.active_connections) > 0:
+                if await self.manager.has_connections():
                     await self._publish_update()
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
@@ -149,26 +194,12 @@ class DiagnosticsUpdatePublisher:
     async def _publish_update(self):
         """Fetch and publish diagnostic updates."""
         try:
-            # Create service instances
-            neo4j_client = Neo4jClient(
-                uri=settings.neo4j_uri,
-                username=settings.neo4j_username,
-                password=settings.neo4j_password,
-            )
-            prometheus = PrometheusCollector(url=settings.prometheus_url)
-            predictor = Predictor(
-                prometheus=prometheus,
-                feature_extractor=FeatureExtractor(prometheus=prometheus),
-            )
-            
-            service = LiveDiagnosticsService(
-                neo4j_client=neo4j_client,
-                prometheus=prometheus,
-                predictor=predictor,
-            )
+            # Use initialized service instances
+            if self._service is None:
+                self._initialize_services()
 
             # Get snapshot data
-            snapshot = service.get_diagnostics_snapshot(duration_hours=1)
+            snapshot = self._service.get_diagnostics_snapshot(duration_hours=1)
 
             # Convert to dict for JSON serialization
             message = {
@@ -233,9 +264,6 @@ class DiagnosticsUpdatePublisher:
             }
 
             await self.manager.broadcast(message)
-
-            # Close Neo4j connection
-            neo4j_client.close()
 
         except Exception as e:
             logger.error(
@@ -462,7 +490,7 @@ async def websocket_health():
     """
     return {
         "status": "healthy",
-        "active_connections": len(manager.active_connections),
+        "active_connections": await manager.get_connection_count(),
         "publisher_running": publisher._running,
         "timestamp": datetime.now(UTC).isoformat(),
     }

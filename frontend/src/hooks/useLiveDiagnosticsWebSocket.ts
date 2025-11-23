@@ -127,29 +127,43 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
         
         case 'health_change':
           // Update specific service in snapshot
-          if (message.data && snapshot) {
+          if (message.data) {
             const { resource_id, new_status, health_score } = message.data;
-            const updatedServices = snapshot.services.map(service =>
-              service.resource_id === resource_id
-                ? { ...service, status: new_status, health_score }
-                : service
-            );
-            setSnapshot({ ...snapshot, services: updatedServices });
+            
+            // Update snapshot if it exists
+            if (snapshot) {
+              const updatedServices = snapshot.services.map(service =>
+                service.resource_id === resource_id
+                  ? { ...service, status: new_status, health_score }
+                  : service
+              );
+              setSnapshot({ ...snapshot, services: updatedServices });
+            }
+            
+            // Log health change even if no snapshot yet
+            console.log('Health change:', message.data);
           }
           break;
         
         case 'anomaly_detected':
           // Add new anomaly to snapshot
-          if (message.data && snapshot) {
+          if (message.data) {
+            // Use crypto.randomUUID() for better ID generation
             const newAnomaly = {
-              alert_id: `${Date.now()}`,
+              alert_id: crypto.randomUUID(),
               ...message.data,
               timestamp: message.timestamp,
             };
-            setSnapshot({
-              ...snapshot,
-              anomalies: [newAnomaly, ...snapshot.anomalies],
-            });
+            
+            if (snapshot) {
+              setSnapshot({
+                ...snapshot,
+                anomalies: [newAnomaly, ...snapshot.anomalies],
+              });
+            } else {
+              // Log anomaly even if no snapshot yet
+              console.log('Anomaly detected:', newAnomaly);
+            }
           }
           break;
         
@@ -327,12 +341,15 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
   useEffect(() => {
     if (connectionStatus.connectionType === 'websocket') {
       const pingInterval = setInterval(() => {
-        ping();
+        // Use sendMessage directly instead of ping function to avoid dependency issues
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'ping' }));
+        }
       }, 30000); // Ping every 30 seconds
 
       return () => clearInterval(pingInterval);
     }
-  }, [connectionStatus.connectionType, ping]);
+  }, [connectionStatus.connectionType]); // Removed ping from dependencies
 
   return {
     snapshot,
