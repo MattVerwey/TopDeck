@@ -266,6 +266,7 @@ export default function HealthGaugeWidget({
                   Health Metrics Breakdown
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
+                  {/* Note: Using sample data - will be replaced with real metrics from API */}
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">CPU Usage</Typography>

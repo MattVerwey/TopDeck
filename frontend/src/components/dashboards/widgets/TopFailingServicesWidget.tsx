@@ -134,6 +134,7 @@ export default function TopFailingServicesWidget({
           </Typography>
         </Box>
         <Divider />
+        {/* Note: Using sample data - will be replaced with real metrics from API */}
         <Grid container spacing={1}>
           <Grid item xs={6}>
             <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
