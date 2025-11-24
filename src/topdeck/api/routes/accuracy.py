@@ -635,6 +635,12 @@ async def get_accuracy_dashboard(
     max_stale_days = min(days, 30)
     stale = await validator.validate_stale_dependencies(max_age_days=max_stale_days)
     
+    # Extract dependency details for cleaner access
+    dep_details = dep_metrics.details if dep_metrics and dep_metrics.details else {}
+    dep_validated = dep_details.get("validated_count", dep_metrics.validated_count if dep_metrics else 0)
+    dep_stale = dep_details.get("stale_count", 0)
+    dep_total = dep_details.get("total_dependencies", 0)
+    
     return {
         "prediction_accuracy": {
             "precision": pred_metrics.metrics.precision if pred_metrics else 0.0,
@@ -643,9 +649,9 @@ async def get_accuracy_dashboard(
             "total_predictions": pred_metrics.count if pred_metrics else 0,
         },
         "dependency_accuracy": {
-            "validated_count": dep_metrics.details.get("validated_count", dep_metrics.validated_count) if dep_metrics and dep_metrics.details else (dep_metrics.validated_count if dep_metrics else 0),
-            "stale_count": dep_metrics.details.get("stale_count", 0) if dep_metrics and dep_metrics.details else 0,
-            "total_dependencies": dep_metrics.details.get("total_dependencies", 0) if dep_metrics and dep_metrics.details else 0,
+            "validated_count": dep_validated,
+            "stale_count": dep_stale,
+            "total_dependencies": dep_total,
         },
         "pending_work": {
             "predictions_to_validate": len(pending),
