@@ -61,9 +61,9 @@ export default function AnomalyTimelineWidget({
       setError(null);
 
       // Fetch anomalies from live diagnostics
-      const anomalyData = await apiClient.getLiveDiagnosticsAnomalies(
-        hours,
+      const anomalyData = await apiClient.getAnomalies(
         severityFilter !== 'all' ? severityFilter : undefined,
+        hours,
         20 // Limit to 20 most recent
       );
 

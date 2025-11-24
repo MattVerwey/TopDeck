@@ -62,7 +62,7 @@ export default function TrafficHeatmapWidget({
       setLoading(true);
       setError(null);
 
-      const patternsData = await apiClient.getLiveDiagnosticsTrafficPatterns(1, showErrors);
+      const patternsData = await apiClient.getTrafficPatterns(1, showErrors);
       setPatterns(patternsData?.slice(0, 10) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch traffic patterns');

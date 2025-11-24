@@ -99,7 +99,7 @@ export default function TopologyGraph({ data, viewMode, onNodeExpand, expandedNo
             'font-size': '14px',
             'font-weight': 700,
             color: '#cbd5e1',
-            'padding': 20,
+            'padding': 20 as any,
           } as cytoscape.Css.Node,
         },
         {
