@@ -5,10 +5,10 @@ Provides real-time diagnostics data for network topology with ML-based
 anomaly detection and service health monitoring.
 """
 
-import structlog
 from datetime import UTC, datetime
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -551,7 +551,7 @@ async def get_service_error_logs(
 
 class RootCauseAnalysisResponse(BaseModel):
     """Response model for root cause analysis."""
-    
+
     analysis_id: str
     resource_id: str
     resource_name: str
@@ -573,20 +573,20 @@ _rca_analyzer: "RootCauseAnalyzer | None" = None
 def get_rca_analyzer():
     """Get or create RCA analyzer instance."""
     global _rca_analyzer
-    
+
     if _rca_analyzer is None:
         from topdeck.analysis.root_cause import RootCauseAnalyzer
-        
+
         neo4j = get_neo4j_client()
         prometheus = get_prometheus_collector()
         diagnostics = get_diagnostics_service()
-        
+
         _rca_analyzer = RootCauseAnalyzer(
             neo4j_client=neo4j,
             prometheus_collector=prometheus,
             diagnostics_service=diagnostics,
         )
-    
+
     return _rca_analyzer
 
 
@@ -626,14 +626,14 @@ async def analyze_root_cause(
     """
     try:
         analyzer = get_rca_analyzer()
-        
+
         # Perform RCA
         analysis = await analyzer.analyze_failure(
             resource_id=resource_id,
             failure_time=failure_time,
             lookback_hours=lookback_hours,
         )
-        
+
         # Convert to response format
         timeline_data = [
             {
@@ -647,7 +647,7 @@ async def analyze_root_cause(
             }
             for event in analysis.timeline
         ]
-        
+
         anomalies_data = [
             {
                 "resource_id": anomaly.resource_id,
@@ -660,7 +660,7 @@ async def analyze_root_cause(
             }
             for anomaly in analysis.correlated_anomalies
         ]
-        
+
         propagation_data = None
         if analysis.propagation:
             propagation_data = {
@@ -670,7 +670,7 @@ async def analyze_root_cause(
                 "affected_services": analysis.propagation.affected_services,
                 "metadata": analysis.propagation.metadata,
             }
-        
+
         return RootCauseAnalysisResponse(
             analysis_id=analysis.analysis_id,
             resource_id=analysis.resource_id,
@@ -686,7 +686,7 @@ async def analyze_root_cause(
             recommendations=analysis.recommendations,
             metadata=analysis.metadata,
         )
-        
+
     except Exception as e:
         logger.error("root_cause_analysis_failed", exc_info=True)
         raise HTTPException(
@@ -699,7 +699,7 @@ async def analyze_root_cause(
 
 class BaselineMetricResponse(BaseModel):
     """Response model for baseline metric."""
-    
+
     metric_name: str
     mean: float
     median: float
@@ -715,7 +715,7 @@ class BaselineMetricResponse(BaseModel):
 
 class BaselineResponse(BaseModel):
     """Response model for baseline."""
-    
+
     resource_id: str
     resource_name: str
     metrics: dict[str, dict[str, Any]]
@@ -726,7 +726,7 @@ class BaselineResponse(BaseModel):
 
 class MetricComparisonResponse(BaseModel):
     """Response model for metric comparison."""
-    
+
     metric_name: str
     current_value: float
     historical_value: float
@@ -739,7 +739,7 @@ class MetricComparisonResponse(BaseModel):
 
 class HistoricalComparisonResponse(BaseModel):
     """Response model for historical comparison."""
-    
+
     resource_id: str
     resource_name: str
     comparison_period: str
@@ -757,20 +757,20 @@ _baseline_analyzer: "BaselineAnalyzer | None" = None
 def get_baseline_analyzer():
     """Get or create baseline analyzer instance."""
     global _baseline_analyzer
-    
+
     if _baseline_analyzer is None:
         from topdeck.analysis.baseline import BaselineAnalyzer
-        
+
         prometheus = get_prometheus_collector()
         neo4j = get_neo4j_client()
-        
+
         _baseline_analyzer = BaselineAnalyzer(
             prometheus_collector=prometheus,
             neo4j_client=neo4j,
             baseline_period_days=7,
             anomaly_threshold_stdev=2.0,
         )
-    
+
     return _baseline_analyzer
 
 
@@ -800,12 +800,12 @@ async def get_service_baseline(
     """
     try:
         analyzer = get_baseline_analyzer()
-        
+
         baseline = await analyzer.calculate_baseline(
             resource_id=resource_id,
             force_recalculate=force_recalculate,
         )
-        
+
         # Convert metrics to response format
         metrics_data = {}
         for metric_name, metric in baseline.metrics.items():
@@ -821,7 +821,7 @@ async def get_service_baseline(
                 "calculation_period": metric.calculation_period,
                 "calculated_at": metric.calculated_at.isoformat(),
             }
-        
+
         return BaselineResponse(
             resource_id=baseline.resource_id,
             resource_name=baseline.resource_name,
@@ -830,7 +830,7 @@ async def get_service_baseline(
             valid_until=baseline.valid_until,
             metadata=baseline.metadata,
         )
-        
+
     except Exception as e:
         logger.error("get_baseline_failed", exc_info=True)
         raise HTTPException(
@@ -865,9 +865,9 @@ async def compare_with_historical(
     """
     try:
         from topdeck.analysis.baseline import ComparisonPeriod
-        
+
         analyzer = get_baseline_analyzer()
-        
+
         # Convert string to enum
         try:
             period = ComparisonPeriod(comparison_period)
@@ -876,12 +876,12 @@ async def compare_with_historical(
                 status_code=400,
                 detail=f"Invalid comparison period: {comparison_period}",
             )
-        
+
         comparison = await analyzer.compare_with_historical(
             resource_id=resource_id,
             comparison_period=period,
         )
-        
+
         # Convert to response format
         metrics_data = [
             MetricComparisonResponse(
@@ -896,7 +896,7 @@ async def compare_with_historical(
             )
             for m in comparison.metrics
         ]
-        
+
         return HistoricalComparisonResponse(
             resource_id=comparison.resource_id,
             resource_name=comparison.resource_name,
@@ -908,7 +908,7 @@ async def compare_with_historical(
             anomaly_count=comparison.anomaly_count,
             metadata=comparison.metadata,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
