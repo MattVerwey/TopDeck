@@ -95,6 +95,10 @@ logger = structlog.get_logger(__name__)
 class ChangeFeatureExtractor:
     """Extract features from changes for ML prediction"""
     
+    def __init__(self, topology_service, prometheus):
+        self.topology_service = topology_service
+        self.prometheus = prometheus
+    
     async def extract_features(
         self,
         change_id: str,
@@ -143,7 +147,8 @@ class ChangeFeatureExtractor:
     
     def _extract_temporal_features(self, change_id: str) -> Dict:
         """Time-based features"""
-        scheduled_time = # get from change
+        # TODO: Get scheduled_time from change object
+        scheduled_time = datetime.now()  # Placeholder until implementation
         
         return {
             "day_of_week": scheduled_time.weekday(),
@@ -163,6 +168,29 @@ class ChangeFeatureExtractor:
             "avg_time_between_changes": self._avg_time_between(past_changes),
             "last_incident_days_ago": self._days_since_last_incident(resource_id),
         }
+    
+    async def get_recent_changes(self, resource_id: str, days: int):
+        """Get recent changes for a resource - to be implemented"""
+        # TODO: Implement change history retrieval
+        return []
+    
+    def _calculate_failure_rate(self, changes):
+        """Calculate failure rate from change history - to be implemented"""
+        # TODO: Implement failure rate calculation
+        if not changes:
+            return 0.0
+        failed = [c for c in changes if getattr(c, 'failed', False)]
+        return len(failed) / len(changes)
+    
+    def _avg_time_between(self, changes):
+        """Calculate average time between changes - to be implemented"""
+        # TODO: Implement average time calculation
+        return 0
+    
+    def _days_since_last_incident(self, resource_id: str):
+        """Get days since last incident - to be implemented"""
+        # TODO: Implement incident history lookup
+        return 999
     
     async def _extract_system_state_features(self, resource_id: str) -> Dict:
         """Current system health"""
