@@ -23,7 +23,7 @@ from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/live-diagnostics", tags=["live-diagnostics"])
+router = APIRouter(prefix="/api/v1/live-diagnostics", tags=["live-diagnostics"])
 
 
 # Pydantic models for API responses
