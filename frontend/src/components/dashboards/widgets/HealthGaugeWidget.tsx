@@ -264,7 +264,7 @@ export default function HealthGaugeWidget({
 
             {/* Quick Stats */}
             <Grid container spacing={2} sx={{ px: 2 }}>
-              <Grid item xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Card sx={{ bgcolor: 'background.default' }}>
                   <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Typography variant="h4" fontWeight="bold" color="primary">
@@ -276,7 +276,7 @@ export default function HealthGaugeWidget({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Card sx={{ bgcolor: 'background.default' }}>
                   <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Typography

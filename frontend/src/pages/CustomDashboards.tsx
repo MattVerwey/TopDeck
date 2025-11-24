@@ -166,7 +166,7 @@ export default function CustomDashboards() {
       ) : (
         <Grid container spacing={3}>
           {dashboards.map((dashboard) => (
-            <Grid item xs={12} sm={6} md={4} key={dashboard.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={dashboard.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
