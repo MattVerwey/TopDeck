@@ -136,7 +136,7 @@ export default function TopFailingServicesWidget({
         <Divider />
         {/* Note: Using sample data - will be replaced with real metrics from API */}
         <Grid container spacing={1}>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
               <SpeedIcon color="primary" sx={{ fontSize: 20 }} />
               <Typography variant="caption" display="block" color="text.secondary">
@@ -147,7 +147,7 @@ export default function TopFailingServicesWidget({
               </Typography>
             </Box>
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
               <MemoryIcon color="warning" sx={{ fontSize: 20 }} />
               <Typography variant="caption" display="block" color="text.secondary">

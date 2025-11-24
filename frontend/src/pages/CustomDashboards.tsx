@@ -81,7 +81,7 @@ export default function CustomDashboards() {
     setShowBuilder(true);
   };
 
-  const handleDeleteDashboard = async (dashboardId: string) => {
+  const handleDeleteDashboard = async (_dashboardId: string) => {
     if (!confirm('Are you sure you want to delete this dashboard?')) {
       return;
     }
@@ -94,7 +94,7 @@ export default function CustomDashboards() {
     }
   };
 
-  const handleCreateFromTemplate = async (templateId: string) => {
+  const handleCreateFromTemplate = async (_templateId: string) => {
     try {
       // await apiClient.createDashboardFromTemplate(templateId);
       await loadDashboards();
@@ -166,7 +166,7 @@ export default function CustomDashboards() {
       ) : (
         <Grid container spacing={3}>
           {dashboards.map((dashboard) => (
-            <Grid item xs={12} sm={6} md={4} key={dashboard.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={dashboard.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

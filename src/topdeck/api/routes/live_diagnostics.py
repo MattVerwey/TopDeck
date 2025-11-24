@@ -5,10 +5,10 @@ Provides real-time diagnostics data for network topology with ML-based
 anomaly detection and service health monitoring.
 """
 
-import structlog
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -20,6 +20,10 @@ from topdeck.monitoring.live_diagnostics import (
     LiveDiagnosticsService,
 )
 from topdeck.storage.neo4j_client import Neo4jClient
+
+if TYPE_CHECKING:
+    from topdeck.analysis.baseline import BaselineAnalyzer
+    from topdeck.analysis.root_cause import RootCauseAnalyzer
 
 logger = structlog.get_logger(__name__)
 
@@ -223,7 +227,7 @@ async def get_live_snapshot(
         logger.error("get_live_snapshot_failed", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to get live diagnostics snapshot: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/services/{resource_id}/health", response_model=ServiceHealthResponse)
@@ -280,7 +284,7 @@ async def get_service_health(
         raise
     except Exception as e:
         logger.error("get_service_health_failed", resource_id=resource_id, error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}") from e
 
 
 @router.get("/anomalies", response_model=list[AnomalyAlertResponse])
@@ -356,7 +360,7 @@ async def get_anomalies(
 
     except Exception as e:
         logger.error("get_anomalies_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get anomalies: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get anomalies: {str(e)}") from e
 
 
 @router.get("/traffic-patterns", response_model=list[TrafficPatternResponse])
@@ -412,7 +416,7 @@ async def get_traffic_patterns(
 
     except Exception as e:
         logger.error("get_traffic_patterns_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get traffic patterns: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get traffic patterns: {str(e)}") from e
 
 
 @router.get("/failing-dependencies", response_model=list[FailingDependencyResponse])
@@ -437,7 +441,7 @@ async def get_failing_dependencies() -> list[FailingDependencyResponse]:
 
     except Exception as e:
         logger.error("get_failing_dependencies_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get failing dependencies: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get failing dependencies: {str(e)}") from e
 
 
 @router.get("/health")
@@ -544,14 +548,14 @@ async def get_service_error_logs(
 
     except Exception as e:
         logger.error("get_service_error_logs_failed", resource_id=resource_id, error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}") from e
 
 
 # Root Cause Analysis endpoints
 
 class RootCauseAnalysisResponse(BaseModel):
     """Response model for root cause analysis."""
-    
+
     analysis_id: str
     resource_id: str
     resource_name: str
@@ -573,20 +577,20 @@ _rca_analyzer: "RootCauseAnalyzer | None" = None
 def get_rca_analyzer():
     """Get or create RCA analyzer instance."""
     global _rca_analyzer
-    
+
     if _rca_analyzer is None:
         from topdeck.analysis.root_cause import RootCauseAnalyzer
-        
+
         neo4j = get_neo4j_client()
         prometheus = get_prometheus_collector()
         diagnostics = get_diagnostics_service()
-        
+
         _rca_analyzer = RootCauseAnalyzer(
             neo4j_client=neo4j,
             prometheus_collector=prometheus,
             diagnostics_service=diagnostics,
         )
-    
+
     return _rca_analyzer
 
 
@@ -606,34 +610,34 @@ async def analyze_root_cause(
 ) -> RootCauseAnalysisResponse:
     """
     Perform root cause analysis for a service failure.
-    
+
     Analyzes a service failure to identify the root cause through:
     - Timeline reconstruction of events leading to failure
     - Correlation analysis with anomalies
     - Dependency chain analysis
     - Failure propagation detection
-    
+
     Args:
         resource_id: ID of the failed resource
         failure_time: When the failure occurred (defaults to now)
         lookback_hours: How far back to analyze (1-24 hours)
-        
+
     Returns:
         Complete root cause analysis with recommendations
-        
+
     Example:
         POST /api/v1/live-diagnostics/services/web-app-001/root-cause-analysis?lookback_hours=2
     """
     try:
         analyzer = get_rca_analyzer()
-        
+
         # Perform RCA
         analysis = await analyzer.analyze_failure(
             resource_id=resource_id,
             failure_time=failure_time,
             lookback_hours=lookback_hours,
         )
-        
+
         # Convert to response format
         timeline_data = [
             {
@@ -647,7 +651,7 @@ async def analyze_root_cause(
             }
             for event in analysis.timeline
         ]
-        
+
         anomalies_data = [
             {
                 "resource_id": anomaly.resource_id,
@@ -660,7 +664,7 @@ async def analyze_root_cause(
             }
             for anomaly in analysis.correlated_anomalies
         ]
-        
+
         propagation_data = None
         if analysis.propagation:
             propagation_data = {
@@ -670,7 +674,7 @@ async def analyze_root_cause(
                 "affected_services": analysis.propagation.affected_services,
                 "metadata": analysis.propagation.metadata,
             }
-        
+
         return RootCauseAnalysisResponse(
             analysis_id=analysis.analysis_id,
             resource_id=analysis.resource_id,
@@ -686,20 +690,20 @@ async def analyze_root_cause(
             recommendations=analysis.recommendations,
             metadata=analysis.metadata,
         )
-        
+
     except Exception as e:
         logger.error("root_cause_analysis_failed", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to perform root cause analysis: {str(e)}",
-        )
+        ) from e
 
 
 # Historical Comparison endpoints
 
 class BaselineMetricResponse(BaseModel):
     """Response model for baseline metric."""
-    
+
     metric_name: str
     mean: float
     median: float
@@ -715,7 +719,7 @@ class BaselineMetricResponse(BaseModel):
 
 class BaselineResponse(BaseModel):
     """Response model for baseline."""
-    
+
     resource_id: str
     resource_name: str
     metrics: dict[str, dict[str, Any]]
@@ -726,7 +730,7 @@ class BaselineResponse(BaseModel):
 
 class MetricComparisonResponse(BaseModel):
     """Response model for metric comparison."""
-    
+
     metric_name: str
     current_value: float
     historical_value: float
@@ -739,7 +743,7 @@ class MetricComparisonResponse(BaseModel):
 
 class HistoricalComparisonResponse(BaseModel):
     """Response model for historical comparison."""
-    
+
     resource_id: str
     resource_name: str
     comparison_period: str
@@ -757,20 +761,20 @@ _baseline_analyzer: "BaselineAnalyzer | None" = None
 def get_baseline_analyzer():
     """Get or create baseline analyzer instance."""
     global _baseline_analyzer
-    
+
     if _baseline_analyzer is None:
         from topdeck.analysis.baseline import BaselineAnalyzer
-        
+
         prometheus = get_prometheus_collector()
         neo4j = get_neo4j_client()
-        
+
         _baseline_analyzer = BaselineAnalyzer(
             prometheus_collector=prometheus,
             neo4j_client=neo4j,
             baseline_period_days=7,
             anomaly_threshold_stdev=2.0,
         )
-    
+
     return _baseline_analyzer
 
 
@@ -784,28 +788,28 @@ async def get_service_baseline(
 ) -> BaselineResponse:
     """
     Get baseline for a service.
-    
+
     Calculates baseline metrics for normal service behavior based on
     historical data (default 7 days).
-    
+
     Args:
         resource_id: ID of the resource
         force_recalculate: Force recalculation even if cached
-        
+
     Returns:
         Baseline metrics with statistics
-        
+
     Example:
         GET /api/v1/live-diagnostics/services/web-app-001/baseline
     """
     try:
         analyzer = get_baseline_analyzer()
-        
+
         baseline = await analyzer.calculate_baseline(
             resource_id=resource_id,
             force_recalculate=force_recalculate,
         )
-        
+
         # Convert metrics to response format
         metrics_data = {}
         for metric_name, metric in baseline.metrics.items():
@@ -821,7 +825,7 @@ async def get_service_baseline(
                 "calculation_period": metric.calculation_period,
                 "calculated_at": metric.calculated_at.isoformat(),
             }
-        
+
         return BaselineResponse(
             resource_id=baseline.resource_id,
             resource_name=baseline.resource_name,
@@ -830,13 +834,13 @@ async def get_service_baseline(
             valid_until=baseline.valid_until,
             metadata=baseline.metadata,
         )
-        
+
     except Exception as e:
         logger.error("get_baseline_failed", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to calculate baseline: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/services/{resource_id}/historical-comparison", response_model=HistoricalComparisonResponse)
@@ -849,39 +853,39 @@ async def compare_with_historical(
 ) -> HistoricalComparisonResponse:
     """
     Compare current metrics with historical period.
-    
+
     Compares current service metrics with a historical period to identify
     changes, trends, and anomalies.
-    
+
     Args:
         resource_id: ID of the resource
         comparison_period: Which historical period to compare with
-        
+
     Returns:
         Historical comparison with trend analysis
-        
+
     Example:
         GET /api/v1/live-diagnostics/services/web-app-001/historical-comparison?comparison_period=previous_day
     """
     try:
         from topdeck.analysis.baseline import ComparisonPeriod
-        
+
         analyzer = get_baseline_analyzer()
-        
+
         # Convert string to enum
         try:
             period = ComparisonPeriod(comparison_period)
-        except ValueError:
+        except ValueError as e:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid comparison period: {comparison_period}",
-            )
-        
+            ) from e
+
         comparison = await analyzer.compare_with_historical(
             resource_id=resource_id,
             comparison_period=period,
         )
-        
+
         # Convert to response format
         metrics_data = [
             MetricComparisonResponse(
@@ -896,7 +900,7 @@ async def compare_with_historical(
             )
             for m in comparison.metrics
         ]
-        
+
         return HistoricalComparisonResponse(
             resource_id=comparison.resource_id,
             resource_name=comparison.resource_name,
@@ -908,7 +912,7 @@ async def compare_with_historical(
             anomaly_count=comparison.anomaly_count,
             metadata=comparison.metadata,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -916,4 +920,4 @@ async def compare_with_historical(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to perform historical comparison: {str(e)}",
-        )
+        ) from e
