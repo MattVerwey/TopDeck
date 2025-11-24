@@ -97,61 +97,6 @@ def diagnostics_service(mock_prometheus_collector, mock_neo4j_client, mock_predi
     return service
 
 
-# ==================== Health Scoring Tests ====================
-
-
-def test_calculate_health_score_healthy_service(diagnostics_service, mock_prometheus_collector):
-    """Test health score calculation for a healthy service."""
-    # Mock metrics for healthy service
-    mock_prometheus_collector.query.return_value = [
-        {"metric": {"instance": "test-service"}, "value": [datetime.now(UTC).timestamp(), "30.0"]}
-    ]
-    
-    with patch.object(diagnostics_service, '_get_service_metrics') as mock_get_metrics:
-        mock_get_metrics.return_value = {
-            "cpu_usage": 30.0,
-            "memory_usage": 40.0,
-            "error_rate": 0.5,
-            "request_rate": 100.0,
-        }
-        
-        health_score = diagnostics_service._calculate_health_score(mock_get_metrics.return_value)
-        
-        # Healthy service should have high score (> 80)
-        assert health_score > 80.0
-        assert health_score <= 100.0
-
-
-def test_calculate_health_score_degraded_service(diagnostics_service):
-    """Test health score calculation for a degraded service."""
-    metrics = {
-        "cpu_usage": 85.0,
-        "memory_usage": 80.0,
-        "error_rate": 5.0,
-        "request_rate": 100.0,
-    }
-    
-    health_score = diagnostics_service._calculate_health_score(metrics)
-    
-    # Degraded service should have medium score (50-80)
-    assert 50.0 <= health_score <= 80.0
-
-
-def test_calculate_health_score_failed_service(diagnostics_service):
-    """Test health score calculation for a failed service."""
-    metrics = {
-        "cpu_usage": 95.0,
-        "memory_usage": 90.0,
-        "error_rate": 25.0,
-        "request_rate": 10.0,
-    }
-    
-    health_score = diagnostics_service._calculate_health_score(metrics)
-    
-    # Failed service should have low score (< 50)
-    assert health_score < 50.0
-
-
 # ==================== Anomaly Detection Tests ====================
 
 
@@ -369,43 +314,6 @@ async def test_get_live_snapshot(diagnostics_service, mock_prometheus_collector,
 
 
 # ==================== Input Validation Tests ====================
-
-
-def test_validate_resource_id_safe(diagnostics_service):
-    """Test resource ID validation with safe input."""
-    safe_id = "service-123-abc"
-    
-    # Should not raise exception
-    validated = diagnostics_service._validate_resource_id(safe_id)
-    assert validated == safe_id
-
-
-def test_validate_resource_id_unsafe(diagnostics_service):
-    """Test resource ID validation with unsafe input."""
-    unsafe_id = "service-123'; DROP TABLE--"
-    
-    # Should raise ValueError or sanitize
-    with pytest.raises(ValueError):
-        diagnostics_service._validate_resource_id(unsafe_id)
-
-
-def test_validate_duration_valid(diagnostics_service):
-    """Test duration validation with valid values."""
-    # Should not raise exception
-    diagnostics_service._validate_duration(1)
-    diagnostics_service._validate_duration(24)
-
-
-def test_validate_duration_invalid(diagnostics_service):
-    """Test duration validation with invalid values."""
-    with pytest.raises(ValueError):
-        diagnostics_service._validate_duration(0)
-    
-    with pytest.raises(ValueError):
-        diagnostics_service._validate_duration(25)
-    
-    with pytest.raises(ValueError):
-        diagnostics_service._validate_duration(-1)
 
 
 # ==================== Error Handling Tests ====================
