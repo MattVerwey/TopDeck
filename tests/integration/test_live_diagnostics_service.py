@@ -4,17 +4,17 @@ Integration tests for Live Diagnostics Service.
 Tests the LiveDiagnosticsService with mock Prometheus and Neo4j backends
 to ensure anomaly detection, health scoring, and traffic pattern analysis
 work correctly.
+
+These tests call the REAL service methods (not mocking them) and only mock
+the external dependencies (Prometheus, Neo4j, Predictor).
 """
 
 import pytest
-from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, AsyncMock
 
 from topdeck.monitoring.live_diagnostics import (
     LiveDiagnosticsService,
-    ServiceHealthStatus,
-    AnomalyAlert,
-    TrafficPattern,
     LiveDiagnosticsSnapshot,
 )
 
@@ -49,19 +49,11 @@ def mock_neo4j_client():
     """Create a mock Neo4j client with sample topology data."""
     mock = MagicMock()
     
-    # Mock query to return sample services
-    mock.query.return_value = [
-        {
-            "resource_id": "service-a",
-            "name": "Service A",
-            "type": "deployment",
-        },
-        {
-            "resource_id": "service-b",
-            "name": "Service B",
-            "type": "deployment",
-        },
-    ]
+    # Mock execute_query for async calls
+    mock.execute_query = AsyncMock(return_value=[
+        {"id": "service-a", "name": "Service A", "type": "deployment"},
+        {"id": "service-b", "name": "Service B", "type": "deployment"},
+    ])
     
     return mock
 
@@ -69,20 +61,26 @@ def mock_neo4j_client():
 @pytest.fixture
 def mock_predictor():
     """Create a mock ML predictor."""
+    from topdeck.analysis.prediction.models import AnomalyDetection, RiskLevel
+    
     mock = MagicMock()
-    mock.detect_anomalies.return_value = []
-    return mock
-
-
-@pytest.fixture
-def mock_feature_extractor():
-    """Create a mock feature extractor."""
-    mock = MagicMock()
-    mock.extract_service_features.return_value = {
-        "cpu_usage": 45.2,
-        "memory_usage": 60.3,
-        "request_rate": 100.5,
-    }
+    
+    # Default: Return empty result (no anomalies detected)
+    async def default_detect(resource_id, resource_name, detection_window_hours):
+        return AnomalyDetection(
+            resource_id=resource_id,
+            resource_name=resource_name,
+            anomalies=[],
+            overall_anomaly_score=0.2,
+            risk_level=RiskLevel.LOW,
+            affected_metrics=[],
+            potential_causes=[],
+            similar_historical_incidents=[],
+            correlated_resources=[],
+            recommended_actions=[],
+        )
+    
+    mock.detect_anomalies = default_detect
     return mock
 
 
@@ -101,300 +99,62 @@ def diagnostics_service(mock_prometheus_collector, mock_neo4j_client, mock_predi
 
 
 @pytest.mark.asyncio
-async def test_detect_anomalies_with_high_cpu(diagnostics_service, mock_prometheus_collector):
-    """Test anomaly detection for high CPU usage."""
-    # Mock high CPU usage
-    mock_prometheus_collector.query_range.return_value = [
-        {
-            "metric": {"instance": "test-service"},
-            "values": [
-                [datetime.now(UTC).timestamp() - i * 60, str(90.0 + i)]
-                for i in range(20)
-            ],
-        }
-    ]
+async def test_detect_anomalies_no_anomalies(diagnostics_service):
+    """Test anomaly detection when metrics are normal - calls REAL service method."""
+    # Call the real detect_anomalies method (not mocking it)
+    anomalies = await diagnostics_service.detect_anomalies(
+        resource_ids=["test-service"],
+        duration_hours=1
+    )
     
-    with patch.object(diagnostics_service, 'detect_anomalies') as mock_detect:
-        anomaly = AnomalyAlert(
-            alert_id="test-anomaly-001",
-            resource_id="test-service",
-            resource_name="Test Service",
-            severity="high",
-            metric_name="cpu_usage",
-            current_value=95.0,
-            expected_value=50.0,
-            deviation_percentage=90.0,
-            detected_at=datetime.now(UTC),
-            message="CPU usage is abnormally high",
-            potential_causes=["High load", "Memory leak"],
-        )
-        mock_detect.return_value = [anomaly]
-        
-        anomalies = await mock_detect(duration_hours=1)
-        
-        assert len(anomalies) == 1
-        assert anomalies[0].severity == "high"
-        assert anomalies[0].metric_name == "cpu_usage"
+    # Should return empty list when predictor finds no anomalies
+    assert isinstance(anomalies, list)
+    assert len(anomalies) == 0
 
 
 @pytest.mark.asyncio
-async def test_detect_anomalies_with_error_spike(diagnostics_service, mock_prometheus_collector):
-    """Test anomaly detection for error rate spike."""
-    # Mock error rate spike
-    mock_prometheus_collector.query_range.return_value = [
-        {
-            "metric": {"instance": "test-service"},
-            "values": [
-                [datetime.now(UTC).timestamp() - i * 60, str(15.0 if i < 5 else 1.0)]
-                for i in range(20)
-            ],
-        }
-    ]
+async def test_detect_anomalies_empty_metrics(diagnostics_service, mock_prometheus_collector):
+    """Test anomaly detection with empty metrics data - calls REAL service method."""
+    mock_prometheus_collector.query_range.return_value = []
     
-    with patch.object(diagnostics_service, 'detect_anomalies') as mock_detect:
-        anomaly = AnomalyAlert(
-            alert_id="test-anomaly-002",
-            resource_id="test-service",
-            resource_name="Test Service",
-            severity="critical",
-            metric_name="error_rate",
-            current_value=15.0,
-            expected_value=1.0,
-            deviation_percentage=1400.0,  # 14x = 1400%
-            detected_at=datetime.now(UTC),
-            message="Error rate is critically high",
-            potential_causes=["Database down", "Service crash"],
-        )
-        mock_detect.return_value = [anomaly]
-        
-        anomalies = await mock_detect(duration_hours=1)
-        
-        assert len(anomalies) == 1
-        assert anomalies[0].severity == "critical"
-        assert anomalies[0].metric_name == "error_rate"
-
-
-@pytest.mark.asyncio
-async def test_detect_anomalies_no_anomalies(diagnostics_service, mock_prometheus_collector):
-    """Test anomaly detection when metrics are normal."""
-    # Mock normal metrics
-    mock_prometheus_collector.query_range.return_value = [
-        {
-            "metric": {"instance": "test-service"},
-            "values": [
-                [datetime.now(UTC).timestamp() - i * 60, str(45.0 + (i % 5))]
-                for i in range(20)
-            ],
-        }
-    ]
+    # Call the real detect_anomalies method (not mocking it)
+    anomalies = await diagnostics_service.detect_anomalies(
+        resource_ids=["test-service"],
+        duration_hours=1
+    )
     
-    with patch.object(diagnostics_service, 'detect_anomalies') as mock_detect:
-        mock_detect.return_value = []
-        
-        anomalies = await mock_detect(duration_hours=1)
-        
-        assert len(anomalies) == 0
+    # Should handle empty metrics gracefully
+    assert isinstance(anomalies, list)
 
 
 # ==================== Traffic Pattern Analysis Tests ====================
 
 
 @pytest.mark.asyncio
-async def test_analyze_traffic_patterns_normal(diagnostics_service, mock_prometheus_collector):
-    """Test traffic pattern analysis with normal patterns."""
-    with patch.object(diagnostics_service, 'analyze_traffic_patterns') as mock_analyze:
-        pattern = TrafficPattern(
-            source_id="service-a",
-            target_id="service-b",
-            request_rate=100.0,
-            error_rate=1.0,
-            latency_p95=120.0,
-            is_abnormal=False,
-            anomaly_score=0.1,
-            trend="stable",
-        )
-        mock_analyze.return_value = [pattern]
-        
-        patterns = await mock_analyze(duration_hours=1)
-        
-        assert len(patterns) == 1
-        assert patterns[0].is_abnormal is False
-        assert patterns[0].anomaly_score < 0.5
-
-
-@pytest.mark.asyncio
-async def test_analyze_traffic_patterns_abnormal(diagnostics_service, mock_prometheus_collector):
-    """Test traffic pattern analysis with abnormal patterns."""
-    with patch.object(diagnostics_service, 'analyze_traffic_patterns') as mock_analyze:
-        pattern = TrafficPattern(
-            source_id="service-a",
-            target_id="service-b",
-            request_rate=1000.0,
-            error_rate=25.0,
-            latency_p95=800.0,
-            is_abnormal=True,
-            anomaly_score=0.95,
-            trend="increasing",
-        )
-        mock_analyze.return_value = [pattern]
-        
-        patterns = await mock_analyze(duration_hours=1, abnormal_only=True)
-        
-        assert len(patterns) == 1
-        assert patterns[0].is_abnormal is True
-        assert patterns[0].anomaly_score > 0.8
-
-
-# ==================== Failing Dependencies Tests ====================
-
-
-@pytest.mark.asyncio
-async def test_get_failing_dependencies(diagnostics_service, mock_neo4j_client):
-    """Test detection of failing dependencies."""
-    # Mock Neo4j to return a failing service
-    mock_neo4j_client.query.return_value = [
-        {
-            "resource_id": "db-service",
-            "name": "Database",
-            "type": "database",
-            "health_score": 20.0,
-        }
-    ]
+async def test_analyze_traffic_patterns_normal(diagnostics_service):
+    """Test traffic pattern analysis - calls REAL service method."""
+    # Call the real analyze_traffic_patterns method (not mocking it)
+    patterns = await diagnostics_service.analyze_traffic_patterns(duration_hours=1)
     
-    with patch.object(diagnostics_service, 'get_live_snapshot') as mock_get:
-        snapshot = LiveDiagnosticsSnapshot(
-            timestamp=datetime.now(UTC),
-            overall_health="degraded",
-            services=[],
-            anomalies=[],
-            traffic_patterns=[],
-            failing_dependencies=[{
-                "source_id": "api-service",
-                "target_id": "db-service",
-                "target_name": "Database",
-                "status": "failed",
-                "health_score": 20.0,
-                "error_details": {
-                    "error_count": 10,
-                    "last_error": "Connection timeout",
-                },
-            }],
-        )
-        mock_get.return_value = snapshot
-        
-        result = await mock_get()
-        
-        assert len(result.failing_dependencies) == 1
-        assert result.failing_dependencies[0]["status"] == "failed"
-        assert result.failing_dependencies[0]["health_score"] < 50.0
-
-
-# ==================== Live Snapshot Tests ====================
-
-
-@pytest.mark.asyncio
-async def test_get_live_snapshot(diagnostics_service, mock_prometheus_collector, mock_neo4j_client):
-    """Test getting a complete live diagnostics snapshot."""
-    with patch.object(diagnostics_service, 'get_live_snapshot') as mock_snapshot:
-        snapshot = LiveDiagnosticsSnapshot(
-            timestamp=datetime.now(UTC),
-            overall_health="healthy",
-            services=[],
-            anomalies=[],
-            traffic_patterns=[],
-            failing_dependencies=[],
-        )
-        mock_snapshot.return_value = snapshot
-        
-        result = await mock_snapshot(duration_hours=1)
-        
-        assert result.overall_health == "healthy"
-        assert len(result.services) == 0
-        assert len(result.anomalies) == 0
-
-
-# ==================== Input Validation Tests ====================
-
-
-# ==================== Error Handling Tests ====================
-
-
-@pytest.mark.asyncio
-async def test_get_service_health_prometheus_error(diagnostics_service, mock_prometheus_collector):
-    """Test service health when Prometheus is unavailable."""
-    mock_prometheus_collector.query.side_effect = Exception("Prometheus connection failed")
-    
-    with patch.object(diagnostics_service, 'get_service_health') as mock_get_health:
-        # Should handle gracefully and return degraded status or None
-        mock_get_health.side_effect = Exception("Prometheus connection failed")
-        
-        with pytest.raises(Exception) as exc_info:
-            await mock_get_health("test-service", "deployment")
-        
-        assert "Prometheus" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_get_service_health_neo4j_error(diagnostics_service, mock_neo4j_client):
-    """Test service health when Neo4j is unavailable."""
-    mock_neo4j_client.query.side_effect = Exception("Neo4j connection failed")
-    
-    with patch.object(diagnostics_service, 'get_service_health') as mock_get_health:
-        mock_get_health.side_effect = Exception("Neo4j connection failed")
-        
-        with pytest.raises(Exception) as exc_info:
-            await mock_get_health("test-service", "deployment")
-        
-        assert "Neo4j" in str(exc_info.value)
-
-
-# ==================== Edge Cases Tests ====================
-
-
-@pytest.mark.asyncio
-async def test_detect_anomalies_empty_metrics(diagnostics_service, mock_prometheus_collector):
-    """Test anomaly detection with empty metrics data."""
-    mock_prometheus_collector.query_range.return_value = []
-    
-    with patch.object(diagnostics_service, 'detect_anomalies') as mock_detect:
-        mock_detect.return_value = []
-        
-        anomalies = await mock_detect(duration_hours=1)
-        
-        assert len(anomalies) == 0
+    # Verify it returns a list and executes without error
+    assert isinstance(patterns, list)
 
 
 @pytest.mark.asyncio
 async def test_analyze_traffic_patterns_no_dependencies(diagnostics_service, mock_neo4j_client):
-    """Test traffic pattern analysis when service has no dependencies."""
-    mock_neo4j_client.query.return_value = []
+    """Test traffic pattern analysis when service has no dependencies - calls REAL service method."""
+    # Mock Neo4j to return no dependencies
+    mock_neo4j_client.execute_query = AsyncMock(return_value=[])
     
-    with patch.object(diagnostics_service, 'analyze_traffic_patterns') as mock_analyze:
-        mock_analyze.return_value = []
-        
-        patterns = await mock_analyze(duration_hours=1)
-        
-        assert len(patterns) == 0
+    # Call the real analyze_traffic_patterns method (not mocking it)
+    patterns = await diagnostics_service.analyze_traffic_patterns(duration_hours=1)
+    
+    # Should return empty list or handle gracefully
+    assert isinstance(patterns, list)
 
 
-@pytest.mark.asyncio
-async def test_get_live_snapshot_all_services_healthy(
-    diagnostics_service, mock_prometheus_collector, mock_neo4j_client
-):
-    """Test snapshot when all services are healthy."""
-    with patch.object(diagnostics_service, 'get_live_snapshot') as mock_snapshot:
-        snapshot = LiveDiagnosticsSnapshot(
-            timestamp=datetime.now(UTC),
-            overall_health="healthy",
-            services=[],
-            anomalies=[],
-            traffic_patterns=[],
-            failing_dependencies=[],
-        )
-        mock_snapshot.return_value = snapshot
-        
-        result = await mock_snapshot(duration_hours=1)
-        
-        assert result.overall_health == "healthy"
-        assert len(result.failing_dependencies) == 0
-        assert len(result.anomalies) == 0
+# ==================== Snapshot Tests ====================
+
+# Note: Snapshot tests are complex as they call multiple async methods
+# The API layer has comprehensive snapshot tests that verify the integration
+# These integration tests focus on testing individual service methods
