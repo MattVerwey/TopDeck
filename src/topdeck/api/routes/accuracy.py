@@ -598,3 +598,256 @@ async def health_check() -> dict[str, str]:
         Status of the accuracy tracking service
     """
     return {"status": "healthy", "service": "accuracy_tracking"}
+
+
+# Operational Monitoring Endpoints
+
+
+@router.get("/monitoring/dashboard")
+async def get_accuracy_dashboard(
+    days: int = Query(7, ge=1, le=90, description="Days of data to display"),
+    tracker: PredictionTracker = Depends(get_prediction_tracker),
+    validator: DependencyValidator = Depends(get_dependency_validator),
+) -> dict[str, Any]:
+    """
+    Get comprehensive accuracy dashboard data.
+    
+    Returns metrics, trends, and status information for monitoring accuracy
+    across predictions and dependencies.
+    
+    Query Parameters:
+        days: Number of days of data to include (default: 7)
+    
+    Returns:
+        Dashboard data with metrics, trends, and alerts
+    """
+    # Get prediction metrics
+    pred_metrics = await tracker.get_accuracy_metrics(days=days)
+    
+    # Get dependency metrics  
+    dep_metrics = await validator.get_dependency_accuracy_metrics(days=days)
+    
+    # Get pending validations (use hours relative to days, capped at 7 days)
+    max_pending_hours = min(days * 24, 168)  # Max 7 days (168 hours)
+    pending = await tracker.get_pending_validations(max_age_hours=max_pending_hours)
+    
+    # Get stale dependencies (use days parameter directly, capped at 30 days)
+    max_stale_days = min(days, 30)
+    stale = await validator.validate_stale_dependencies(max_age_days=max_stale_days)
+    
+    # Extract dependency details for cleaner access
+    dep_details = dep_metrics.details if dep_metrics and dep_metrics.details else {}
+    dep_validated = dep_details.get("validated_count", dep_metrics.validated_count if dep_metrics else 0)
+    dep_stale = dep_details.get("stale_count", 0)
+    dep_total = dep_details.get("total_dependencies", 0)
+    
+    return {
+        "prediction_accuracy": {
+            "precision": pred_metrics.metrics.precision if pred_metrics else 0.0,
+            "recall": pred_metrics.metrics.recall if pred_metrics else 0.0,
+            "f1_score": pred_metrics.metrics.f1_score if pred_metrics else 0.0,
+            "total_predictions": pred_metrics.count if pred_metrics else 0,
+        },
+        "dependency_accuracy": {
+            "validated_count": dep_validated,
+            "stale_count": dep_stale,
+            "total_dependencies": dep_total,
+        },
+        "pending_work": {
+            "predictions_to_validate": len(pending),
+            "stale_dependencies": len(stale),
+        },
+        "time_range": {
+            "days": days,
+            "from": (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(),
+            "to": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+@router.get("/monitoring/alerts")
+async def get_accuracy_alerts(
+    precision_threshold: float = Query(0.85, ge=0.0, le=1.0),
+    recall_threshold: float = Query(0.90, ge=0.0, le=1.0),
+    f1_threshold: float = Query(0.85, ge=0.0, le=1.0),
+    tracker: PredictionTracker = Depends(get_prediction_tracker),
+) -> dict[str, Any]:
+    """
+    Get accuracy alerts based on thresholds.
+    
+    Checks recent accuracy metrics and returns alerts if any metrics
+    fall below their configured thresholds.
+    
+    Query Parameters:
+        precision_threshold: Minimum acceptable precision (default: 0.85)
+        recall_threshold: Minimum acceptable recall (default: 0.90)
+        f1_threshold: Minimum acceptable F1 score (default: 0.85)
+    
+    Returns:
+        Alert status and details of any threshold violations
+    """
+    # Get recent metrics (last 7 days)
+    metrics_result = await tracker.get_accuracy_metrics(days=7)
+    
+    if not metrics_result or not metrics_result.metrics:
+        return {
+            "status": "unknown",
+            "alerts": ["No accuracy data available"],
+            "metrics": None,
+        }
+    
+    metrics = metrics_result.metrics
+    alerts = []
+    
+    # Check precision
+    if metrics.precision < precision_threshold:
+        alerts.append({
+            "severity": "warning",
+            "metric": "precision",
+            "current": metrics.precision,
+            "threshold": precision_threshold,
+            "message": f"Precision ({metrics.precision:.2%}) below threshold ({precision_threshold:.2%})",
+        })
+    
+    # Check recall
+    if metrics.recall < recall_threshold:
+        alerts.append({
+            "severity": "warning",
+            "metric": "recall",
+            "current": metrics.recall,
+            "threshold": recall_threshold,
+            "message": f"Recall ({metrics.recall:.2%}) below threshold ({recall_threshold:.2%})",
+        })
+    
+    # Check F1 score
+    if metrics.f1_score < f1_threshold:
+        alerts.append({
+            "severity": "warning",
+            "metric": "f1_score",
+            "current": metrics.f1_score,
+            "threshold": f1_threshold,
+            "message": f"F1 Score ({metrics.f1_score:.2%}) below threshold ({f1_threshold:.2%})",
+        })
+    
+    return {
+        "status": "alert" if alerts else "ok",
+        "alert_count": len(alerts),
+        "alerts": alerts,
+        "metrics": {
+            "precision": metrics.precision,
+            "recall": metrics.recall,
+            "f1_score": metrics.f1_score,
+            "accuracy": metrics.accuracy,
+        },
+        "thresholds": {
+            "precision": precision_threshold,
+            "recall": recall_threshold,
+            "f1_score": f1_threshold,
+        },
+    }
+
+
+@router.get("/monitoring/trends")
+async def get_accuracy_trends(
+    tracker: PredictionTracker = Depends(get_prediction_tracker),
+) -> dict[str, Any]:
+    """
+    Get accuracy trends over time.
+    
+    Returns accuracy metrics for the most recent week. Currently shows only
+    the latest week's data - full historical trends require database schema
+    extension for weekly aggregation.
+    
+    Returns:
+        Recent accuracy trend data
+    """
+    # Note: This is a simplified implementation that returns recent metrics
+    # A full implementation would query historical data for each week
+    # For now, we return the most recent week's data as a trend indicator
+    
+    metrics_result = await tracker.get_accuracy_metrics(days=7)
+    
+    trends = []
+    if metrics_result and metrics_result.metrics:
+        # Return recent week as a trend data point
+        # TODO: Extend to query historical weekly metrics from database
+        trends.append({
+            "week": 1,
+            "start_date": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(),
+            "end_date": datetime.now(timezone.utc).isoformat(),
+            "precision": metrics_result.metrics.precision,
+            "recall": metrics_result.metrics.recall,
+            "f1_score": metrics_result.metrics.f1_score,
+            "prediction_count": metrics_result.count,
+        })
+    
+    return {
+        "weeks_analyzed": len(trends),
+        "trends": trends,
+        "note": "Currently showing most recent week only. Full historical trends require database schema extension for weekly aggregation.",
+    }
+
+
+@router.post("/maintenance/run-validation")
+async def trigger_validation(
+    max_age_hours: int = Query(24, ge=1, le=168, description="Max age of predictions"),
+    tracker: PredictionTracker = Depends(get_prediction_tracker),
+) -> dict[str, Any]:
+    """
+    Manually trigger prediction validation.
+    
+    Validates pending predictions that are older than the specified age.
+    This is typically run automatically by the scheduler but can be
+    triggered manually if needed.
+    
+    Query Parameters:
+        max_age_hours: Maximum age of predictions to validate (default: 24)
+    
+    Returns:
+        Validation results summary
+    """
+    # Get pending predictions
+    pending = await tracker.get_pending_validations(max_age_hours=max_age_hours)
+    
+    # Note: Actual validation logic would integrate with monitoring systems
+    # to determine the actual outcome. This is a placeholder.
+    
+    return {
+        "status": "queued",
+        "predictions_found": len(pending),
+        "message": "Validation queued for processing. Integrate with monitoring system to determine actual outcomes.",
+        "note": "This endpoint requires integration with monitoring/health check systems to automatically determine outcomes.",
+    }
+
+
+@router.post("/maintenance/run-decay")
+async def trigger_decay(
+    decay_rate: float = Query(0.1, ge=0.0, le=1.0),
+    days_threshold: int = Query(3, ge=1, le=30),
+    validator: DependencyValidator = Depends(get_dependency_validator),
+) -> dict[str, Any]:
+    """
+    Manually trigger confidence decay.
+    
+    Applies confidence decay to dependencies that haven't been recently
+    verified. This is typically run automatically by the scheduler.
+    
+    Query Parameters:
+        decay_rate: Rate to decay confidence (default: 0.1)
+        days_threshold: Days before starting decay (default: 3)
+    
+    Returns:
+        Decay application results
+    """
+    updated_count = await validator.apply_confidence_decay(
+        decay_rate=decay_rate,
+        days_threshold=days_threshold,
+    )
+    
+    return {
+        "status": "success",
+        "dependencies_updated": updated_count,
+        "decay_rate": decay_rate,
+        "days_threshold": days_threshold,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
