@@ -6,7 +6,7 @@ anomaly detection and service health monitoring.
 """
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
@@ -20,6 +20,10 @@ from topdeck.monitoring.live_diagnostics import (
     LiveDiagnosticsService,
 )
 from topdeck.storage.neo4j_client import Neo4jClient
+
+if TYPE_CHECKING:
+    from topdeck.analysis.baseline import BaselineAnalyzer
+    from topdeck.analysis.root_cause import RootCauseAnalyzer
 
 logger = structlog.get_logger(__name__)
 
@@ -223,7 +227,7 @@ async def get_live_snapshot(
         logger.error("get_live_snapshot_failed", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to get live diagnostics snapshot: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/services/{resource_id}/health", response_model=ServiceHealthResponse)
@@ -280,7 +284,7 @@ async def get_service_health(
         raise
     except Exception as e:
         logger.error("get_service_health_failed", resource_id=resource_id, error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}") from e
 
 
 @router.get("/anomalies", response_model=list[AnomalyAlertResponse])
@@ -356,7 +360,7 @@ async def get_anomalies(
 
     except Exception as e:
         logger.error("get_anomalies_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get anomalies: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get anomalies: {str(e)}") from e
 
 
 @router.get("/traffic-patterns", response_model=list[TrafficPatternResponse])
@@ -412,7 +416,7 @@ async def get_traffic_patterns(
 
     except Exception as e:
         logger.error("get_traffic_patterns_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get traffic patterns: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get traffic patterns: {str(e)}") from e
 
 
 @router.get("/failing-dependencies", response_model=list[FailingDependencyResponse])
@@ -437,7 +441,7 @@ async def get_failing_dependencies() -> list[FailingDependencyResponse]:
 
     except Exception as e:
         logger.error("get_failing_dependencies_failed", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get failing dependencies: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get failing dependencies: {str(e)}") from e
 
 
 @router.get("/health")
@@ -544,7 +548,7 @@ async def get_service_error_logs(
 
     except Exception as e:
         logger.error("get_service_error_logs_failed", resource_id=resource_id, error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}") from e
 
 
 # Root Cause Analysis endpoints
@@ -606,21 +610,21 @@ async def analyze_root_cause(
 ) -> RootCauseAnalysisResponse:
     """
     Perform root cause analysis for a service failure.
-    
+
     Analyzes a service failure to identify the root cause through:
     - Timeline reconstruction of events leading to failure
     - Correlation analysis with anomalies
     - Dependency chain analysis
     - Failure propagation detection
-    
+
     Args:
         resource_id: ID of the failed resource
         failure_time: When the failure occurred (defaults to now)
         lookback_hours: How far back to analyze (1-24 hours)
-        
+
     Returns:
         Complete root cause analysis with recommendations
-        
+
     Example:
         POST /api/v1/live-diagnostics/services/web-app-001/root-cause-analysis?lookback_hours=2
     """
@@ -692,7 +696,7 @@ async def analyze_root_cause(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to perform root cause analysis: {str(e)}",
-        )
+        ) from e
 
 
 # Historical Comparison endpoints
@@ -784,17 +788,17 @@ async def get_service_baseline(
 ) -> BaselineResponse:
     """
     Get baseline for a service.
-    
+
     Calculates baseline metrics for normal service behavior based on
     historical data (default 7 days).
-    
+
     Args:
         resource_id: ID of the resource
         force_recalculate: Force recalculation even if cached
-        
+
     Returns:
         Baseline metrics with statistics
-        
+
     Example:
         GET /api/v1/live-diagnostics/services/web-app-001/baseline
     """
@@ -836,7 +840,7 @@ async def get_service_baseline(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to calculate baseline: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/services/{resource_id}/historical-comparison", response_model=HistoricalComparisonResponse)
@@ -849,17 +853,17 @@ async def compare_with_historical(
 ) -> HistoricalComparisonResponse:
     """
     Compare current metrics with historical period.
-    
+
     Compares current service metrics with a historical period to identify
     changes, trends, and anomalies.
-    
+
     Args:
         resource_id: ID of the resource
         comparison_period: Which historical period to compare with
-        
+
     Returns:
         Historical comparison with trend analysis
-        
+
     Example:
         GET /api/v1/live-diagnostics/services/web-app-001/historical-comparison?comparison_period=previous_day
     """
@@ -871,11 +875,11 @@ async def compare_with_historical(
         # Convert string to enum
         try:
             period = ComparisonPeriod(comparison_period)
-        except ValueError:
+        except ValueError as e:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid comparison period: {comparison_period}",
-            )
+            ) from e
 
         comparison = await analyzer.compare_with_historical(
             resource_id=resource_id,
@@ -916,4 +920,4 @@ async def compare_with_historical(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to perform historical comparison: {str(e)}",
-        )
+        ) from e

@@ -2,7 +2,7 @@
  * Utility functions for grouping topology nodes
  */
 
-import type { Resource, TopologyGraph } from '../types';
+import type { Resource } from '../types';
 
 // Interaction hint text constant
 const COLLAPSE_EXPAND_HINT = '(click to collapse/expand)';
@@ -114,7 +114,7 @@ function formatGroupLabel(key: string, groupBy: string): string {
 export function assignNodeParents(
   nodes: Resource[],
   groups: Map<string, Resource[]>,
-  groupBy: 'cluster' | 'namespace' | 'resource_type' | 'cloud_provider'
+  _groupBy: 'cluster' | 'namespace' | 'resource_type' | 'cloud_provider'
 ): Map<string, string> {
   const parentMap = new Map<string, string>();
 

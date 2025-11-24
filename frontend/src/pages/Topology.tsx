@@ -246,7 +246,7 @@ export default function Topology() {
       }
 
       // Apply filter mode to determine what to show
-      let nodesToShow = new Set(matchingNodeIds);
+      const nodesToShow = new Set(matchingNodeIds);
       
       if (filterSettings.mode === 'strict') {
         // Show ONLY the matching nodes (no dependencies)
