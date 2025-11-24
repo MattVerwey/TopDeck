@@ -5,7 +5,7 @@ Provides real-time diagnostics data for network topology with ML-based
 anomaly detection and service health monitoring.
 """
 
-import logging
+import structlog
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,7 +21,7 @@ from topdeck.monitoring.live_diagnostics import (
 )
 from topdeck.storage.neo4j_client import Neo4jClient
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/live-diagnostics", tags=["live-diagnostics"])
 
@@ -279,7 +279,7 @@ async def get_service_health(
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        logger.error(f"get_service_health_failed: {resource_id} - {str(e)}", exc_info=True)
+        logger.error("get_service_health_failed", resource_id=resource_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get service health: {str(e)}")
 
 
@@ -543,7 +543,7 @@ async def get_service_error_logs(
         }
 
     except Exception as e:
-        logger.error(f"get_service_error_logs_failed: {resource_id} - {str(e)}", exc_info=True)
+        logger.error("get_service_error_logs_failed", resource_id=resource_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get error logs: {str(e)}")
 
 
