@@ -23,7 +23,7 @@ from topdeck.monitoring.alerting import (
     TriggerType,
 )
 from topdeck.monitoring.live_diagnostics import LiveDiagnosticsService
-from topdeck.monitoring.prometheus_collector import PrometheusCollector
+from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = logging.getLogger(__name__)
