@@ -82,10 +82,13 @@ TopDeck provides that answer by:
 - **[Live Diagnostics Remaining Work](LIVE_DIAGNOSTICS_REMAINING_WORK.md)** - Phases 7-8 work items and timeline
 - **[Phase 6 Completion Summary](PHASE_6_COMPLETION_SUMMARY.md)** - ✨ NEW! WebSocket implementation summary
 
-### Project Status
+### Project Status & Roadmap
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
 - **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks
 - **[Roadmap Changes](docs/ROADMAP_CHANGES.md)** - Roadmap evolution and rationale
+- **[ML-Based SRE Improvements](ML_SRE_IMPROVEMENTS_SUMMARY.md)** - ✨ NEW! Next-generation ML enhancements for SRE workflows
+- **[SRE Enhancement Research](docs/SRE_ML_ENHANCEMENTS_RESEARCH.md)** - ✨ NEW! Detailed market gap analysis and ML solutions
+- **[SRE Enhancement Quick Start](docs/SRE_ML_ENHANCEMENTS_QUICK_START.md)** - ✨ NEW! Implementation guide for ML features
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to TopDeck
 
 ## 🏗️ Architecture
@@ -694,10 +697,22 @@ Recent additions:
 - **Change Management** ✨ NEW: Full change request tracking with ServiceNow/Jira integration
 - **ML-Based Predictions** ✨ NEW: Predict failures, performance degradation, and detect anomalies using traditional ML (scikit-learn, Prophet)
 
+**NEW: ML-Based SRE Enhancements Roadmap** 🎯
+Based on extensive market research, we've identified 7 critical gaps in SRE tooling that TopDeck can address with ML:
+- **Intelligent Change Risk Prediction**: ML-based change risk scoring with 85%+ accuracy (40% incident reduction)
+- **Enhanced Blast Radius Intelligence**: Graph Neural Network for cascade prediction (90%+ accuracy)
+- **Pre-Change Validation**: Automated readiness assessment and execution strategy recommendations
+- **Change-Incident Correlation**: Automated root cause analysis and lessons learned extraction
+- **Real-Time Risk Updates**: Continuous risk recalculation during changes
+- **Stakeholder Impact Prediction**: Beyond technical systems to organizational impact
+- **Automated Approval Workflows**: ML-driven approval for low-risk changes (50% time reduction)
+
+See **[ML-Based SRE Improvements Summary](ML_SRE_IMPROVEMENTS_SUMMARY.md)** for executive overview or **[Detailed Research](docs/SRE_ML_ENHANCEMENTS_RESEARCH.md)** for complete analysis.
+
 Areas for future enhancement:
 - **Multi-Cloud Support**: Complete AWS/GCP discovery (Azure is fully implemented)
 - **Cost Impact Analysis**: Estimate financial impact of failures
-- **Automated Change Workflows**: Approval automation and change templates
+- **Business Impact Forecasting**: Revenue and SLA impact prediction
 - **Automated Remediation**: Suggest and apply infrastructure changes
 
 ---
