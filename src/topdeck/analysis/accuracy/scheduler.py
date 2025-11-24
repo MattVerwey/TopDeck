@@ -66,6 +66,7 @@ class AccuracyMaintenanceScheduler:
         self.last_validation_time: datetime | None = None
         self.last_decay_time: datetime | None = None
         self.last_calibration_time: datetime | None = None
+        self._initial_validation_task: asyncio.Task | None = None
         
         # Alert thresholds
         self.precision_threshold = 0.85
@@ -117,11 +118,24 @@ class AccuracyMaintenanceScheduler:
             # Run initial validation if needed
             if self._should_run_initial_validation():
                 logger.info("Running initial prediction validation")
-                asyncio.create_task(self._validate_pending_predictions())
+                self._initial_validation_task = asyncio.create_task(
+                    self._validate_pending_predictions()
+                )
+                self._initial_validation_task.add_done_callback(
+                    self._on_initial_validation_complete
+                )
 
         except Exception as e:
             logger.error(f"Failed to start accuracy maintenance scheduler: {e}")
             raise
+
+    def _on_initial_validation_complete(self, task: asyncio.Task) -> None:
+        """Handle completion of initial validation task."""
+        try:
+            task.result()
+            logger.info("Initial validation completed successfully")
+        except Exception as e:
+            logger.error(f"Initial validation failed: {e}")
 
     def stop(self) -> None:
         """Stop the scheduler."""

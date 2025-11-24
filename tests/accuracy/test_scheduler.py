@@ -4,7 +4,7 @@ Tests for accuracy maintenance scheduler.
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from topdeck.analysis.accuracy.scheduler import AccuracyMaintenanceScheduler
 from topdeck.storage.neo4j_client import Neo4jClient

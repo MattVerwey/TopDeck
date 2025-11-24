@@ -627,11 +627,13 @@ async def get_accuracy_dashboard(
     # Get dependency metrics  
     dep_metrics = await validator.get_dependency_accuracy_metrics(days=days)
     
-    # Get pending validations
-    pending = await tracker.get_pending_validations(max_age_hours=72)
+    # Get pending validations (use hours relative to days, capped at 7 days)
+    max_pending_hours = min(days * 24, 168)  # Max 7 days (168 hours)
+    pending = await tracker.get_pending_validations(max_age_hours=max_pending_hours)
     
-    # Get stale dependencies
-    stale = await validator.validate_stale_dependencies(max_age_days=7)
+    # Get stale dependencies (use days parameter directly, capped at 30 days)
+    max_stale_days = min(days, 30)
+    stale = await validator.validate_stale_dependencies(max_age_days=max_stale_days)
     
     return {
         "prediction_accuracy": {
@@ -641,9 +643,9 @@ async def get_accuracy_dashboard(
             "total_predictions": pred_metrics.count if pred_metrics else 0,
         },
         "dependency_accuracy": {
-            "validated_count": dep_metrics.get("validated_count", 0) if dep_metrics else 0,
-            "stale_count": dep_metrics.get("stale_count", 0) if dep_metrics else 0,
-            "total_dependencies": dep_metrics.get("total_dependencies", 0) if dep_metrics else 0,
+            "validated_count": dep_metrics.details.get("validated_count", dep_metrics.validated_count) if dep_metrics and dep_metrics.details else (dep_metrics.validated_count if dep_metrics else 0),
+            "stale_count": dep_metrics.details.get("stale_count", 0) if dep_metrics and dep_metrics.details else 0,
+            "total_dependencies": dep_metrics.details.get("total_dependencies", 0) if dep_metrics and dep_metrics.details else 0,
         },
         "pending_work": {
             "predictions_to_validate": len(pending),
@@ -741,20 +743,17 @@ async def get_accuracy_alerts(
 
 @router.get("/monitoring/trends")
 async def get_accuracy_trends(
-    days: int = Query(30, ge=7, le=90, description="Days to analyze"),
     tracker: PredictionTracker = Depends(get_prediction_tracker),
 ) -> dict[str, Any]:
     """
     Get accuracy trends over time.
     
-    Returns accuracy metrics broken down by week to show improvement
-    or degradation trends.
-    
-    Query Parameters:
-        days: Number of days to analyze (default: 30)
+    Returns accuracy metrics for the most recent week. Currently shows only
+    the latest week's data - full historical trends require database schema
+    extension for weekly aggregation.
     
     Returns:
-        Weekly accuracy trends
+        Recent accuracy trend data
     """
     # Note: This is a simplified implementation that returns recent metrics
     # A full implementation would query historical data for each week
@@ -777,10 +776,9 @@ async def get_accuracy_trends(
         })
     
     return {
-        "period_days": days,
         "weeks_analyzed": len(trends),
         "trends": trends,
-        "note": "Currently showing most recent week. Full historical trends require database schema extension for weekly aggregation.",
+        "note": "Currently showing most recent week only. Full historical trends require database schema extension for weekly aggregation.",
     }
 
 

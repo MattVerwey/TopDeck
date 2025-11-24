@@ -144,35 +144,26 @@ curl "http://localhost:8000/api/v1/accuracy/monitoring/alerts?precision_threshol
 Monitor accuracy over time:
 
 ```bash
-# Get 30-day trends
-curl http://localhost:8000/api/v1/accuracy/monitoring/trends?days=30
+# Get accuracy trends
+curl http://localhost:8000/api/v1/accuracy/monitoring/trends
 ```
 
 **Response:**
 ```json
 {
-  "period_days": 30,
-  "weeks_analyzed": 4,
+  "weeks_analyzed": 1,
   "trends": [
     {
-      "week": 4,
+      "week": 1,
       "start_date": "2024-11-17T00:00:00Z",
       "end_date": "2024-11-24T00:00:00Z",
       "precision": 0.87,
       "recall": 0.92,
       "f1_score": 0.89,
       "prediction_count": 45
-    },
-    {
-      "week": 3,
-      "start_date": "2024-11-10T00:00:00Z",
-      "end_date": "2024-11-17T00:00:00Z",
-      "precision": 0.85,
-      "recall": 0.90,
-      "f1_score": 0.87,
-      "prediction_count": 38
     }
-  ]
+  ],
+  "note": "Currently showing most recent week only. Full historical trends require database schema extension for weekly aggregation."
 }
 ```
 
@@ -217,23 +208,71 @@ curl -X POST "http://localhost:8000/api/v1/accuracy/maintenance/run-decay?decay_
 
 ## Alerting Integration
 
-### Prometheus Metrics
+### Using the Alerts Endpoint
 
-The accuracy tracking system exposes metrics for Prometheus:
+The accuracy tracking system provides a JSON-based alerts endpoint for integration with monitoring systems. Since the endpoint returns JSON (not Prometheus exposition format), you can use it with custom scrapers or the approach below.
+
+**Direct Monitoring:**
+
+Use the `/monitoring/alerts` endpoint for threshold-based alerting:
+
+```bash
+# Check current alert status
+curl http://localhost:8000/api/v1/accuracy/monitoring/alerts
+```
+
+**Custom Prometheus Exporter:**
+
+To expose metrics in Prometheus format, create a custom exporter that reads from the dashboard endpoint:
+
+```python
+# prometheus_exporter.py
+from prometheus_client import Gauge, start_http_server
+import requests
+import time
+
+# Define metrics
+precision_gauge = Gauge('topdeck_accuracy_precision', 'Prediction precision')
+recall_gauge = Gauge('topdeck_accuracy_recall', 'Prediction recall')
+f1_gauge = Gauge('topdeck_accuracy_f1_score', 'Prediction F1 score')
+stale_deps_gauge = Gauge('topdeck_dependency_stale_count', 'Stale dependencies')
+
+def update_metrics():
+    """Fetch metrics from TopDeck and update Prometheus gauges."""
+    try:
+        resp = requests.get("http://localhost:8000/api/v1/accuracy/monitoring/dashboard")
+        data = resp.json()
+        
+        pred = data.get("prediction_accuracy", {})
+        precision_gauge.set(pred.get("precision", 0))
+        recall_gauge.set(pred.get("recall", 0))
+        f1_gauge.set(pred.get("f1_score", 0))
+        
+        deps = data.get("dependency_accuracy", {})
+        stale_deps_gauge.set(deps.get("stale_count", 0))
+    except Exception as e:
+        print(f"Failed to update metrics: {e}")
+
+if __name__ == "__main__":
+    start_http_server(9090)  # Prometheus scrapes this port
+    while True:
+        update_metrics()
+        time.sleep(60)
+```
+
+Then configure Prometheus to scrape the exporter:
 
 ```yaml
 # prometheus.yml
 scrape_configs:
   - job_name: 'topdeck_accuracy'
-    metrics_path: '/api/v1/accuracy/monitoring/dashboard'
-    scrape_interval: 5m
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['localhost:9090']  # The exporter port
 ```
 
 ### Alert Rules
 
-Example Prometheus alert rules:
+Example Prometheus alert rules (requires the custom exporter above):
 
 ```yaml
 groups:
@@ -257,14 +296,14 @@ groups:
           summary: "Prediction recall below threshold"
           description: "Recall is {{ $value | humanizePercentage }}, below 90%"
 
-      - alert: HighStaleDependencyRate
-        expr: topdeck_dependency_stale_rate > 0.10
+      - alert: HighStaleDependencyCount
+        expr: topdeck_dependency_stale_count > 10
         for: 2h
         labels:
           severity: warning
         annotations:
-          summary: "High rate of stale dependencies"
-          description: "{{ $value | humanizePercentage }} of dependencies are stale"
+          summary: "High number of stale dependencies"
+          description: "{{ $value }} dependencies are stale"
 ```
 
 ### Slack/PagerDuty Integration
