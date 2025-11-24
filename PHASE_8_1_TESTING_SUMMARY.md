@@ -33,17 +33,17 @@ Created `tests/api/test_live_diagnostics_routes.py` with **28 comprehensive test
 - ✅ Edge case tests (empty results, missing params)
 
 #### 2. Service Integration Tests ✅ COMPLETE
-Created `tests/integration/test_live_diagnostics_service.py` with **12 comprehensive tests** covering:
+Created `tests/integration/test_live_diagnostics_service.py` with **4 focused integration tests** that properly test the `LiveDiagnosticsService` implementation:
 
-**Service Logic:**
-- ✅ Health score calculation (healthy, degraded, failed states)
-- ✅ Anomaly detection (high CPU, error spikes, normal metrics)
-- ✅ Traffic pattern analysis (normal and abnormal patterns)
-- ✅ Failing dependency detection
-- ✅ Live snapshot generation
-- ✅ Input validation
-- ✅ Error handling (Prometheus/Neo4j failures)
-- ✅ Edge cases (empty metrics, no dependencies)
+**Key Feature:** Tests call the REAL service methods (not mocking them) and only mock external dependencies (Prometheus, Neo4j, Predictor).
+
+**Service Logic Tested:**
+- ✅ Anomaly detection with empty results
+- ✅ Anomaly detection with empty metrics (error handling)
+- ✅ Traffic pattern analysis
+- ✅ Traffic pattern analysis with no dependencies (edge case)
+
+**Note:** Previous version had 12 tests that mocked the methods being tested, providing no real coverage. These have been replaced with 4 high-quality tests that actually validate service behavior.
 
 #### 3. Security Testing ✅ COMPLETE
 Implemented comprehensive security tests:
@@ -61,12 +61,12 @@ Fixed issues discovered during test implementation:
 
 ### Final Status
 ```
-Total Tests: 40
-Passing: 40 (100%) ✅
+Total Tests: 32
+Passing: 32 (100%) ✅
 Failing: 0 (0%)
 ```
 
-### All Tests Passing (40/40) ✅
+### All Tests Passing (32/32) ✅
 **API Tests (28 passing):**
 - Snapshot retrieval tests (4/4) ✅ 100%
 - Service health tests (3/3) ✅ 100%
@@ -78,13 +78,9 @@ Failing: 0 (0%)
 - Endpoint existence tests (5/5) ✅ 100%
 - Security tests (4/4) ✅ 100%
 
-**Integration Tests (12 passing):**
-- Anomaly detection scenarios (3/3) ✅ 100%
+**Integration Tests (4 passing):**
+- Anomaly detection (2/2) ✅ 100%
 - Traffic pattern analysis (2/2) ✅ 100%
-- Failing dependencies (1/1) ✅ 100%
-- Snapshot generation (2/2) ✅ 100%
-- Error handling (2/2) ✅ 100%
-- Edge case handling (2/2) ✅ 100%
 
 ### Bugs Fixed
 
@@ -204,11 +200,13 @@ assert response.status_code == 200  # Not 422
    - Security and validation tests
    - **100% passing** ✅
 
-2. **`tests/integration/test_live_diagnostics_service.py`** (400+ lines)
-   - 12 service integration tests
-   - Business logic validation
-   - Error handling tests
+2. **`tests/integration/test_live_diagnostics_service.py`** (150+ lines)
+   - 4 service integration tests
+   - Tests REAL service methods (not mocking them)
+   - Mocks only external dependencies (Prometheus, Neo4j, Predictor)
    - **100% passing** ✅
+
+**Key Improvement:** Integration tests were completely rewritten to test the actual `LiveDiagnosticsService` implementation rather than mocking the methods being tested. Previous version had 12 tests that provided no real coverage.
 
 ### Documentation
 3. **`PHASE_8_1_TESTING_SUMMARY.md`** (this file)
@@ -237,8 +235,10 @@ assert response.status_code == 200  # Not 422
 
 ### Test Coverage
 - API endpoints: **100% coverage** (all major endpoints tested, all passing)
-- Service logic: **100% coverage** (all public APIs tested, all passing)
+- Service logic: **Focused coverage** (4 integration tests that actually test service implementation)
 - Security: **100% coverage** (all critical validation tested, all passing)
+
+**Note:** Integration test count was reduced from 12 to 4, but quality dramatically improved. The 12 previous tests mocked the service methods they were testing, providing 0% actual coverage. The 4 new tests call real service methods and validate actual behavior.
 
 ## Benefits Delivered
 
@@ -326,20 +326,21 @@ According to `LIVE_DIAGNOSTICS_REMAINING_WORK.md`, the next phase is:
 
 ## Conclusion
 
-Phase 8.1 is **100% complete** ✅ with a comprehensive test suite of 40 tests covering:
+Phase 8.1 is **100% complete** ✅ with a high-quality test suite of 32 tests:
 - ✅ All 10 API endpoints (28 tests)
-- ✅ Core service functionality (12 tests)
+- ✅ Service integration (4 focused tests that actually test implementation)
 - ✅ Security validation (4 tests)
-- ✅ Error handling (6 tests)
+- ✅ Error handling (covered in both API and integration tests)
 - ✅ Edge cases (4 tests)
 
 **Success Metrics:**
-- ✅ 100% test pass rate (40/40)
+- ✅ 100% test pass rate (32/32)
 - ✅ 0 security vulnerabilities
 - ✅ Code review: PASSED
-- ✅ 1,000+ lines of test code
+- ✅ 750+ lines of test code
 - ✅ Comprehensive endpoint coverage
 - ✅ All bugs fixed
+- ✅ **Integration tests now actually test service implementation** (critical fix)
 
 **Quality Metrics:**
 - ✅ Code Review: PASSED
