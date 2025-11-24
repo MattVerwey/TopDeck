@@ -17,6 +17,7 @@ from topdeck.monitoring.live_diagnostics import (
     LiveDiagnosticsService,
     LiveDiagnosticsSnapshot,
 )
+from topdeck.analysis.prediction.models import AnomalyDetection, RiskLevel
 
 
 @pytest.fixture
@@ -50,6 +51,7 @@ def mock_neo4j_client():
     mock = MagicMock()
     
     # Mock execute_query for async calls
+    # Returns topology data matching Neo4j schema (id, name, type fields)
     mock.execute_query = AsyncMock(return_value=[
         {"id": "service-a", "name": "Service A", "type": "deployment"},
         {"id": "service-b", "name": "Service B", "type": "deployment"},
@@ -61,8 +63,6 @@ def mock_neo4j_client():
 @pytest.fixture
 def mock_predictor():
     """Create a mock ML predictor."""
-    from topdeck.analysis.prediction.models import AnomalyDetection, RiskLevel
-    
     mock = MagicMock()
     
     # Default: Return empty result (no anomalies detected)
