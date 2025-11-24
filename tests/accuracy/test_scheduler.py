@@ -73,13 +73,9 @@ async def test_validate_pending_predictions_with_pending(scheduler, mock_neo4j):
 @pytest.mark.asyncio
 async def test_apply_confidence_decay(scheduler, mock_neo4j):
     """Test confidence decay application."""
-    # Mock decay to return list of updated dependencies
-    updated_deps = [
-        {"source_id": "s1", "target_id": "t1"},
-        {"source_id": "s2", "target_id": "t2"},
-    ]
+    # Mock decay to return count of updated dependencies
     scheduler.dependency_validator.apply_confidence_decay = AsyncMock(
-        return_value=updated_deps
+        return_value=2  # Returns count, not list
     )
     
     result = await scheduler._apply_confidence_decay()

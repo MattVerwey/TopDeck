@@ -756,33 +756,31 @@ async def get_accuracy_trends(
     Returns:
         Weekly accuracy trends
     """
-    # Calculate weeks to analyze
-    weeks = days // 7
-    trends = []
+    # Note: This is a simplified implementation that returns recent metrics
+    # A full implementation would query historical data for each week
+    # For now, we return the most recent week's data as a trend indicator
     
-    for week in range(weeks):
-        # Get metrics for this week
-        end_date = datetime.now(timezone.utc) - timedelta(days=week * 7)
-        start_date = end_date - timedelta(days=7)
-        
-        # Get metrics for the week
-        metrics_result = await tracker.get_accuracy_metrics(days=7)
-        
-        if metrics_result and metrics_result.metrics:
-            trends.append({
-                "week": weeks - week,
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "precision": metrics_result.metrics.precision,
-                "recall": metrics_result.metrics.recall,
-                "f1_score": metrics_result.metrics.f1_score,
-                "prediction_count": metrics_result.count,
-            })
+    metrics_result = await tracker.get_accuracy_metrics(days=7)
+    
+    trends = []
+    if metrics_result and metrics_result.metrics:
+        # Return recent week as a trend data point
+        # TODO: Extend to query historical weekly metrics from database
+        trends.append({
+            "week": 1,
+            "start_date": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(),
+            "end_date": datetime.now(timezone.utc).isoformat(),
+            "precision": metrics_result.metrics.precision,
+            "recall": metrics_result.metrics.recall,
+            "f1_score": metrics_result.metrics.f1_score,
+            "prediction_count": metrics_result.count,
+        })
     
     return {
         "period_days": days,
         "weeks_analyzed": len(trends),
         "trends": trends,
+        "note": "Currently showing most recent week. Full historical trends require database schema extension for weekly aggregation.",
     }
 
 

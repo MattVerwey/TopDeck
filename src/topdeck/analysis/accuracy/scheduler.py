@@ -235,7 +235,7 @@ class AccuracyMaintenanceScheduler:
             decay_rate = 0.1  # 10% reduction per day beyond threshold
             days_threshold = 3  # Start decay after 3 days
             
-            updated = await self.dependency_validator.apply_confidence_decay(
+            updated_count = await self.dependency_validator.apply_confidence_decay(
                 decay_rate=decay_rate,
                 days_threshold=days_threshold,
             )
@@ -244,14 +244,14 @@ class AccuracyMaintenanceScheduler:
             
             result = {
                 "status": "success",
-                "dependencies_updated": len(updated),
+                "dependencies_updated": updated_count,
                 "decay_rate": decay_rate,
                 "days_threshold": days_threshold,
                 "timestamp": self.last_decay_time.isoformat(),
             }
             
             logger.info(
-                f"Applied confidence decay to {len(updated)} dependencies"
+                f"Applied confidence decay to {updated_count} dependencies"
             )
             
             return result
