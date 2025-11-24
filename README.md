@@ -86,6 +86,8 @@ TopDeck provides that answer by:
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
 - **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks
 - **[Roadmap Changes](docs/ROADMAP_CHANGES.md)** - Roadmap evolution and rationale
+- **[SRE Next Phase & Troubleshooting Gaps](docs/SRE_NEXT_PHASE_AND_TROUBLESHOOTING_GAPS.md)** - ✨ NEW! Complete roadmap for Phase 8+ and troubleshooting improvements
+- **[SRE Next Phase Quick Reference](docs/SRE_NEXT_PHASE_QUICK_REF.md)** - ✨ NEW! Quick reference for upcoming enhancements
 - **[ML-Based SRE Improvements](ML_SRE_IMPROVEMENTS_SUMMARY.md)** - ✨ NEW! Next-generation ML enhancements for SRE workflows
 - **[SRE Enhancement Research](docs/SRE_ML_ENHANCEMENTS_RESEARCH.md)** - ✨ NEW! Detailed market gap analysis and ML solutions
 - **[SRE Enhancement Quick Start](docs/SRE_ML_ENHANCEMENTS_QUICK_START.md)** - ✨ NEW! Implementation guide for ML features
