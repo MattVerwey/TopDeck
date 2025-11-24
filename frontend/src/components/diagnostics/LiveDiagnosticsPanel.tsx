@@ -43,9 +43,6 @@ import {
   WifiOff,
   CloudQueue,
 } from '@mui/icons-material';
-import type {
-  LiveDiagnosticsSnapshot,
-} from '../../types/diagnostics';
 import LiveTopologyGraph from './LiveTopologyGraph';
 import AnomalyList from './AnomalyList';
 import TrafficPatternChart from './TrafficPatternChart';

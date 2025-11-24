@@ -33,7 +33,7 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
-import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment, TopologyFilterSettings } from '../../types';
+import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment } from '../../types';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import { getRiskLevelFromScore } from '../../utils/riskUtils';

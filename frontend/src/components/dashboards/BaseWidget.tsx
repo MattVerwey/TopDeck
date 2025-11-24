@@ -5,7 +5,8 @@
  * like refresh, error handling, and configuration.
  */
 
-import { ReactNode, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   Paper,
   Box,

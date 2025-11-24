@@ -25,7 +25,8 @@ import {
   Save as SaveIcon,
   ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
-import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import { Responsive, WidthProvider } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import type { WidgetConfig } from './BaseWidget';
 import {
   HealthGaugeWidget,

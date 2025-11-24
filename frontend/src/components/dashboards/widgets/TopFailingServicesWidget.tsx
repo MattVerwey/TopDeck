@@ -28,7 +28,8 @@ import {
   Speed as SpeedIcon,
   Memory as MemoryIcon,
 } from '@mui/icons-material';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
 
 interface ServiceHealth {
