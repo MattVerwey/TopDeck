@@ -25,8 +25,13 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
+import type { LiveDiagnosticsSnapshot } from '../../../types/diagnostics';
+
+// Constants
+const DEFAULT_UPTIME_PERCENTAGE = 99.9;
 
 interface HealthScoreData {
   score: number;
@@ -48,6 +53,7 @@ export default function HealthGaugeWidget({
   onConfigure,
 }: HealthGaugeWidgetProps) {
   const [healthData, setHealthData] = useState<HealthScoreData | null>(null);
+  const [snapshot, setSnapshot] = useState<LiveDiagnosticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -58,11 +64,12 @@ export default function HealthGaugeWidget({
       setError(null);
 
       // Fetch live diagnostics snapshot
-      const snapshot = await apiClient.getLiveDiagnosticsSnapshot(1);
+      const fetchedSnapshot = await apiClient.getLiveDiagnosticsSnapshot(1);
+      setSnapshot(fetchedSnapshot);
       
       // Calculate overall health score
-      const services = snapshot.services || [];
-      const totalScore = services.reduce((sum, s) => sum + (s.health_score || 0), 0);
+      const services = fetchedSnapshot.services || [];
+      const totalScore = services.reduce((sum: number, s) => sum + (s.health_score || 0), 0);
       const avgScore = services.length > 0 ? totalScore / services.length : 100;
       
       // Determine status based on score
@@ -76,7 +83,7 @@ export default function HealthGaugeWidget({
         score: avgScore,
         status,
         services_count: services.length,
-        anomaly_count: snapshot.anomalies?.length || 0,
+        anomaly_count: fetchedSnapshot.anomalies?.length || 0,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch health score');
@@ -88,6 +95,60 @@ export default function HealthGaugeWidget({
   useEffect(() => {
     fetchHealthScore();
   }, [fetchHealthScore]);
+
+  // Calculate aggregated metrics from services
+  const getAggregatedMetrics = () => {
+    if (!snapshot || !snapshot.services) {
+      return {
+        avgLatency: 0,
+        totalRequests: 0,
+        avgErrorRate: 0,
+        uptimePercentage: 0,
+      };
+    }
+
+    const services = snapshot.services;
+    let totalLatency = 0;
+    let totalRequests = 0;
+    let totalErrors = 0;
+    let servicesWithMetrics = 0;
+    let totalUptime = 0;
+    let totalErrorRate = 0;
+
+    services.forEach((service) => {
+      if (service.metrics) {
+        servicesWithMetrics++;
+        // Extract metrics from the service's metrics Record
+        const latency = service.metrics['latency_p95'] || service.metrics['latency'] || 0;
+        const requests = service.metrics['request_count'] || service.metrics['requests'] || 0;
+        const errors = service.metrics['error_count'] || service.metrics['errors'] || 0;
+        const uptime = service.metrics['uptime'] || DEFAULT_UPTIME_PERCENTAGE;
+
+        totalLatency += latency;
+        totalRequests += requests;
+        totalErrors += errors;
+        totalUptime += uptime;
+        
+        // Calculate error rate per service and average them
+        const serviceErrorRate = requests > 0 ? errors / requests : 0;
+        totalErrorRate += serviceErrorRate;
+      }
+    });
+
+    const avgLatency = servicesWithMetrics > 0 ? totalLatency / servicesWithMetrics : 0;
+    // Average error rate across services (not total errors / total requests)
+    const avgErrorRate = servicesWithMetrics > 0 ? totalErrorRate / servicesWithMetrics : 0;
+    const avgUptime = servicesWithMetrics > 0 ? totalUptime / servicesWithMetrics : DEFAULT_UPTIME_PERCENTAGE;
+
+    return {
+      avgLatency,
+      totalRequests,
+      avgErrorRate,
+      uptimePercentage: avgUptime,
+    };
+  };
+
+  const aggregatedMetrics = getAggregatedMetrics();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -266,30 +327,31 @@ export default function HealthGaugeWidget({
                   Health Metrics Breakdown
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  {/* Note: Using sample data - will be replaced with real metrics from API */}
+                  {/* Real aggregated metrics from API snapshot */}
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">CPU Usage</Typography>
+                      <Typography variant="caption">Average Response Time</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {Math.random() > 0.5 ? '45%' : '78%'}
+                        {aggregatedMetrics.avgLatency > 0 ? `${aggregatedMetrics.avgLatency.toFixed(0)}ms` : 'N/A'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={Math.random() * 100} 
+                      value={Math.min((aggregatedMetrics.avgLatency / 500) * 100, 100)} 
                       sx={{ height: 6, borderRadius: 3 }}
+                      color={aggregatedMetrics.avgLatency > 300 ? 'error' : 'primary'}
                     />
                   </Box>
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">Memory Usage</Typography>
+                      <Typography variant="caption">Request Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {Math.random() > 0.5 ? '62%' : '89%'}
+                        {aggregatedMetrics.totalRequests || 0} req/min
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={Math.random() * 100} 
+                      value={Math.min((aggregatedMetrics.totalRequests / 1000) * 100, 100)} 
                       color="warning"
                       sx={{ height: 6, borderRadius: 3 }}
                     />
@@ -298,13 +360,13 @@ export default function HealthGaugeWidget({
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">Error Rate</Typography>
                       <Typography variant="caption" fontWeight="bold">
-                        {healthData.anomaly_count > 0 ? '3.2%' : '0.1%'}
+                        {aggregatedMetrics.avgErrorRate > 0 ? `${(aggregatedMetrics.avgErrorRate * 100).toFixed(1)}%` : '0.0%'}
                       </Typography>
                     </Box>
                     <LinearProgress 
                       variant="determinate" 
-                      value={healthData.anomaly_count > 0 ? 32 : 1} 
-                      color={healthData.anomaly_count > 0 ? 'error' : 'success'}
+                      value={aggregatedMetrics.avgErrorRate * 100} 
+                      color={aggregatedMetrics.avgErrorRate > 0.05 ? 'error' : 'success'}
                       sx={{ height: 6, borderRadius: 3 }}
                     />
                   </Box>
@@ -322,7 +384,9 @@ export default function HealthGaugeWidget({
                       }}
                     >
                       <TrendingUpIcon fontSize="small" />
-                      <Typography variant="caption">Uptime 99.9%</Typography>
+                      <Typography variant="caption">
+                        Uptime {aggregatedMetrics.uptimePercentage.toFixed(1)}%
+                      </Typography>
                     </Box>
                     <Box
                       sx={{
@@ -336,7 +400,9 @@ export default function HealthGaugeWidget({
                       }}
                     >
                       <TrendingDownIcon fontSize="small" />
-                      <Typography variant="caption">Latency -15%</Typography>
+                      <Typography variant="caption">
+                        Latency {aggregatedMetrics.avgLatency > 0 ? `${aggregatedMetrics.avgLatency.toFixed(0)}ms` : 'N/A'}
+                      </Typography>
                     </Box>
                   </Stack>
                 </Stack>
