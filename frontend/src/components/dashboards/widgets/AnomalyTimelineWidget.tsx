@@ -24,7 +24,8 @@ import {
   Warning as WarningIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
 
 interface Anomaly {
@@ -60,9 +61,9 @@ export default function AnomalyTimelineWidget({
       setError(null);
 
       // Fetch anomalies from live diagnostics
-      const anomalyData = await apiClient.getLiveDiagnosticsAnomalies(
-        hours,
+      const anomalyData = await apiClient.getAnomalies(
         severityFilter !== 'all' ? severityFilter : undefined,
+        hours,
         20 // Limit to 20 most recent
       );
 

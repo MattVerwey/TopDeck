@@ -59,8 +59,8 @@ export function useLiveDiagnosticsWebSocket(config: WebSocketConfig = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const isIntentionalCloseRef = useRef(false);
 

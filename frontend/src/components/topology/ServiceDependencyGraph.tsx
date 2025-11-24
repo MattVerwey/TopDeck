@@ -33,7 +33,7 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import cytoscape from 'cytoscape';
-import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment, TopologyFilterSettings } from '../../types';
+import type { TopologyGraph as TopologyGraphType, Resource, RiskAssessment } from '../../types';
 import { useStore } from '../../store/useStore';
 import apiClient from '../../services/api';
 import { getRiskLevelFromScore } from '../../utils/riskUtils';
@@ -316,7 +316,7 @@ export default function ServiceDependencyGraph({ data, onNodeExpand, expandedNod
             'font-size': '14px',
             'font-weight': 700,
             color: '#cbd5e1',
-            'padding': 20,
+            'padding': 20 as any,
           } as cytoscape.Css.Node,
         },
         {

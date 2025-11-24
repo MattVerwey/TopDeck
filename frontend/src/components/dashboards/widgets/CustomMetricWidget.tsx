@@ -20,7 +20,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 
 interface MetricDataPoint {
   timestamp: string;

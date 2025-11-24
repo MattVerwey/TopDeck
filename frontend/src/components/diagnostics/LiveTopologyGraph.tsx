@@ -139,7 +139,7 @@ export default function LiveTopologyGraph({
               'shadow-opacity': 0.3,
               'shadow-offset-x': 2,
               'shadow-offset-y': 2,
-            },
+            } as any,
           },
           {
             selector: 'node:selected',

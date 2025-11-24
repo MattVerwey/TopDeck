@@ -26,7 +26,8 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
-import BaseWidget, { WidgetConfig } from '../BaseWidget';
+import BaseWidget from '../BaseWidget';
+import type { WidgetConfig } from '../BaseWidget';
 import apiClient from '../../../services/api';
 
 interface TrafficPattern {
@@ -61,7 +62,7 @@ export default function TrafficHeatmapWidget({
       setLoading(true);
       setError(null);
 
-      const patternsData = await apiClient.getLiveDiagnosticsTrafficPatterns(1, showErrors);
+      const patternsData = await apiClient.getTrafficPatterns(1, showErrors);
       setPatterns(patternsData?.slice(0, 10) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch traffic patterns');

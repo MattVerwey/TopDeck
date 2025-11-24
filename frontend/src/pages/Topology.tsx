@@ -36,7 +36,7 @@ import ServiceDependencyGraph from '../components/topology/ServiceDependencyGrap
 import ResourceSelector from '../components/topology/ResourceSelector';
 import DocLink from '../components/common/DocLink';
 import { mockTopologyData } from '../utils/mockTopologyData';
-import type { TopologyGraph as TopologyGraphType, FilterMode } from '../types';
+import type { TopologyGraph as TopologyGraphType, FilterMode, TopologyFilterSettings } from '../types';
 
 export default function Topology() {
   const {
@@ -289,7 +289,7 @@ export default function Topology() {
       total_edges: filtered.edges.length,
       filter_mode: filterSettings.mode,
       expanded_nodes: expandedNodeIds.size,
-    };
+    } as typeof filtered.metadata;
 
     setFilteredTopology(filtered);
   }, [topology, selectedResourceIds, filters, filterSettings, expandedNodeIds, applyNodeFilter, getDirectDependencies, resolveTransitiveDependencies]);

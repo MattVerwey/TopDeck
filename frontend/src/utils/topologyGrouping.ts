@@ -112,7 +112,7 @@ function formatGroupLabel(key: string, groupBy: string): string {
  * Assign parent group to node data
  */
 export function assignNodeParents(
-  nodes: Resource[],
+  _nodes: Resource[],
   groups: Map<string, Resource[]>,
   _groupBy: 'cluster' | 'namespace' | 'resource_type' | 'cloud_provider'
 ): Map<string, string> {
