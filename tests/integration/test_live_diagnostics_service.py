@@ -15,6 +15,7 @@ from topdeck.monitoring.live_diagnostics import (
     ServiceHealthStatus,
     AnomalyAlert,
     TrafficPattern,
+    LiveDiagnosticsSnapshot,
 )
 
 

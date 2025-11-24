@@ -54,6 +54,14 @@ def mock_neo4j_client():
 
 
 @pytest.fixture
+def mock_neo4j_async():
+    """Create a mock async Neo4j client for route tests."""
+    mock = AsyncMock()
+    mock.execute_query = AsyncMock(return_value=[{"id": "test-service-001"}])
+    return mock
+
+
+@pytest.fixture
 def sample_service_health():
     """Create a sample service health status."""
     return ServiceHealthStatus(
@@ -252,7 +260,14 @@ def test_get_anomalies_success(client, mock_diagnostics_service, sample_anomaly)
     with patch(
         "topdeck.api.routes.live_diagnostics.get_diagnostics_service",
         return_value=mock_diagnostics_service,
-    ):
+    ), patch(
+        "topdeck.api.routes.live_diagnostics.get_neo4j_client"
+    ) as mock_neo4j_getter:
+        # Mock Neo4j client
+        mock_neo4j = AsyncMock()
+        mock_neo4j.execute_query = AsyncMock(return_value=[{"id": "test-service-001"}])
+        mock_neo4j_getter.return_value = mock_neo4j
+        
         mock_diagnostics_service.detect_anomalies = AsyncMock(return_value=[sample_anomaly])
 
         response = client.get("/api/v1/live-diagnostics/anomalies")
@@ -288,10 +303,10 @@ def test_get_anomalies_with_limit(client, mock_diagnostics_service):
             metric_name="cpu_usage",
             current_value=80.0 + i,
             expected_value=50.0,
-            deviation=1.6,
-            confidence=0.9,
-            timestamp=datetime.now(UTC),
-            description=f"CPU usage anomaly {i}",
+            deviation_percentage=60.0,  # (80-50)/50 * 100 = 60%
+            detected_at=datetime.now(UTC),
+            message=f"CPU usage anomaly {i}",
+            potential_causes=["High load"],
         )
         for i in range(10)
     ]
