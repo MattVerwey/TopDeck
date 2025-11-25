@@ -589,8 +589,8 @@ class ErrorContextAggregator:
         try:
             for metric_name, query in metric_queries:
                 result = await self.prometheus.query(query)
-                if result and "data" in result and "result" in result["data"]:
-                    for item in result["data"]["result"]:
+                if result:
+                    for item in result:
                         if item.get("value"):
                             timestamp, value = item["value"]
                             metrics.append(
@@ -798,8 +798,12 @@ class ErrorContextAggregator:
                             status = health_result.get("status", "healthy")
                             latency = health_result.get("latency_ms")
                             error_rate = health_result.get("error_rate")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to fetch dependency health",
+                                dependency_id=dep_id,
+                                error=str(e),
+                            )
 
                     dependencies.append(
                         DependencySnapshot(

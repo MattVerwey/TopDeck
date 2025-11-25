@@ -6,13 +6,11 @@ Service Dependency Health Dashboard.
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from topdeck.troubleshooting.dependency_health import (
     ConnectionPoolStatus,
-    DashboardSummary,
     DependencyHealthMonitor,
     DependencyHealthReport,
     DependencyMetrics,

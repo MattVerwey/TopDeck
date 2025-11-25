@@ -15,7 +15,8 @@ Solution:
 - Historical dependency health trends
 """
 
-from dataclasses import dataclass, field
+import math
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -478,8 +479,8 @@ class DependencyHealthMonitor:
             results = await self.neo4j.execute_query(query, {"resource_id": resource_id})
             if results:
                 return results[0].get("name", resource_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to get resource name", resource_id=resource_id, error=str(e))
 
         return resource_id
 
@@ -599,8 +600,8 @@ class DependencyHealthMonitor:
 
             for percentile, query in latency_queries.items():
                 result = await self.prometheus.query(query)
-                if result and "data" in result:
-                    for item in result["data"].get("result", []):
+                if result:
+                    for item in result:
                         if item.get("value"):
                             value_ms = float(item["value"][1]) * 1000
                             if percentile == "p50":
@@ -614,8 +615,8 @@ class DependencyHealthMonitor:
             # Request rate
             rate_query = f'sum(rate(http_requests_total{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*"}}[5m]))'
             rate_result = await self.prometheus.query(rate_query)
-            if rate_result and "data" in rate_result:
-                for item in rate_result["data"].get("result", []):
+            if rate_result:
+                for item in rate_result:
                     if item.get("value"):
                         metrics.request_rate_per_sec = float(item["value"][1])
                         break
@@ -623,11 +624,11 @@ class DependencyHealthMonitor:
             # Error rate
             error_query = f'sum(rate(http_requests_total{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*",status=~"5.."}}[5m])) / sum(rate(http_requests_total{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*"}}[5m])) * 100'
             error_result = await self.prometheus.query(error_query)
-            if error_result and "data" in error_result:
-                for item in error_result["data"].get("result", []):
+            if error_result:
+                for item in error_result:
                     if item.get("value"):
                         error_rate = float(item["value"][1])
-                        if not (error_rate != error_rate):  # Check for NaN
+                        if not math.isnan(error_rate):
                             metrics.error_rate_percent = error_rate
                             metrics.success_rate_percent = 100 - error_rate
                         break
@@ -661,8 +662,8 @@ class DependencyHealthMonitor:
             pool_data: dict[str, float] = {}
             for metric_name, query in pool_queries.items():
                 result = await self.prometheus.query(query)
-                if result and "data" in result:
-                    for item in result["data"].get("result", []):
+                if result:
+                    for item in result:
                         if item.get("value"):
                             pool_data[metric_name] = float(item["value"][1])
                             break
@@ -719,8 +720,8 @@ class DependencyHealthMonitor:
             cb_query = f'circuit_breaker_state{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*"}}'
             result = await self.prometheus.query(cb_query)
 
-            if result and "data" in result:
-                for item in result["data"].get("result", []):
+            if result:
+                for item in result:
                     state = item.get("metric", {}).get("state", "")
                     if state:
                         return state
@@ -729,14 +730,19 @@ class DependencyHealthMonitor:
             for metric_name in ["hystrix_circuit_breaker_open", "resilience4j_circuitbreaker_state"]:
                 alt_query = f'{metric_name}{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*"}}'
                 result = await self.prometheus.query(alt_query)
-                if result and "data" in result:
-                    for item in result["data"].get("result", []):
+                if result:
+                    for item in result:
                         if item.get("value"):
                             value = float(item["value"][1])
                             return "open" if value == 1 else "closed"
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to get circuit breaker status",
+                source_id=source_id,
+                dep_id=dep_id,
+                error=str(e),
+            )
 
         return None
 
@@ -757,13 +763,19 @@ class DependencyHealthMonitor:
             query = f'sum(increase(http_requests_total{{source=~".*{sanitized_source}.*",target=~".*{sanitized_dep}.*",status=~"5.."}}[{hours}h]))'
             result = await self.prometheus.query(query)
 
-            if result and "data" in result:
-                for item in result["data"].get("result", []):
+            if result:
+                for item in result:
                     if item.get("value"):
                         return int(float(item["value"][1]))
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to get failure count",
+                source_id=source_id,
+                dep_id=dep_id,
+                hours=hours,
+                error=str(e),
+            )
 
         return 0
 
@@ -803,14 +815,14 @@ class DependencyHealthMonitor:
 
             # Combine results
             latency_data = {}
-            if latency_result and "data" in latency_result:
-                for item in latency_result["data"].get("result", []):
+            if latency_result:
+                for item in latency_result:
                     for ts, value in item.get("values", []):
                         latency_data[ts] = float(value) * 1000  # Convert to ms
 
             error_data = {}
-            if error_result and "data" in error_result:
-                for item in error_result["data"].get("result", []):
+            if error_result:
+                for item in error_result:
                     for ts, value in item.get("values", []):
                         error_data[ts] = float(value)
 
