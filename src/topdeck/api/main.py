@@ -25,6 +25,7 @@ from topdeck.api.routes import (
     settings as settings_router,
     sla,
     topology,
+    troubleshooting,
     webhooks,
 )
 from topdeck.common.config import settings
@@ -228,6 +229,7 @@ app.include_router(live_diagnostics.router)
 app.include_router(live_diagnostics_ws.router)
 app.include_router(alerts.router)
 app.include_router(dashboards.router)
+app.include_router(troubleshooting.router)
 
 
 @app.get("/")

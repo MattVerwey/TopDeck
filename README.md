@@ -82,6 +82,10 @@ TopDeck provides that answer by:
 - **[Live Diagnostics Remaining Work](LIVE_DIAGNOSTICS_REMAINING_WORK.md)** - Phases 7-8 work items and timeline
 - **[Phase 6 Completion Summary](PHASE_6_COMPLETION_SUMMARY.md)** - ✨ NEW! WebSocket implementation summary
 
+### Troubleshooting & Incident Response (NEW!)
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)** - ✨ NEW! Log correlation, error context, and dependency health features
+- **[Troubleshooting Quick Reference](docs/TROUBLESHOOTING_QUICK_REF.md)** - ✨ NEW! Quick commands for incident response
+
 ### Project Status & Roadmap
 - **[Progress Tracking](PROGRESS.md)** - Detailed status of all phases and issues
 - **[Quick Reference](QUICK_REFERENCE.md)** - Quick reference for common tasks
@@ -169,6 +173,13 @@ TopDeck provides that answer by:
    - Root cause analysis with confidence scoring
    - Actionable recommendations for fixing issues
    - Error correlation and cascading failure tracking
+
+7. **Advanced Troubleshooting** ✨ **NEW**
+   - **Log Correlation Engine**: Cross-service log aggregation by correlation ID
+   - **Error Context Aggregation**: Automatic capture of all error context (logs, metrics, traces, topology)
+   - **Dependency Health Dashboard**: Real-time health of all dependencies with connection pool status
+   - **Error Chain Tracing**: Trace error propagation through service dependencies
+   - **Transaction Timeline**: Complete timeline view of transactions across services
 
 ## 🚀 Example Use Case
 
