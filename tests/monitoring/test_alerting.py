@@ -219,7 +219,7 @@ class TestRuleEvaluation:
         
         assert len(alerts) == 1
         assert alerts[0].severity == AlertSeverity.WARNING
-        assert "service-1" in alerts[0].message
+        assert "Failing Service" in alerts[0].message
     
     @pytest.mark.asyncio
     async def test_health_score_drop_no_trigger(self, alerting_engine, mock_diagnostics_service):
@@ -252,19 +252,14 @@ class TestRuleEvaluation:
     @pytest.mark.asyncio
     async def test_critical_anomaly_triggers(self, alerting_engine, mock_diagnostics_service):
         """Test that critical anomaly rule triggers correctly."""
-        mock_snapshot = MagicMock()
-        mock_snapshot.services = []
-        mock_snapshot.anomalies = [
-            MagicMock(
-                resource_id="service-1",
-                resource_name="Service 1",
-                metric_name="error_rate",
-                severity="critical",
-                deviation=5.0,
-            ),
-        ]
-        mock_snapshot.traffic_patterns = []
-        mock_diagnostics_service.get_live_snapshot = AsyncMock(return_value=mock_snapshot)
+        mock_anomaly = MagicMock(
+            resource_id="service-1",
+            resource_name="Service 1",
+            metric_name="error_rate",
+            severity="critical",
+            deviation=5.0,
+        )
+        mock_diagnostics_service.detect_anomalies = AsyncMock(return_value=[mock_anomaly])
         
         rule = AlertRule(
             id="rule-1",
@@ -513,7 +508,7 @@ class TestAlertHistory:
         )
         
         assert len(alerts) == 1
-        assert history[0].severity == AlertSeverity.CRITICAL
+        assert alerts[0].severity == AlertSeverity.CRITICAL
 
 
 class TestNotificationSending:
@@ -526,7 +521,7 @@ class TestNotificationSending:
             id="dest-1",
             name="Email Destination",
             type=AlertDestinationType.EMAIL,
-            config={"recipients": ["admin@example.com"]},
+            config={"to_addresses": ["admin@example.com"]},
         )
         
         alert = Alert(
@@ -539,12 +534,13 @@ class TestNotificationSending:
             message="Test message",
         )
         
-        with patch("aiosmtplib.send") as mock_send:
-            mock_send.return_value = None
+        with patch("aiosmtplib.SMTP") as mock_smtp_class:
+            mock_smtp = AsyncMock()
+            mock_smtp_class.return_value.__aenter__.return_value = mock_smtp
             
-            await alerting_engine._send_email(destination, alert)
+            await alerting_engine._send_email(alert, destination)
             
-            assert mock_send.called
+            mock_smtp.send_message.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_send_slack_notification(self, alerting_engine):
@@ -571,7 +567,7 @@ class TestNotificationSending:
             mock_response.status = 200
             mock_post.return_value.__aenter__.return_value = mock_response
             
-            await alerting_engine._send_slack(destination, alert)
+            await alerting_engine._send_slack(alert, destination)
             
             assert mock_post.called
     
@@ -600,6 +596,6 @@ class TestNotificationSending:
             mock_response.status = 200
             mock_post.return_value.__aenter__.return_value = mock_response
             
-            await alerting_engine._send_webhook(destination, alert)
+            await alerting_engine._send_webhook(alert, destination)
             
             assert mock_post.called

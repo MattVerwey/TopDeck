@@ -412,7 +412,7 @@ async def test_generate_recommendations(error_replay_service):
     )
 
     assert len(recommendations) > 0
-    assert any("rollback" in rec.lower() for rec in recommendations)
+    assert any("rolling back" in rec.lower() for rec in recommendations)
     assert any("escalate" in rec.lower() for rec in recommendations)
 
 

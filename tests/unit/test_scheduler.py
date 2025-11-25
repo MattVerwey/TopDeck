@@ -301,7 +301,7 @@ def test_get_status(scheduler):
                     assert status["scheduler_running"] is True
                     assert status["discovery_in_progress"] is False
                     assert status["last_discovery_time"] == "2025-10-21T12:00:00"
-                    assert status["interval_seconds"] == 28800
+                    assert status["interval_hours"] == 8  # 28800 seconds / 3600
                     assert status["enabled_providers"]["azure"] is True
                     assert status["enabled_providers"]["aws"] is False
                     assert status["enabled_providers"]["gcp"] is False

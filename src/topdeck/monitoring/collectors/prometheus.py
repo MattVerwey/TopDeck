@@ -316,9 +316,6 @@ class PrometheusCollector:
         self, metrics: dict[str, MetricSeries], anomalies: list[str]
     ) -> float:
         """Calculate overall health score (0-100)."""
-        if not metrics:
-            return 100.0
-
         # Start with perfect score
         score = 100.0
 

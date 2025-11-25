@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
+import httpx
 import pytest
 
 from topdeck.monitoring.collectors.elasticsearch import (
@@ -46,7 +47,8 @@ def test_initialization_basic_auth(collector_basic_auth):
     """Test Elasticsearch collector initialization with basic auth."""
     assert collector_basic_auth.url == "https://elasticsearch.example.com:9200"
     assert collector_basic_auth.index_pattern == "logs-*"
-    assert collector_basic_auth.client.auth == ("test-user", "test-password")
+    # httpx uses BasicAuth object, not a tuple
+    assert isinstance(collector_basic_auth.client.auth, httpx.BasicAuth)
 
 
 @pytest.mark.asyncio

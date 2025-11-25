@@ -251,6 +251,7 @@ class GitHubIntegration:
         log_operation_metrics(
             operation="github_repository_discovery",
             duration=duration,
+            success=summary["failure"] == 0,
             items_processed=summary["total"],
             errors=summary["failure"],
         )
@@ -437,6 +438,7 @@ class GitHubIntegration:
         log_operation_metrics(
             operation="github_deployment_discovery",
             duration=duration,
+            success=summary["failure"] == 0,
             items_processed=summary["total"],
             errors=summary["failure"],
         )
@@ -466,8 +468,6 @@ class GitHubIntegration:
         try:
             return Deployment(
                 id=str(data["id"]),
-                application_id=None,  # Will be linked later
-                resource_id=None,  # Will be linked later
                 pipeline_id=str(data.get("id")),
                 pipeline_name=f"{repo_full_name} - {data.get('task', 'deploy')}",
                 version=data.get("sha", "unknown"),
@@ -480,9 +480,8 @@ class GitHubIntegration:
                 deployed_by=data.get("creator", {}).get("login", "unknown"),
                 status="success" if data.get("statuses_url") else "pending",
                 commit_sha=data.get("sha"),
-                commit_message=data.get("description"),
-                repository_url=f"https://github.com/{repo_full_name}",
-                deployment_url=data.get("url"),
+                notes=data.get("description"),
+                artifact_url=data.get("url"),
             )
         except Exception as e:
             logger.error(f"Failed to parse deployment data: {e}")
