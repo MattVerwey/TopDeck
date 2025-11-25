@@ -1,207 +1,55 @@
 # Testing TopDeck with Real Data
 
-This guide walks you through testing TopDeck with real cloud infrastructure data using the new automated discovery feature.
+This guide provides comprehensive testing scenarios and validation methods for TopDeck with real cloud infrastructure data.
+
+> **💡 New to Local Testing?** Start with **[LOCAL_TESTING.md](LOCAL_TESTING.md)** for basic setup and configuration. This guide covers advanced testing scenarios and validation.
+
+## Overview
+
+This document covers:
+- Advanced testing scenarios
+- Data quality validation
+- Performance benchmarks
+- Multi-cloud testing
+- Integration testing with CI/CD platforms
+
+For basic setup and configuration, see [LOCAL_TESTING.md](LOCAL_TESTING.md).
 
 ## Prerequisites
 
-Before you begin, ensure you have:
+Before you begin, ensure you have completed the basic setup:
 
-1. **Docker and Docker Compose** installed
-2. **Python 3.11+** installed
-3. **Cloud provider credentials** for at least one provider (Azure, AWS, or GCP)
-4. **Permissions** to read cloud resources (Reader/Viewer role)
+1. ✅ **Docker and Docker Compose** installed and running
+2. ✅ **Python 3.11+** installed with TopDeck dependencies
+3. ✅ **Cloud provider credentials** configured in `.env`
+4. ✅ **TopDeck services running** (Neo4j, Redis, RabbitMQ)
+5. ✅ **TopDeck API started** and accessible
 
-## Quick Start (5 Minutes)
+**If you haven't done this yet**, follow [LOCAL_TESTING.md](LOCAL_TESTING.md) first.
 
-### 1. Clone and Setup
+## Quick Setup Reference
+
+If you're already familiar with TopDeck setup, here's a quick reference:
 
 ```bash
-# Clone the repository
+# Clone and setup
 git clone https://github.com/MattVerwey/TopDeck.git
 cd TopDeck
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Start infrastructure
+docker compose up -d
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Configure Credentials
-
-Copy the example environment file and add your credentials:
-
-```bash
-# Copy example file
+# Configure and start TopDeck
 cp .env.example .env
-
-# Edit with your favorite editor
-nano .env  # or vim, code, etc.
-```
-
-**Example for Azure**:
-```bash
-# Enable Azure discovery
-ENABLE_AZURE_DISCOVERY=true
-
-# Azure credentials
-AZURE_TENANT_ID=12345678-1234-1234-1234-123456789abc
-AZURE_CLIENT_ID=87654321-4321-4321-4321-cba987654321
-AZURE_CLIENT_SECRET=your-secret-here
-AZURE_SUBSCRIPTION_ID=abcdef01-2345-6789-abcd-ef0123456789
-
-# Neo4j configuration
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=topdeck123
-
-# Discovery settings
-DISCOVERY_SCAN_INTERVAL=28800  # 8 hours
-DISCOVERY_PARALLEL_WORKERS=5
-```
-
-### 3. Start Services
-
-```bash
-# Start Neo4j, Redis, and RabbitMQ
-docker-compose up -d
-
-# Wait for services to be ready (about 30 seconds)
-sleep 30
-
-# Verify services are running
-docker-compose ps
-```
-
-### 4. Verify Configuration
-
-Run the verification script to ensure everything is configured correctly:
-
-```bash
-python scripts/verify_scheduler.py
-```
-
-You should see output like:
-```
-============================================================
-TOPDECK AUTOMATED DISCOVERY VERIFICATION
-============================================================
-
-============================================================
-CREDENTIAL CHECK
-============================================================
-
-Azure Discovery: ✓ Configured
-  Tenant ID: 12345678...
-  Client ID: 87654321...
-  Subscription ID: abcdef01...
-
-...
-
-✓ Scheduler is ready!
-✓ Discovery enabled for: AZURE
-✓ Scans will run every 8 hours
-```
-
-### 5. Start TopDeck API
-
-```bash
-# Start the API server
+# Edit .env with your credentials
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
 make run
-
-# Or alternatively:
-python -m topdeck
 ```
 
-Watch the console output. You should see:
-```
-🚀 Starting TopDeck API v0.3.0
-   Environment: development
-   Port: 8000
-   Log Level: INFO
+For detailed setup instructions, see [LOCAL_TESTING.md](LOCAL_TESTING.md).
 
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Connected to Neo4j for scheduled discovery
-INFO:     Discovery scheduler started with 8-hour interval
-INFO:     Starting automated resource discovery
-INFO:     Discovering Azure resources...
-```
-
-### 6. Monitor Discovery Progress
-
-In another terminal, watch the discovery progress:
-
-```bash
-# Check scheduler status
-curl http://localhost:8000/api/v1/discovery/status | jq
-
-# Expected output:
-{
-  "scheduler_running": true,
-  "discovery_in_progress": true,
-  "last_discovery_time": null,
-  "interval_hours": 8,
-  "enabled_providers": {
-    "azure": true,
-    "aws": false,
-    "gcp": false
-  }
-}
-```
-
-Wait for discovery to complete (typically 10-60 seconds depending on your infrastructure size).
-
-### 7. Query Discovered Resources
-
-Once discovery completes, query the topology:
-
-```bash
-# Get all resources
-curl http://localhost:8000/api/v1/topology | jq
-
-# Count resources
-curl http://localhost:8000/api/v1/topology | jq '.nodes | length'
-
-# List resource types
-curl http://localhost:8000/api/v1/topology | jq '.nodes | group_by(.resource_type) | map({type: .[0].resource_type, count: length})'
-```
-
-### 8. Explore in Neo4j Browser
-
-Open Neo4j Browser in your web browser:
-
-1. Go to http://localhost:7474
-2. Login with username `neo4j` and password `topdeck123`
-3. Run Cypher queries:
-
-```cypher
-// View all resources
-MATCH (n) RETURN n LIMIT 50
-
-// Count resources by type
-MATCH (n:Resource)
-RETURN n.resource_type as Type, count(*) as Count
-ORDER BY Count DESC
-
-// View dependencies
-MATCH (n)-[r:DEPENDS_ON]->(m)
-RETURN n.name, type(r), m.name
-LIMIT 20
-
-// Find resources in a specific region
-MATCH (n:Resource)
-WHERE n.region = 'eastus'
-RETURN n.name, n.resource_type
-
-// Find all AKS clusters
-MATCH (n:Resource)
-WHERE n.resource_type = 'AKS'
-RETURN n.name, n.properties
-```
-
-## Real-World Testing Scenarios
+## Advanced Testing Scenarios
 
 ### Scenario 1: Multi-Cloud Discovery
 

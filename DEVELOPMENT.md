@@ -2,6 +2,15 @@
 
 This guide covers the development setup and workflows for TopDeck.
 
+> **💡 Testing TopDeck Locally?** If you want to test TopDeck with your own live cloud data, see **[LOCAL_TESTING.md](LOCAL_TESTING.md)** for a comprehensive setup guide.
+
+## Quick Links
+
+- **[LOCAL_TESTING.md](LOCAL_TESTING.md)** - Test with live cloud data
+- **[QUICK_START.md](QUICK_START.md)** - 5-minute quick start
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[README.md](README.md)** - Full documentation
+
 ## Prerequisites
 
 - Python 3.11 or higher

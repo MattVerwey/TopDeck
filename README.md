@@ -37,12 +37,13 @@ TopDeck provides that answer by:
 ## 📚 Documentation Quick Links
 
 ### Getting Started
+- **[Local Testing with Live Data](LOCAL_TESTING.md)** - ⭐ **NEW!** Complete guide for testing locally with your own cloud resources
 - **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Testing with Real Data](TESTING_WITH_REAL_DATA.md)** - Comprehensive real-world testing guide
 - **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute test deployment guide
-- **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
-- **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - ✨ NEW! Automatic 8-hour resource discovery
-- **[App & Check Enhancements](docs/APP_CHECK_ENHANCEMENTS.md)** - ✨ NEW! CLI arguments, health checks, and security scanning
+- **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - Automatic 8-hour resource discovery
+- **[App & Check Enhancements](docs/APP_CHECK_ENHANCEMENTS.md)** - CLI arguments, health checks, and security scanning
 
 ### Topology & Dependencies (NEW!)
 - **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
