@@ -141,7 +141,7 @@ class TestGitHubIntegration:
         assert deployment.deployed_by == "testuser"
         assert deployment.status == "success"
         assert deployment.commit_sha == "abc123def456"
-        assert deployment.repository_url == "https://github.com/test-org/test-repo"
+        assert deployment.notes == "Deploy to production"  # mapped from description
 
     def test_infer_environment_from_topics(self, github_client):
         """Test environment inference from repository topics."""
