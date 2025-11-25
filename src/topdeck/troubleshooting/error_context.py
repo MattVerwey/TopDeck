@@ -726,7 +726,14 @@ class ErrorContextAggregator:
             for r in results:
                 deployed_at = r.get("deployed_at", datetime.now(UTC))
                 if isinstance(deployed_at, str):
-                    deployed_at = datetime.fromisoformat(deployed_at.replace("Z", "+00:00"))
+                    # Handle various ISO format variations safely
+                    time_str = deployed_at
+                    if time_str.endswith("Z"):
+                        time_str = time_str[:-1] + "+00:00"
+                    deployed_at = datetime.fromisoformat(time_str)
+                    # Ensure timezone-aware
+                    if deployed_at.tzinfo is None:
+                        deployed_at = deployed_at.replace(tzinfo=UTC)
 
                 is_recent = (error_time - deployed_at).total_seconds() < 3600  # Within 1 hour
 

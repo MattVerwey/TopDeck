@@ -478,7 +478,8 @@ class TestDependencyHealthMonitor:
         # Period should span the two degraded points
         start, end = periods[0]
         assert start == now - timedelta(hours=3)
-        assert end == now - timedelta(hours=1)
+        # End is the last degraded point (previous timestamp before healthy)
+        assert end == now - timedelta(hours=2)
 
     @pytest.mark.asyncio
     async def test_get_dependency_health_no_deps(self, monitor):

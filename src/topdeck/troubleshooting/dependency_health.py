@@ -846,8 +846,11 @@ class DependencyHealthMonitor:
 
         return data_points
 
-    def _categorize_dependency_type(self, resource_type: str) -> DependencyType:
+    def _categorize_dependency_type(self, resource_type: str | None) -> DependencyType:
         """Categorize resource type into dependency type."""
+        if not resource_type:
+            return DependencyType.API
+        
         type_lower = resource_type.lower()
 
         if any(db in type_lower for db in ["sql", "database", "postgres", "mysql", "mongodb", "cosmos"]):
@@ -1025,6 +1028,7 @@ class DependencyHealthMonitor:
         in_degraded = False
         period_start: datetime | None = None
 
+        prev_timestamp: datetime | None = None
         for dp in data_points:
             is_degraded = dp.health_score < self.HEALTHY_THRESHOLD
 
@@ -1033,11 +1037,15 @@ class DependencyHealthMonitor:
                 period_start = dp.timestamp
                 in_degraded = True
             elif not is_degraded and in_degraded:
-                # End of degraded period
+                # End of degraded period - use previous timestamp as end
+                # (the degraded period ended just before this healthy point)
                 if period_start:
-                    degraded_periods.append((period_start, dp.timestamp))
+                    end_time = prev_timestamp if prev_timestamp else dp.timestamp
+                    degraded_periods.append((period_start, end_time))
                 in_degraded = False
                 period_start = None
+            
+            prev_timestamp = dp.timestamp
 
         # Handle case where still degraded at end
         if in_degraded and period_start and data_points:

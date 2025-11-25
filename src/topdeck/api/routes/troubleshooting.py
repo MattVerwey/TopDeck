@@ -390,7 +390,14 @@ async def capture_error_context(
 
         error_time = None
         if request.error_time:
-            error_time = datetime.fromisoformat(request.error_time.replace("Z", "+00:00"))
+            # Handle various ISO format variations safely
+            time_str = request.error_time
+            if time_str.endswith("Z"):
+                time_str = time_str[:-1] + "+00:00"
+            error_time = datetime.fromisoformat(time_str)
+            # Ensure timezone-aware
+            if error_time.tzinfo is None:
+                error_time = error_time.replace(tzinfo=UTC)
 
         result = await aggregator.capture_context(
             resource_id=request.resource_id,
