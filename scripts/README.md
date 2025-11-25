@@ -122,8 +122,8 @@ Components:
 **Prerequisites**:
 - Docker and Docker Compose installed
 - Python 3.11+ installed
-- `.env` file configured (optional for basic test)
-- Azure test infrastructure deployed (optional, for full discovery test)
+- `.env` file configured (optional - only needed for live cloud resource discovery)
+- Cloud resources deployed (optional - for testing with live data)
 
 **Output**: Services will remain running. Press Ctrl+C to stop.
 

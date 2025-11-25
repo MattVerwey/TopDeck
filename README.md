@@ -56,8 +56,6 @@ TopDeck provides that answer by:
 - **[Enhanced Risk Analysis Guide](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
 - **[Enhanced Dependency Analysis Guide](docs/features/dependency-mapping/ENHANCED_DEPENDENCY_ANALYSIS.md)** - ✨ NEW! Circular dependencies, health scoring, and cascading failures
 - **[Risk Analysis Quick Reference](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
-- **[Multi-Source Dependency Verification](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION.md)** - ✨ NEW! Verify dependencies across Azure, ADO, Prometheus, and Tempo
-- **[Dependency Verification Quick Reference](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION_QUICK_REF.md)** - Quick verification commands
 - **[SLA/SLO Management](docs/SLA_SLO_MANAGEMENT.md)** - ✨ NEW! Service Level Agreements, Objectives, and Error Budget tracking
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
 
