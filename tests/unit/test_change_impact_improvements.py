@@ -44,7 +44,7 @@ def change_service(mock_neo4j_client, mock_risk_analyzer):
 def test_downtime_varies_by_resource_type(change_service):
     """Test that downtime estimation varies based on resource type."""
     # Database changes should take longer than function app changes
-    # Using risk_score=0.0 to isolate resource type impact
+    # Set risk_score=0.0 and dependent_count=0 to isolate the resource type multiplier effect
     db_downtime = change_service._estimate_downtime_for_resource(
         ChangeType.DEPLOYMENT,
         "database",

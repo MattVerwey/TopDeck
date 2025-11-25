@@ -52,8 +52,8 @@ def test_parse_span(tempo_collector):
         "spanID": "abc123",
         "parentSpanID": "parent123",
         "name": "GET /api/users",
-        "startTimeUnixNano": 1000000000,  # 1 second from epoch in nanoseconds
-        "endTimeUnixNano": 1100000000,    # 1.1 seconds from epoch in nanoseconds (100ms later)
+        "startTimeUnixNano": 1000000000,  # 1 second in nanoseconds
+        "endTimeUnixNano": 1100000000,    # 1.1 seconds in nanoseconds (100ms later)
         "attributes": [
             {"key": "http.method", "value": {"stringValue": "GET"}},
             {"key": "http.status_code", "value": {"intValue": 200}},
