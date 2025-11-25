@@ -24,9 +24,10 @@ Before running examples:
    curl -X POST http://localhost:8000/api/v1/discovery/trigger
    ```
 
-3. **Install httpx** (if not already installed):
+3. **Dependencies installed**:
    ```bash
-   pip install httpx
+   # All required dependencies (including httpx) are in requirements.txt
+   pip install -r requirements.txt
    ```
 
 For detailed setup, see **[LOCAL_TESTING.md](../LOCAL_TESTING.md)**.
