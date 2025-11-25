@@ -2,44 +2,43 @@
  * Mock Diagnostics Data Fixtures
  *
  * Test fixtures for Live Diagnostics E2E tests
+ * Types match the actual frontend types in src/types/diagnostics.ts
  */
 
-export interface ServiceHealth {
+export interface ServiceHealthStatus {
   resource_id: string;
   resource_name: string;
   resource_type: string;
-  status: "healthy" | "degraded" | "failed";
+  status: "healthy" | "degraded" | "failed" | "unknown";
   health_score: number;
-  metrics: {
-    cpu_usage: number;
-    memory_usage: number;
-    request_rate: number;
-    error_rate: number;
-    latency_p99: number;
-  };
+  anomalies: string[];
+  metrics: Record<string, number>;
+  last_updated: string;
 }
 
-export interface Anomaly {
-  id: string;
+export interface AnomalyAlert {
+  alert_id: string;
   resource_id: string;
   resource_name: string;
-  anomaly_type: string;
   severity: "low" | "medium" | "high" | "critical";
-  message: string;
+  metric_name: string;
+  current_value: number;
+  expected_value: number;
+  deviation_percentage: number;
   detected_at: string;
-  confidence: number;
+  message: string;
+  potential_causes: string[];
 }
 
 export interface TrafficPattern {
   source_id: string;
-  source_name: string;
   target_id: string;
-  target_name: string;
   request_rate: number;
   error_rate: number;
-  latency_avg: number;
+  latency_p95: number;
   is_abnormal: boolean;
-  deviation_score: number;
+  anomaly_score: number;
+  trend: "increasing" | "decreasing" | "stable";
 }
 
 export interface FailingDependency {
@@ -50,24 +49,32 @@ export interface FailingDependency {
   status: "degraded" | "failed";
   health_score: number;
   anomalies: string[];
+  error_details: {
+    status: string;
+    health_score: number;
+    anomalies: string[];
+    metrics: Record<string, number>;
+    timestamp: string;
+  };
 }
 
-export interface DiagnosticsSnapshot {
+export interface LiveDiagnosticsSnapshot {
   timestamp: string;
-  overall_health: "healthy" | "degraded" | "failed";
-  services: ServiceHealth[];
-  anomalies: Anomaly[];
+  overall_health: "healthy" | "degraded" | "critical";
+  services: ServiceHealthStatus[];
+  anomalies: AnomalyAlert[];
   traffic_patterns: TrafficPattern[];
   failing_dependencies: FailingDependency[];
 }
 
 // Sample healthy service
-export const healthyService: ServiceHealth = {
+export const healthyService: ServiceHealthStatus = {
   resource_id: "service-001",
   resource_name: "api-gateway",
   resource_type: "service",
   status: "healthy",
   health_score: 95,
+  anomalies: [],
   metrics: {
     cpu_usage: 35,
     memory_usage: 45,
@@ -75,15 +82,17 @@ export const healthyService: ServiceHealth = {
     error_rate: 0.5,
     latency_p99: 120,
   },
+  last_updated: new Date().toISOString(),
 };
 
 // Sample degraded service
-export const degradedService: ServiceHealth = {
+export const degradedService: ServiceHealthStatus = {
   resource_id: "service-002",
   resource_name: "user-service",
   resource_type: "service",
   status: "degraded",
   health_score: 65,
+  anomalies: ["anomaly-002", "anomaly-003"],
   metrics: {
     cpu_usage: 75,
     memory_usage: 80,
@@ -91,15 +100,17 @@ export const degradedService: ServiceHealth = {
     error_rate: 5.0,
     latency_p99: 800,
   },
+  last_updated: new Date().toISOString(),
 };
 
 // Sample failed service
-export const failedService: ServiceHealth = {
+export const failedService: ServiceHealthStatus = {
   resource_id: "service-003",
   resource_name: "payment-service",
   resource_type: "service",
   status: "failed",
   health_score: 15,
+  anomalies: ["anomaly-001"],
   metrics: {
     cpu_usage: 10,
     memory_usage: 20,
@@ -107,90 +118,100 @@ export const failedService: ServiceHealth = {
     error_rate: 85.0,
     latency_p99: 5000,
   },
+  last_updated: new Date().toISOString(),
 };
 
-// Sample anomalies
-export const sampleAnomalies: Anomaly[] = [
+// Sample anomalies - matching AnomalyAlert interface
+export const sampleAnomalies = [
   {
-    id: "anomaly-001",
+    alert_id: "anomaly-001",
     resource_id: "service-003",
     resource_name: "payment-service",
-    anomaly_type: "high_error_rate",
-    severity: "critical",
+    severity: "critical" as const,
+    metric_name: "error_rate",
+    current_value: 85.0,
+    expected_value: 5.0,
+    deviation_percentage: 1600,
     message: "Error rate exceeded 80% threshold",
     detected_at: new Date().toISOString(),
-    confidence: 0.95,
+    potential_causes: ["Database connection failure", "High traffic load"],
   },
   {
-    id: "anomaly-002",
+    alert_id: "anomaly-002",
     resource_id: "service-002",
     resource_name: "user-service",
-    anomaly_type: "high_latency",
-    severity: "high",
+    severity: "high" as const,
+    metric_name: "latency_p99",
+    current_value: 800,
+    expected_value: 200,
+    deviation_percentage: 300,
     message: "P99 latency exceeded 500ms threshold",
     detected_at: new Date(Date.now() - 300000).toISOString(),
-    confidence: 0.88,
+    potential_causes: ["Database slow queries"],
   },
   {
-    id: "anomaly-003",
+    alert_id: "anomaly-003",
     resource_id: "service-002",
     resource_name: "user-service",
-    anomaly_type: "memory_pressure",
-    severity: "medium",
+    severity: "medium" as const,
+    metric_name: "memory_usage",
+    current_value: 80,
+    expected_value: 50,
+    deviation_percentage: 60,
     message: "Memory usage approaching limit",
     detected_at: new Date(Date.now() - 600000).toISOString(),
-    confidence: 0.75,
+    potential_causes: ["Memory leak"],
   },
   {
-    id: "anomaly-004",
+    alert_id: "anomaly-004",
     resource_id: "service-001",
     resource_name: "api-gateway",
-    anomaly_type: "traffic_spike",
-    severity: "low",
+    severity: "low" as const,
+    metric_name: "request_rate",
+    current_value: 1500,
+    expected_value: 1000,
+    deviation_percentage: 50,
     message: "Unusual traffic pattern detected",
     detected_at: new Date(Date.now() - 900000).toISOString(),
-    confidence: 0.65,
+    potential_causes: [],
   },
 ];
 
-// Sample traffic patterns
+// Sample traffic patterns - matching TrafficPattern interface
 export const sampleTrafficPatterns: TrafficPattern[] = [
   {
     source_id: "service-001",
-    source_name: "api-gateway",
     target_id: "service-002",
-    target_name: "user-service",
     request_rate: 500,
     error_rate: 5.0,
-    latency_avg: 200,
+    latency_p95: 200,
     is_abnormal: true,
-    deviation_score: 2.5,
+    anomaly_score: 0.75,
+    trend: "increasing",
   },
   {
     source_id: "service-001",
-    source_name: "api-gateway",
     target_id: "service-003",
-    target_name: "payment-service",
     request_rate: 50,
     error_rate: 85.0,
-    latency_avg: 3000,
+    latency_p95: 3000,
     is_abnormal: true,
-    deviation_score: 8.0,
+    anomaly_score: 0.95,
+    trend: "decreasing",
   },
   {
     source_id: "service-002",
-    source_name: "user-service",
     target_id: "db-001",
-    target_name: "user-database",
     request_rate: 200,
     error_rate: 0.1,
-    latency_avg: 15,
+    latency_p95: 15,
     is_abnormal: false,
-    deviation_score: 0.2,
+    anomaly_score: 0.1,
+    trend: "stable",
   },
 ];
 
-// Sample failing dependencies
+// Sample failing dependencies - matching FailingDependency interface
 export const sampleFailingDependencies: FailingDependency[] = [
   {
     source_id: "service-001",
@@ -200,6 +221,13 @@ export const sampleFailingDependencies: FailingDependency[] = [
     status: "failed",
     health_score: 15,
     anomalies: ["anomaly-001"],
+    error_details: {
+      status: "failed",
+      health_score: 15,
+      anomalies: ["anomaly-001"],
+      metrics: { error_rate: 85.0, latency_p99: 5000 },
+      timestamp: new Date().toISOString(),
+    },
   },
   {
     source_id: "service-001",
@@ -209,11 +237,18 @@ export const sampleFailingDependencies: FailingDependency[] = [
     status: "degraded",
     health_score: 65,
     anomalies: ["anomaly-002", "anomaly-003"],
+    error_details: {
+      status: "degraded",
+      health_score: 65,
+      anomalies: ["anomaly-002", "anomaly-003"],
+      metrics: { error_rate: 5.0, latency_p99: 800 },
+      timestamp: new Date().toISOString(),
+    },
   },
 ];
 
 // Complete snapshot for healthy system
-export const healthySnapshot: DiagnosticsSnapshot = {
+export const healthySnapshot: LiveDiagnosticsSnapshot = {
   timestamp: new Date().toISOString(),
   overall_health: "healthy",
   services: [healthyService],
@@ -221,21 +256,20 @@ export const healthySnapshot: DiagnosticsSnapshot = {
   traffic_patterns: [
     {
       source_id: "service-001",
-      source_name: "api-gateway",
       target_id: "db-001",
-      target_name: "database",
       request_rate: 100,
       error_rate: 0.1,
-      latency_avg: 10,
+      latency_p95: 10,
       is_abnormal: false,
-      deviation_score: 0.1,
+      anomaly_score: 0.05,
+      trend: "stable",
     },
   ],
   failing_dependencies: [],
 };
 
 // Complete snapshot with issues
-export const degradedSnapshot: DiagnosticsSnapshot = {
+export const degradedSnapshot: LiveDiagnosticsSnapshot = {
   timestamp: new Date().toISOString(),
   overall_health: "degraded",
   services: [healthyService, degradedService, failedService],
