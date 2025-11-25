@@ -52,15 +52,15 @@ def test_parse_span(tempo_collector):
         "spanID": "abc123",
         "parentSpanID": "parent123",
         "name": "GET /api/users",
-        "startTimeUnixNano": 1000000000000000000,  # 1 second from epoch in nanoseconds
-        "endTimeUnixNano": 1000100000000000000,    # 1.1 seconds from epoch in nanoseconds
+        "startTimeUnixNano": 1000000000,  # 1 second from epoch in nanoseconds
+        "endTimeUnixNano": 1100000000,    # 1.1 seconds from epoch in nanoseconds (100ms later)
         "attributes": [
             {"key": "http.method", "value": {"stringValue": "GET"}},
             {"key": "http.status_code", "value": {"intValue": 200}},
         ],
         "events": [
             {
-                "timeUnixNano": 1000050000000000000,
+                "timeUnixNano": 1050000000,
                 "name": "cache_hit",
                 "attributes": [],
             }
@@ -87,8 +87,8 @@ def test_parse_span_error_status(tempo_collector):
     span_data = {
         "spanID": "abc123",
         "name": "GET /api/users",
-        "startTimeUnixNano": 1000000000000000000,
-        "endTimeUnixNano": 1000100000000000000,
+        "startTimeUnixNano": 1000000000,
+        "endTimeUnixNano": 1100000000,
         "attributes": [],
         "events": [],
         "status": {"code": 2},  # ERROR
@@ -115,8 +115,8 @@ def test_parse_trace(tempo_collector):
                             {
                                 "spanID": "span1",
                                 "name": "handle_request",
-                                "startTimeUnixNano": 1000000000000000000,
-                                "endTimeUnixNano": 1000200000000000000,
+                                "startTimeUnixNano": 1000000000,
+                                "endTimeUnixNano": 1200000000,  # 200ms duration
                                 "attributes": [],
                                 "events": [],
                                 "status": {"code": 0},
@@ -125,8 +125,8 @@ def test_parse_trace(tempo_collector):
                                 "spanID": "span2",
                                 "parentSpanID": "span1",
                                 "name": "query_database",
-                                "startTimeUnixNano": 1000050000000000000,
-                                "endTimeUnixNano": 1000150000000000000,
+                                "startTimeUnixNano": 1050000000,
+                                "endTimeUnixNano": 1150000000,  # 100ms duration
                                 "attributes": [],
                                 "events": [],
                                 "status": {"code": 2},  # ERROR
@@ -165,8 +165,8 @@ def test_parse_trace_multiple_services(tempo_collector):
                             {
                                 "spanID": "span1",
                                 "name": "handle_request",
-                                "startTimeUnixNano": 1000000000000000000,
-                                "endTimeUnixNano": 1000100000000000000,
+                                "startTimeUnixNano": 1000000000,
+                                "endTimeUnixNano": 1100000000,
                                 "attributes": [],
                                 "events": [],
                                 "status": {"code": 0},
@@ -188,8 +188,8 @@ def test_parse_trace_multiple_services(tempo_collector):
                                 "spanID": "span2",
                                 "parentSpanID": "span1",
                                 "name": "get_user",
-                                "startTimeUnixNano": 1000020000000000000,
-                                "endTimeUnixNano": 1000080000000000000,
+                                "startTimeUnixNano": 1020000000,
+                                "endTimeUnixNano": 1080000000,
                                 "attributes": [],
                                 "events": [],
                                 "status": {"code": 0},

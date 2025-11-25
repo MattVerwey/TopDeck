@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any, Optional
 
-from topdeck.monitoring.prometheus_collector import PrometheusCollector
+from topdeck.monitoring.collectors.prometheus import PrometheusCollector
 from topdeck.storage.neo4j_client import Neo4jClient
 
 logger = logging.getLogger(__name__)
