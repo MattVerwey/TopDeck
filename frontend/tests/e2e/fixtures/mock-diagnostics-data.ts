@@ -2,70 +2,16 @@
  * Mock Diagnostics Data Fixtures
  *
  * Test fixtures for Live Diagnostics E2E tests
- * Types match the actual frontend types in src/types/diagnostics.ts
+ * Types imported from the actual frontend types in src/types/diagnostics.ts
  */
 
-export interface ServiceHealthStatus {
-  resource_id: string;
-  resource_name: string;
-  resource_type: string;
-  status: "healthy" | "degraded" | "failed" | "unknown";
-  health_score: number;
-  anomalies: string[];
-  metrics: Record<string, number>;
-  last_updated: string;
-}
-
-export interface AnomalyAlert {
-  alert_id: string;
-  resource_id: string;
-  resource_name: string;
-  severity: "low" | "medium" | "high" | "critical";
-  metric_name: string;
-  current_value: number;
-  expected_value: number;
-  deviation_percentage: number;
-  detected_at: string;
-  message: string;
-  potential_causes: string[];
-}
-
-export interface TrafficPattern {
-  source_id: string;
-  target_id: string;
-  request_rate: number;
-  error_rate: number;
-  latency_p95: number;
-  is_abnormal: boolean;
-  anomaly_score: number;
-  trend: "increasing" | "decreasing" | "stable";
-}
-
-export interface FailingDependency {
-  source_id: string;
-  source_name: string;
-  target_id: string;
-  target_name: string;
-  status: "degraded" | "failed";
-  health_score: number;
-  anomalies: string[];
-  error_details: {
-    status: string;
-    health_score: number;
-    anomalies: string[];
-    metrics: Record<string, number>;
-    timestamp: string;
-  };
-}
-
-export interface LiveDiagnosticsSnapshot {
-  timestamp: string;
-  overall_health: "healthy" | "degraded" | "critical";
-  services: ServiceHealthStatus[];
-  anomalies: AnomalyAlert[];
-  traffic_patterns: TrafficPattern[];
-  failing_dependencies: FailingDependency[];
-}
+import type {
+  ServiceHealthStatus,
+  AnomalyAlert,
+  TrafficPattern,
+  FailingDependency,
+  LiveDiagnosticsSnapshot,
+} from '../../../src/types/diagnostics';
 
 // Sample healthy service
 export const healthyService: ServiceHealthStatus = {

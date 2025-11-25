@@ -16,6 +16,11 @@ import {
   mockAnomaliesResponse,
 } from "./fixtures/mock-diagnostics-data";
 
+// Timeout constants for consistent test behavior
+const DEFAULT_LOAD_TIMEOUT = 10000;
+const FAST_TIMEOUT = 5000;
+const LOADING_INDICATOR_TIMEOUT = 500;
+
 /**
  * Common WebSocket mock init script that speeds up timers and mocks WebSocket
  * to fail immediately, triggering polling fallback
@@ -95,7 +100,7 @@ test.describe("Live Diagnostics Panel", () => {
     await expect(page.getByRole("heading", { name: "Live Diagnostics" })).toBeVisible();
 
     // Check that summary cards are displayed (may need loading time)
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
     await expect(page.getByText("Active Anomalies")).toBeVisible();
     // Use first() to handle multiple matches (card label + tab)
     await expect(page.getByText("Failing Dependencies").first()).toBeVisible();
@@ -106,7 +111,7 @@ test.describe("Live Diagnostics Panel", () => {
     await page.goto("/live-diagnostics");
 
     // Wait for data to load
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Should show 3 services from mock data
     const serviceCard = page.locator("text=Total Services").locator("..");
@@ -116,7 +121,7 @@ test.describe("Live Diagnostics Panel", () => {
   test("should display anomaly count correctly", async ({ page }) => {
     await page.goto("/live-diagnostics");
 
-    await expect(page.getByText("Active Anomalies")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active Anomalies")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Should show 4 anomalies from mock data
     const anomalyCard = page.locator("text=Active Anomalies").locator("..");
@@ -130,25 +135,25 @@ test.describe("Live Diagnostics Panel", () => {
     await page.goto("/live-diagnostics");
 
     // Wait for the health status chip to appear
-    await expect(page.getByText(/System: degraded/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/System: degraded/i)).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
   });
 
   test("should display connection status indicator", async ({ page }) => {
     await page.goto("/live-diagnostics");
 
     // Wait for data to load first
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
     
     // The connection status chip should show Polling after WebSocket fallback
-    // Use getByLabel for more specific targeting
-    const connectionChip = page.getByLabel("Connection: Polling (Fallback)");
-    await expect(connectionChip).toBeVisible({ timeout: 5000 });
+    // Use getByText since the chip does not have an aria-label
+    const connectionChip = page.getByText("Polling (Fallback)");
+    await expect(connectionChip).toBeVisible({ timeout: FAST_TIMEOUT });
   });
 
   test("should have a working refresh button", async ({ page }) => {
     await page.goto("/live-diagnostics");
 
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Find and click the refresh button
     const refreshButton = page.getByRole("button", { name: /Refresh/i });
@@ -164,7 +169,7 @@ test.describe("Tab Navigation", () => {
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
   });
 
   test("should navigate to Topology tab", async ({ page }) => {
@@ -210,7 +215,7 @@ test.describe("Anomalies View", () => {
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Navigate to Anomalies tab and wait for content
     await page.getByRole("tab", { name: /Anomalies/i }).click();
@@ -239,7 +244,7 @@ test.describe("Failing Dependencies View", () => {
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Navigate to Failing Dependencies tab and wait for content
     await page.getByRole("tab", { name: /Failing Dependencies/i }).click();
@@ -268,7 +273,7 @@ test.describe("Traffic Patterns View", () => {
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Navigate to Traffic Patterns tab
     await page.getByRole("tab", { name: /Traffic Patterns/i }).click();
@@ -301,7 +306,7 @@ test.describe("Error Handling", () => {
     await expect(page).toHaveURL("/live-diagnostics");
 
     // Should show the error alert
-    await expect(page.getByRole("alert")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: FAST_TIMEOUT });
   });
 
   test("should show loading state while fetching data", async ({ page }) => {
@@ -322,10 +327,10 @@ test.describe("Error Handling", () => {
 
     // Should show loading indicator initially (before data loads)
     const loadingIndicator = page.locator('[role="progressbar"]');
-    await expect(loadingIndicator).toBeVisible({ timeout: 500 });
+    await expect(loadingIndicator).toBeVisible({ timeout: LOADING_INDICATOR_TIMEOUT });
 
     // After loading, data should be visible
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
   });
 });
 
@@ -333,7 +338,7 @@ test.describe("Service Click Interaction", () => {
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
   });
 
   test("should allow clicking on failing dependency items", async ({
@@ -361,7 +366,7 @@ test.describe("Accessibility", () => {
 
   test("should have proper ARIA labels for tabs", async ({ page }) => {
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Check tabs have proper aria attributes
     const tabs = page.getByRole("tab");
@@ -375,7 +380,7 @@ test.describe("Accessibility", () => {
 
   test("should have proper heading structure", async ({ page }) => {
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Main heading should be h1
     const mainHeading = page.getByRole("heading", { name: "Live Diagnostics", level: 1 });
@@ -384,7 +389,7 @@ test.describe("Accessibility", () => {
 
   test("tabs should have proper accessibility attributes", async ({ page }) => {
     await page.goto("/live-diagnostics");
-    await expect(page.getByText("Total Services")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Total Services")).toBeVisible({ timeout: DEFAULT_LOAD_TIMEOUT });
 
     // Tabs should have role="tab" and one should be selected
     const selectedTab = page.getByRole("tab", { selected: true });
