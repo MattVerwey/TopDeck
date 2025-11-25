@@ -1,10 +1,104 @@
 # TopDeck Scripts
 
-Utility scripts for project setup, management, and testing.
+Utility scripts for testing, setup, and management.
+
+> **💡 New to TopDeck?** See **[LOCAL_TESTING.md](../LOCAL_TESTING.md)** for a complete guide to testing TopDeck with your own cloud data.
+
+## Quick Reference
+
+### For Local Testing
+
+```bash
+# Verify your setup is ready
+python scripts/verify_scheduler.py
+
+# Check API health
+python scripts/health_check.py --detailed
+
+# Test discovery
+python scripts/test_discovery.py
+
+# Run end-to-end test
+./scripts/e2e-test.sh
+```
+
+For detailed local testing instructions, see **[LOCAL_TESTING.md](../LOCAL_TESTING.md)**.
 
 ## Available Scripts
 
 ### Testing Scripts
+
+#### verify_scheduler.py
+
+**Configuration Verification Script** - Verifies your TopDeck configuration is correct before starting.
+
+**What it does**:
+1. Checks cloud provider credentials (Azure, AWS, GCP)
+2. Verifies database connections (Neo4j, Redis, RabbitMQ)
+3. Validates discovery configuration
+4. Reports what will be discovered
+
+**Usage**:
+```bash
+python scripts/verify_scheduler.py
+```
+
+**Prerequisites**:
+- `.env` file configured
+- Virtual environment activated
+
+**Example Output**:
+```
+============================================================
+TOPDECK AUTOMATED DISCOVERY VERIFICATION
+============================================================
+
+✓ Azure Discovery: Configured
+  Tenant ID: 12345678...
+  Client ID: 87654321...
+  Subscription ID: abcdef01...
+
+✓ Neo4j: Connected
+✓ Redis: Connected
+✓ RabbitMQ: Connected
+
+✓ Scheduler is ready!
+✓ Discovery enabled for: AZURE
+✓ Scans will run every 8 hours
+```
+
+#### health_check.py
+
+**Health Check Script** - Tests if TopDeck API is running and all components are healthy.
+
+**What it does**:
+1. Checks API server is responding
+2. Tests Neo4j connection
+3. Tests Redis connection
+4. Tests RabbitMQ connection
+5. Reports overall health status
+
+**Usage**:
+```bash
+# Basic health check
+python scripts/health_check.py
+
+# Detailed health check
+python scripts/health_check.py --detailed
+```
+
+**Prerequisites**:
+- TopDeck API running (`make run`)
+
+**Example Output**:
+```
+✓ TopDeck API is healthy!
+
+Components:
+  ✓ Neo4j: healthy
+  ✓ Redis: healthy
+  ✓ RabbitMQ: healthy
+```
 
 #### e2e-test.sh
 
@@ -28,10 +122,12 @@ Utility scripts for project setup, management, and testing.
 **Prerequisites**:
 - Docker and Docker Compose installed
 - Python 3.11+ installed
-- `.env` file configured with Azure credentials
-- Azure test infrastructure deployed (optional, for discovery)
+- `.env` file configured (optional for basic test)
+- Azure test infrastructure deployed (optional, for full discovery test)
 
 **Output**: Services will remain running. Press Ctrl+C to stop.
+
+**See also**: [LOCAL_TESTING.md](../LOCAL_TESTING.md) for detailed testing scenarios.
 
 #### test_discovery.py
 
@@ -45,13 +141,17 @@ Utility scripts for project setup, management, and testing.
 
 **Usage**:
 ```bash
+# Test discovery with configured cloud provider
 python scripts/test_discovery.py
+
+# The script will use credentials from .env
 ```
 
 **Prerequisites**:
-- `.env` file configured with Azure credentials
-- Azure test infrastructure deployed
+- `.env` file configured with cloud credentials (see [LOCAL_TESTING.md](../LOCAL_TESTING.md))
+- Cloud test infrastructure deployed (or any existing resources)
 - Virtual environment activated
+- Neo4j running (`docker compose up -d`)
 
 **Example Output**:
 ```
@@ -71,7 +171,75 @@ python scripts/test_discovery.py
       - topdeck-vnet
 ```
 
-### Project Management Scripts
+### Demonstration Scripts
+
+The `examples/` directory contains demonstration scripts for testing TopDeck features. See [examples/README.md](../examples/README.md) for details.
+
+Quick demos:
+```bash
+# Simple discovery demo
+python examples/simple_demo.py
+
+# Enhanced topology demo
+python examples/enhanced_topology_demo.py --resource-id <id>
+
+# Risk analysis demo
+python examples/risk_scoring_demo.py
+```
+
+## Local Testing Workflow
+
+For comprehensive local testing with your own cloud data:
+
+### 1. Initial Setup
+
+```bash
+# Verify configuration
+python scripts/verify_scheduler.py
+
+# Start services
+docker compose up -d
+
+# Start TopDeck
+make run
+```
+
+### 2. Verify Everything Works
+
+```bash
+# Check API health
+python scripts/health_check.py --detailed
+
+# Test discovery
+python scripts/test_discovery.py
+```
+
+### 3. Explore Your Data
+
+```bash
+# Query topology
+curl http://localhost:8000/api/v1/topology | jq
+
+# Check discovery status
+curl http://localhost:8000/api/v1/discovery/status | jq
+```
+
+### 4. Run Examples
+
+```bash
+# Get a resource ID
+RESOURCE_ID=$(curl -s http://localhost:8000/api/v1/topology | jq -r '.nodes[0].id')
+
+# Run topology demo
+python examples/enhanced_topology_demo.py --resource-id $RESOURCE_ID
+
+# Run risk demo
+python examples/risk_scoring_demo.py
+```
+
+For detailed instructions, see **[LOCAL_TESTING.md](../LOCAL_TESTING.md)**.
+
+## Project Management Scripts
 
 #### create-github-issues.sh
 
@@ -154,28 +322,56 @@ gh label create "architecture" --color "bfdadc" --description "Architecture deci
 
 ## Related Documentation
 
-- **[HOSTING_AND_TESTING_GUIDE.md](../docs/HOSTING_AND_TESTING_GUIDE.md)** - Complete guide for hosting and testing TopDeck
-- **[AZURE_TESTING_GUIDE.md](../docs/AZURE_TESTING_GUIDE.md)** - Azure test infrastructure setup
+- **[LOCAL_TESTING.md](../LOCAL_TESTING.md)** - ⭐ **Complete local testing guide**
+- **[TESTING_WITH_REAL_DATA.md](../TESTING_WITH_REAL_DATA.md)** - Advanced testing scenarios
+- **[QUICK_START.md](../QUICK_START.md)** - 5-minute quick start
 - **[DEVELOPMENT.md](../DEVELOPMENT.md)** - Development workflow and setup
+- **[examples/README.md](../examples/README.md)** - Example scripts documentation
 
-## Quick Start for Testing
+## Quick Start for Local Testing
+
+The fastest way to test TopDeck with your cloud data:
 
 ```bash
-# 1. Set up Azure test infrastructure (first time only)
-cd scripts/azure-testing
-./setup-azure-trial.sh
-./deploy-test-infrastructure.sh
-cd ../..
-
-# 2. Configure environment
+# 1. Configure environment
 cp .env.example .env
-# Edit .env with your Azure credentials
+# Edit .env with your cloud credentials
 
-# 3. Run end-to-end test
-./scripts/e2e-test.sh
+# 2. Verify setup
+python scripts/verify_scheduler.py
 
-# 4. Or test discovery only
+# 3. Start services
+docker compose up -d
+
+# 4. Start TopDeck (in separate terminal)
+make run
+
+# 5. Test everything works
+python scripts/health_check.py --detailed
 python scripts/test_discovery.py
 ```
 
-For detailed instructions, see [HOSTING_AND_TESTING_GUIDE.md](../docs/HOSTING_AND_TESTING_GUIDE.md).
+For detailed step-by-step instructions, see **[LOCAL_TESTING.md](../LOCAL_TESTING.md)**.
+
+## Troubleshooting
+
+### verify_scheduler.py shows credential errors
+
+- Check your `.env` file has correct credentials
+- For Azure: Verify service principal has Reader role
+- For AWS: Verify IAM user has ReadOnlyAccess policy
+- For GCP: Verify service account has Viewer role
+
+### health_check.py fails
+
+- Ensure TopDeck API is running: `make run`
+- Verify services are running: `docker compose ps`
+- Check logs: `docker compose logs`
+
+### test_discovery.py finds no resources
+
+- Verify you have resources deployed in your cloud provider
+- Check credentials have access to those resources
+- Ensure resources are in the configured subscription/project/account
+
+For more troubleshooting help, see [LOCAL_TESTING.md](../LOCAL_TESTING.md#troubleshooting).

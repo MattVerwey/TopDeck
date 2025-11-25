@@ -2,35 +2,44 @@
 
 This directory contains example scripts and demonstrations for TopDeck features.
 
-## Enhanced Topology Analysis Demo
+> **💡 New to TopDeck?** See **[LOCAL_TESTING.md](../LOCAL_TESTING.md)** for a complete guide to setting up and testing TopDeck with your own cloud data.
 
-**Script:** `enhanced_topology_demo.py`
-
-Demonstrates the new enhanced topology and dependency analysis features, showing which resources are attached to which and providing in-depth analysis.
+## Quick Start with Examples
 
 ### Prerequisites
 
-1. TopDeck API server running:
+Before running examples:
+
+1. **TopDeck API server running**:
    ```bash
    # From repository root
-   docker-compose up -d  # Start Neo4j
+   docker compose up -d  # Start infrastructure
    make run              # Start API server
    ```
 
-2. Resources discovered and loaded into Neo4j:
+2. **Resources discovered and loaded into Neo4j**:
    ```bash
-   # Run discovery for your cloud provider
-   python -m topdeck.discovery.azure.discoverer --subscription-id <id>
+   # Configure cloud credentials in .env first
+   # Discovery runs automatically on startup, or trigger manually:
+   curl -X POST http://localhost:8000/api/v1/discovery/trigger
    ```
 
-3. Install httpx (if not already installed):
+3. **Install httpx** (if not already installed):
    ```bash
    pip install httpx
    ```
 
-### Usage
+For detailed setup, see **[LOCAL_TESTING.md](../LOCAL_TESTING.md)**.
 
-Basic usage:
+## Available Examples
+
+### Enhanced Topology Analysis Demo
+
+**Script:** `enhanced_topology_demo.py`
+
+Demonstrates the enhanced topology and dependency analysis features.
+
+**Usage**:
 ```bash
 python examples/enhanced_topology_demo.py --resource-id <resource-id>
 ```
@@ -130,60 +139,110 @@ Resource ID: my-app-service
   3. LoadBalancer → MyAppService → MySQLDatabase
 ```
 
-## Other Examples
+### Other Examples
 
-### Simple Demo
+#### Simple Demo
 **Script:** `simple_demo.py`
 
 Basic demonstration of TopDeck discovery and query features.
 
-### Multi-Cloud Discovery
+```bash
+python examples/simple_demo.py
+```
+
+#### Multi-Cloud Discovery
 **Script:** `multi_cloud_discovery.py`
 
 Demonstrates discovering resources across multiple cloud providers.
 
-### GitHub Integration
+```bash
+# Configure all cloud providers in .env first
+python examples/multi_cloud_discovery.py
+```
+
+#### GitHub Integration
 **Script:** `github_integration_example.py`
 
 Shows how to integrate GitHub repositories and workflows.
 
-### Phase 2/3 Examples
-**Script:** `phase2_3_examples.py`
+```bash
+# Configure GITHUB_TOKEN in .env first
+python examples/github_integration_example.py
+```
 
-Examples from Phase 2 and Phase 3 development.
+#### Risk Scoring Demo
+**Script:** `risk_scoring_demo.py`
 
-## Documentation
+Demonstrates risk analysis capabilities.
 
-For more information about enhanced topology features:
-- **[Enhanced Topology Analysis Guide](../docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete documentation
-- **[Topology Quick Reference](../docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+```bash
+python examples/risk_scoring_demo.py
+```
+
+#### Error Replay Demo
+**Script:** `error_replay_demo.py`
+
+Shows error capture and replay features.
+
+```bash
+python examples/error_replay_demo.py
+```
+
+#### Prediction Demo
+**Script:** `prediction_example.py`
+
+Demonstrates ML-based prediction features.
+
+```bash
+python examples/prediction_example.py
+```
 
 ## Getting Resource IDs
 
-To find resource IDs for testing:
+Many examples require a resource ID. Here's how to get one:
 
 ```bash
 # Using curl
 curl http://localhost:8000/api/v1/topology | jq '.nodes[].id'
 
-# Using the Neo4j browser
+# Using Neo4j browser
 # Navigate to http://localhost:7474
 # Run: MATCH (r:Resource) RETURN r.id, r.name LIMIT 10
+
+# Save to variable
+RESOURCE_ID=$(curl -s http://localhost:8000/api/v1/topology | jq -r '.nodes[0].id')
+echo "Resource ID: $RESOURCE_ID"
 ```
+
+## Documentation
+
+For more information about TopDeck features:
+- **[LOCAL_TESTING.md](../LOCAL_TESTING.md)** - ⭐ Complete local testing guide
+- **[Enhanced Topology Analysis Guide](../docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete topology documentation
+- **[Topology Quick Reference](../docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+- **[Enhanced Risk Analysis Guide](../docs/ENHANCED_RISK_ANALYSIS.md)** - Risk analysis documentation
+- **[README.md](../README.md)** - Full project overview
 
 ## Troubleshooting
 
 **Error: Cannot connect to TopDeck API**
 - Ensure TopDeck API is running: `make run`
-- Check the API URL is correct
-- Verify Neo4j is running: `docker-compose ps`
+- Check the API URL is correct (default: http://localhost:8000)
+- Verify infrastructure services are running: `docker compose ps`
 
 **Error: Resource not found**
 - Verify the resource ID exists
-- Run discovery to populate data
-- Check Neo4j has data: `MATCH (r:Resource) RETURN count(r)`
+- Run discovery to populate data: `curl -X POST http://localhost:8000/api/v1/discovery/trigger`
+- Check Neo4j has data: 
+  - Open http://localhost:7474
+  - Run: `MATCH (r:Resource) RETURN count(r)`
 
 **Empty results**
-- Ensure relationships have been created between resources
-- Run discovery and integration scripts
-- Check Neo4j for relationships: `MATCH ()-[r]->() RETURN count(r)`
+- Ensure discovery has completed: `curl http://localhost:8000/api/v1/discovery/status | jq`
+- Check relationships exist: 
+  - Open http://localhost:7474
+  - Run: `MATCH ()-[r]->() RETURN count(r)`
+- Verify cloud credentials are correct: `python scripts/verify_scheduler.py`
+
+**Need more help?**
+See [LOCAL_TESTING.md](../LOCAL_TESTING.md) for comprehensive troubleshooting.
