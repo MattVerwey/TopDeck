@@ -218,9 +218,9 @@ echo "Resource ID: $RESOURCE_ID"
 
 For more information about TopDeck features:
 - **[LOCAL_TESTING.md](../LOCAL_TESTING.md)** - ⭐ Complete local testing guide
-- **[Enhanced Topology Analysis Guide](../docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete topology documentation
-- **[Topology Quick Reference](../docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
-- **[Enhanced Risk Analysis Guide](../docs/ENHANCED_RISK_ANALYSIS.md)** - Risk analysis documentation
+- **[Enhanced Topology Analysis Guide](../docs/features/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete topology documentation
+- **[Topology Quick Reference](../docs/features/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+- **[Enhanced Risk Analysis Guide](../docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md)** - Risk analysis documentation
 - **[README.md](../README.md)** - Full project overview
 
 ## Troubleshooting

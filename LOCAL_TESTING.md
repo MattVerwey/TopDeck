@@ -556,8 +556,8 @@ Once you have TopDeck running with your live data:
 - **[TESTING_WITH_REAL_DATA.md](TESTING_WITH_REAL_DATA.md)** - Detailed testing guide
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development workflow
 - **[docs/AUTOMATED_DISCOVERY.md](docs/AUTOMATED_DISCOVERY.md)** - Discovery documentation
-- **[docs/ENHANCED_TOPOLOGY_ANALYSIS.md](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Topology features
-- **[docs/ENHANCED_RISK_ANALYSIS.md](docs/ENHANCED_RISK_ANALYSIS.md)** - Risk analysis features
+- **[docs/features/ENHANCED_TOPOLOGY_ANALYSIS.md](docs/features/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Topology features
+- **[docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md)** - Risk analysis features
 - **[examples/README.md](examples/README.md)** - Example scripts
 
 ## 💡 Tips for Local Testing
