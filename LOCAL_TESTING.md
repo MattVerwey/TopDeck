@@ -46,7 +46,7 @@ Before you begin, ensure you have:
 
 3. **Cloud Provider Access** (at least one):
    - **Azure**: Service Principal with Reader role
-   - **AWS**: IAM user with ReadOnlyAccess policy  
+   - **AWS**: IAM user with ReadOnlyAccess policy
    - **GCP**: Service account with Viewer role
 
 4. **Cloud Resources to Discover**:
