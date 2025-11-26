@@ -37,24 +37,25 @@ TopDeck provides that answer by:
 ## 📚 Documentation Quick Links
 
 ### Getting Started
+- **[Local Testing with Live Data](LOCAL_TESTING.md)** - ⭐ **NEW!** Complete guide for testing locally with your own cloud resources
 - **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Testing with Real Data](TESTING_WITH_REAL_DATA.md)** - Comprehensive real-world testing guide
 - **[Deploy to Test Environment](DEPLOY_TO_TEST.md)** - 15-minute test deployment guide
-- **[Testing Quick Start](docs/TESTING_QUICKSTART.md)** - Test TopDeck in 5 minutes
 - **[Development Guide](DEVELOPMENT.md)** - Development workflow and guidelines
-- **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - ✨ NEW! Automatic 8-hour resource discovery
-- **[App & Check Enhancements](docs/APP_CHECK_ENHANCEMENTS.md)** - ✨ NEW! CLI arguments, health checks, and security scanning
+- **[Automated Discovery](docs/AUTOMATED_DISCOVERY.md)** - Automatic 8-hour resource discovery
+- **[App & Check Enhancements](docs/APP_CHECK_ENHANCEMENTS.md)** - CLI arguments, health checks, and security scanning
 
 ### Topology & Dependencies (NEW!)
-- **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
+- **[Enhanced Topology Analysis Guide](docs/features/ENHANCED_TOPOLOGY_ANALYSIS.md)** - Complete in-depth topology and dependency analysis
 - **[Topology Filtering & Grouping Guide](docs/TOPOLOGY_FILTERING_GROUPING.md)** - ✨ NEW! Advanced filtering modes and visual grouping
-- **[Topology Analysis Quick Reference](docs/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
-- **[Multi-Source Dependency Verification](docs/DEPENDENCY_VERIFICATION.md)** - ✨ NEW! Verify dependencies across Azure, ADO, Prometheus, and Tempo
-- **[Dependency Verification Quick Reference](docs/DEPENDENCY_VERIFICATION_QUICK_REF.md)** - Quick verification commands
+- **[Topology Analysis Quick Reference](docs/features/ENHANCED_TOPOLOGY_QUICK_REF.md)** - Quick commands and examples
+- **[Multi-Source Dependency Verification](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION.md)** - ✨ NEW! Verify dependencies across Azure, ADO, Prometheus, and Tempo
+- **[Dependency Verification Quick Reference](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION_QUICK_REF.md)** - Quick verification commands
 
 ### Risk Analysis & SLA/SLO
-- **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
-- **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)** - ✨ NEW! Circular dependencies, health scoring, and cascading failures
-- **[Risk Analysis Quick Reference](docs/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
+- **[Enhanced Risk Analysis Guide](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md)** - Complete in-depth risk analysis documentation
+- **[Enhanced Dependency Analysis Guide](docs/features/dependency-mapping/ENHANCED_DEPENDENCY_ANALYSIS.md)** - ✨ NEW! Circular dependencies, health scoring, and cascading failures
+- **[Risk Analysis Quick Reference](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS_QUICK_REF.md)** - Quick commands and examples
 - **[SLA/SLO Management](docs/SLA_SLO_MANAGEMENT.md)** - ✨ NEW! Service Level Agreements, Objectives, and Error Budget tracking
 - **[Phase 3 Completion Summary](PHASE_3_RISK_ANALYSIS_COMPLETION.md)** - Original risk analysis implementation
 
@@ -385,7 +386,7 @@ curl http://localhost:8000/api/v1/topology/resources/{id}/dependencies
 - ✅ **Critical Identification**: Automatically identify critical attachments and connections
 - ✅ **Relationship Categorization**: Organize by dependency, connectivity, deployment, security
 
-See **[Enhanced Topology Analysis Guide](docs/ENHANCED_TOPOLOGY_ANALYSIS.md)** for complete documentation.
+See **[Enhanced Topology Analysis Guide](docs/features/ENHANCED_TOPOLOGY_ANALYSIS.md)** for complete documentation.
 
 **4. Explore with Web UI**
 ```bash
@@ -461,7 +462,7 @@ curl "http://localhost:8000/api/v1/risk/cascading-failure/{resource-id}"
 - ✅ **Cascading Failure Probability**: Model how failures propagate through dependencies
 - ✅ **Multi-Source Verification**: Verify dependencies across Azure infrastructure, ADO code, Prometheus, and Tempo
 
-See **[Enhanced Risk Analysis Guide](docs/ENHANCED_RISK_ANALYSIS.md)**, **[Enhanced Dependency Analysis Guide](docs/ENHANCED_DEPENDENCY_ANALYSIS.md)**, and **[Dependency Verification Guide](docs/DEPENDENCY_VERIFICATION.md)** for complete documentation.
+See **[Enhanced Risk Analysis Guide](docs/features/risk-analysis/ENHANCED_RISK_ANALYSIS.md)**, **[Enhanced Dependency Analysis Guide](docs/features/dependency-mapping/ENHANCED_DEPENDENCY_ANALYSIS.md)**, and **[Dependency Verification Guide](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION.md)** for complete documentation.
 
 **6. Multi-Source Dependency Verification** ✨ **NEW**
 ```bash
@@ -495,7 +496,7 @@ Single-source dependency detection can produce false positives. By requiring evi
 - 2 sources: Medium confidence (50-70%) - Some evidence
 - 1 source: Low confidence (<50%) - Likely false positive
 
-See **[Multi-Source Dependency Verification Guide](docs/DEPENDENCY_VERIFICATION.md)** and **[Quick Reference](docs/DEPENDENCY_VERIFICATION_QUICK_REF.md)** for complete documentation.
+See **[Multi-Source Dependency Verification Guide](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION.md)** and **[Quick Reference](docs/features/dependency-mapping/DEPENDENCY_VERIFICATION_QUICK_REF.md)** for complete documentation.
 
 **7. ML-Based Predictions** ✨ **NEW**
 ```bash
